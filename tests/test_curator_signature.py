@@ -8,7 +8,7 @@ import httpx
 
 from bugsigdb_curation.curator.evidence import EvidenceFigure, EvidenceTable
 from bugsigdb_curation.curator.locate import LocatedArtifact
-from bugsigdb_curation.curator.model import MockModel, build_image_content, build_text_content
+from bugsigdb_curation.curator.model import MockModel
 from bugsigdb_curation.curator.signature import build_signature_messages, extract_signatures
 from bugsigdb_curation.curator.taxonomy import NcbiTaxonomyResolver
 

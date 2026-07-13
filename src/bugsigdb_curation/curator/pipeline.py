@@ -44,8 +44,6 @@ from bugsigdb_curation.validate import Problem, default_schema_path, validate_in
 #: `curate_async`, rather than a genuinely different S1 fetch path).
 DEFAULT_CONFIG = "text-tables-figures"
 
-_EXPERIMENT_TRIPLE = tuple  # (ExperimentFields, list[ExtractedSignature], str | None)
-
 
 @dataclass(frozen=True, slots=True)
 class CurationResult:
