@@ -1,0 +1,22 @@
+{
+  "id": "PMC6559755",
+  "figure": "Figure 4",
+  "panel_used": "single bar chart (whole figure)",
+  "color_map": "blue = HG (high acetaldehyde concentration group, group_1); red/orange = LG (low acetaldehyde concentration group, group_0)",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": ["Gemella sanguinis", "Neisseria flavescens"]
+    },
+    {
+      "direction": "decreased",
+      "taxa": ["Prevotella histicola", "Streptococcus parasanguinis"]
+    },
+    {
+      "direction": "unknown",
+      "taxa": ["Veillonella parvula"]
+    }
+  ],
+  "legible": true,
+  "notes": "Legend states significant differences between HG (blue) and LG (red); taxa marked with * or † above the bars are treated as the reported differentially-abundant set (rest of the 22 taxa plotted show no significance marker). Direction is blue(HG=group_1) vs red(LG=group_0) median bar height. Veillonella parvula (†) has both bars essentially flat/near-zero (grey, indistinguishable) at this image resolution, so direction could not be determined even though it is flagged significant."
+}

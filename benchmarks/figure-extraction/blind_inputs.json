@@ -1,0 +1,137 @@
+[
+ {
+  "id": "PMC6750128",
+  "study_id": "30854760",
+  "figure": "Figure 2",
+  "image_path": "data/figbench/images/PMC6750128_F2.jpg",
+  "legend": "(A) Vaginal microbial community structure prior to rescue cerclage in women with and without symptoms. Relative abundance of bacterial genera and Lactobacillus spp. (shades of green) within the vaginal microbiome, inverse Simpson index (diversity), and classification by Lactobacillus spp. dominance; dominant (blue) >75%, intermediate (pink) 50\u201375%, and deplete (red) <50%. There were no significant differences in vaginal community structure between asymptomatic women and those presenting with symptoms. A difference at bacterial genera level within these communities was apparent with an overrepresentation of Lactobacillus crispatus (dark green) and Bifidobacterium (blue) in the asymptomatic cohort and Gardnerella vaginalis (red) in the symptomatic group. (B) Gardnerella vaginalis and L. crispatus are differentially expressed between women with and without symptoms prior to emergency cerclage. Cladogram describing differentially abundant vaginal microbial clades and nodes observed between asymptomatic women and those with symptoms as identified using LEfSe analysis. The effect size for each differentially abundant species was estimated using LDA. Vaginal microbiome of symptomatic women was enriched with Gardnerella vaginalis, Prevotella disiens, and Streptococcus pseudopneumoniae, whereas those without symptoms were comparatively enriched with Lactobacillus crispatus.",
+  "group_0_name": "Vaginal microbiome of asymptomatic women prior to cerclage",
+  "group_1_name": "Vaginal microbiome of symptomatic women prior ro cerclage"
+ },
+ {
+  "id": "PMC7473061",
+  "study_id": "32552447",
+  "figure": "Figure 2.",
+  "image_path": "data/figbench/images/PMC7473061_F2.jpg",
+  "legend": "Average relative taxon abundance comparisons between the MTB+ and MTB- groups at the genus level. P-values were determined using the Mann-Whitney U test, and the Benjamini-Hochberg procedure (false discovery rate correction method) was applied to obtain adjusted p values for multiple comparisons between groups. Boxes indicate 5th to 95th percentiles, with median relative abundances marked as lines and whiskers indicating the range (minimum/maximum) multiplied by the interquartile range (5th to 95th percentiles) from the boxes. Bacterial taxa are ranked by average relative abundances of the of overall lung microbiome in MTB- patients.",
+  "group_0_name": "Mycobacterium tuberculosis (MTB\u2212)",
+  "group_1_name": "Mycobacterium tuberculosis (MTB+)"
+ },
+ {
+  "id": "PMC6559755",
+  "study_id": "31215600",
+  "figure": "Figure 4",
+  "image_path": "data/figbench/images/PMC6559755_F4.jpg",
+  "legend": "Difference in relative abundance of tongue microbiome between HG and LG. Data were presented as median with error bars representing the 25th and 75th percentiles (n=6/group). These were significant differences in relative abundance of some species between HG (blue bar) and LG (red bar)",
+  "group_0_name": "low acetaldehyde concentration group",
+  "group_1_name": "high acetaldehyde concentration group"
+ },
+ {
+  "id": "PMC7653996",
+  "study_id": "33167991",
+  "figure": "Fig. 1",
+  "image_path": "data/figbench/images/PMC7653996_F1.jpg",
+  "legend": "Differentially abundant taxa between smokers and non-smokers group. Panel shows relative abundance of normalized counts for the top 10 taxa. Results were calculated by negative binomial models (DESEq2 R package) of the form \u223cgroup for differential abundance testing of taxonomic and subsystem level 3 features. P values were calculated with Likelihood Ratio Tests method. All of the above comparison are significant. Smoker and non-smoker corresponding abundance are colored in blue and red, respectively",
+  "group_0_name": "Non-smokers",
+  "group_1_name": "Smokers"
+ },
+ {
+  "id": "PMC8180047",
+  "study_id": "34090383",
+  "figure": "Fig. 2",
+  "image_path": "data/figbench/images/PMC8180047_F2.jpg",
+  "legend": "Microbial community profiles of gut microbiota between POI and control group. POI represented women with premature ovarian insufficiency, NG represented healthy control women. a Relative abundances of the dominant phylum. b Relative abundances of the top 10 genera according to the relative abundance. c Significant different and important microbes between POI and control group",
+  "group_0_name": "Healthy controls",
+  "group_1_name": "Primary ovarian insufficiency (POI)"
+ },
+ {
+  "id": "PMC3816614",
+  "study_id": "24192039",
+  "figure": "Figure 1.",
+  "image_path": "data/figbench/images/PMC3816614_F1.jpg",
+  "legend": "Differences in the relative abundance of Prevotella and Bacteroides in 114 subjects with and without arthritis, determined by 16S sequencing (regions V1\u2013V2, 454 platform).(A) LEfSe (Segata et al., 2011) was used to compare the abundances of all detected clades among all groups, producing an effect size for each comparison (\u2018Materials and methods\u2019). All results shown are highly significant (q<0.01) by Kruskal-Wallis test adjusted with the Benjamini-Hochberg procedure for multiple testing, except that indicated with an asterisk, which is significant at q<0.05. Negative values (left) correspond to effect sizes representative of NORA groups, while positive values (right) correspond to effect sizes in HLT subjects. Prevotella was found to be over-represented in NORA patients, while Bacteroides was over-represented in all other groups. (B) The Bray-Curtis distance between all subjects was calculated and used to generate a principal coordinates plot in MOTHUR (Schloss et al., 2009). The first two components are shown. Subjects with an abundance of Prevotella greater than 10% were colored red. Other subjects were colored according to their Bacteroides abundance as shown. NORA subjects (stars) primarily cluster together according to their Prevotella abundance, and the x-axis is representative of differences in the relative abundance of Prevotella and Bacteroides. (C) The abundances of Prevotella (red) and Bacteroides (blue) are shown for all subjects, sorted in order of decreasing Prevotella abundance (>5%) and increasing Bacteroides abundance.DOI: http://dx.doi.org/10.7554/eLife.01202.00410.7554/eLife.01202.005Figure 1\u2014source data 1.Intermediate data and analysis tools for Figure 1.DOI: http://dx.doi.org/10.7554/eLife.01202.00510.7554/eLife.01202.006Figure 1\u2014source data 2.Intermediate data and analysis tools for Figure 1\u2014figure supplement 1.DOI: http://dx.doi.org/10.7554/eLife.01202.006",
+  "group_0_name": "Healthy controls",
+  "group_1_name": "New-onset rheumatoid arthritis - NORA"
+ },
+ {
+  "id": "PMC7342497",
+  "study_id": "32753953",
+  "figure": "Figure 2",
+  "image_path": "data/figbench/images/PMC7342497_F2.jpg",
+  "legend": "LEfSe analyses of microbiome composition between paracancerous and cancerous tissues. Bacteria genera enriched in cancerous tissues had a positive LDA score, while those depleted had a negative score. Bacteria with LDA scores >3 are shown (A). Relative abundance of genera enriched in cancerous tissues (B). Relative abundance of genera enriched in paracancerous tissues (C). *P < 0.05; **P < 0.01; ***P < 0.001. All FDR-adjusted P values were <0.05.",
+  "group_0_name": "paracancerous tissues",
+  "group_1_name": "cancerous  lesions"
+ },
+ {
+  "id": "PMC11383188",
+  "study_id": "38387693",
+  "figure": "Fig. 4",
+  "image_path": "data/figbench/images/PMC11383188_F4.jpg",
+  "legend": "Fecal bacterial composition of the low-to-moderate drinking and non-drinking groups in HIV-infected patients. a) The relative abundance of gut microbiota at the family level. b) The relative abundance of gut microbiota at the genera level. c) Differentially enriched bacterial taxa were quantified as linear discriminant analysis effect sizes (LEfSe), showing taxa with linear discriminant analysis (LDA) scores greater than 2.0. d) Cladogram of LDA effect size. Species that were not annotated at this taxonomic level and whose abundance was less than 0.5% in the sample were combined into others. Red: low-to-moderate drinking HIV-infected group; Blue: non-drinking HIV-infected group. (For interpretation of the references to color in this figure legend, the reader is referred to the Web version of this article).",
+  "group_0_name": "Non Drinking",
+  "group_1_name": "Low to Moderate drinking"
+ },
+ {
+  "id": "PMC5818670",
+  "study_id": "29459704",
+  "figure": "Figure 1",
+  "image_path": "data/figbench/images/PMC5818670_F1.jpg",
+  "legend": "Comparison of the microbiomes of vaginally delivered and C-section-delivered newborns. (A) Principal-component analysis (PCA) plot based on the relative taxa abundance in the fecal microbiomes of neonates with mode of delivery, gestation age, pregnancy weight or gender groups. Sample are marked by the group type. The number is the grouping boundaries. (B) LEfSe comparison of microbiomes from meconium samples from vaginally delivered and C-section-delivered neonates. Enriched taxa in samples from vaginally delivered infants with different level classifications with a positive linear discriminant analysis (LDA) score are shown in green; C-section samples with a negative LDA score are shown in red (>3.5 in both cases). (C) Cladogram derived from LEfSe analysis of metagenomic sequences from C-section delivered newborn and vaginally delivered neonate meconium samples. Green shaded areas indicate microbe orders that more consistently describe the fecal microbiome from vaginally delivered infants; red shaded areas indicate microbe orders that more consistently describe the meconium microbiome from C-section-delivered infants. The prefixes \u201cp\u201d, \u201cc\u201d, \u201co\u201d, \u201cf\u201d, \u201cg\u201d, \u201cs\u201d, and \u201ct\u201d represent the annotated level of phylum, class, order, family, genus, species and strain.",
+  "group_0_name": "vaginal delivery",
+  "group_1_name": "C-section"
+ },
+ {
+  "id": "PMC8003781",
+  "study_id": "33804656",
+  "figure": "Figure 5",
+  "image_path": "data/figbench/images/PMC8003781_F5.jpg",
+  "legend": "Linear discriminant analysis (LDA) effect size (LEfSe) of differentially abundant bacterial taxa between young (left panels) and older mice (right panels) after 10 days of Abx treatment (upper panels) or after 6 months of recovery (lower panels). Cladograms represent phylogenetic branches of taxa significantly more abundant in the two analyzed groups.",
+  "group_0_name": "7 week old (young) mice before antibiotic treatment",
+  "group_1_name": "7 week old (young) mice 10 days after antibiotic treatments"
+ },
+ {
+  "id": "PMC12955483",
+  "study_id": "41670382",
+  "figure": "Fig 3",
+  "image_path": "data/figbench/images/PMC12955483_F3.jpg",
+  "legend": "Linear discriminant effect analysis of gut microbiota alterations associated with stage I silicosis patients. (A) Cladogram generated from LEfSe analysis, indicating differential abundant bacterial taxa from the phylum to genus levels between HCs and stage I silicosis patients (Wilcoxon test, P < 0.05, LDA score > 2). (B) Taxonomic cladogram from LEfSe analysis illustrating the distribution of differential gut microbiota identified between HCs and stage I silicosis patients. (C) Relative abundance of the top 17 differentially enriched genera between HCs and stage I silicosis patients (Wilcoxon test, P < 0.05, LDA score > 2).",
+  "group_0_name": "Healthy controls (HC)",
+  "group_1_name": "Stage 1 silicosis patients"
+ },
+ {
+  "id": "PMC8888571",
+  "study_id": "35233023",
+  "figure": "Figure 3",
+  "image_path": "data/figbench/images/PMC8888571_F3.jpg",
+  "legend": "Effect of triple-dose albendazole treatment on (a) gut microbiota diversity; and b) gut microbiota composition in (i) low-SES helminth-infected, (ii) low-SE helminth-uninfected, and (iii) high-SES children. (a) Shannon diversity index measurements at both timepoints were compared using Wilcoxon signed rank test. Black closed-dots: before treatment; red open-dots: after treatment. (b) Data plotted as log2 fold change derived from differential abundance analysis by DESeq2. Cell colours indicate taxa changes after albendazole treatment: red colour indicate increased relative abundance after treatment and blue colour indicate decreased relative abundance after treatment. Only taxa detected to have significant difference in abundance (adjusted p value < 0.05) are displayed; adjusted p value were determined using Benjamini\u2013Hochberg method. Row annotation showed specific taxa that were assigned under 4 different phylum. SES = Socioeconomic status.",
+  "group_0_name": "Low-SES helminth-uninfected group (before treatment)",
+  "group_1_name": "Low-SES helminth-uninfected group (after treatment)"
+ },
+ {
+  "id": "PMC9664112",
+  "study_id": "35387878",
+  "figure": "Figure 2",
+  "image_path": "data/figbench/images/PMC9664112_F2.jpg",
+  "legend": "Cigarette smoke modulates the gut microbiota of mice. (A) Fisher statistic (alpha diversity) and (B) PCoA analysis (beta diversity) in AOM+Smoking and AOM group. Significance of alpha and beta diversity were accessed by two-tailed Mann-Whitney U test and PERMANOVA, respectively. (C) Differentially bacteria between AOM+Smoking and AOM group. Differences in abundance were detected by using a multivariate statistical model (p<0.05 (FDR corrected), FC >1.5, MaAsLin2). (D) The abundance of species Eggerthella lenta between AOM+Smoking and AOM group was validated by quantitative PCR. (E) Ecological network among differentially bacteria in AOM+Smoking group and in AOM group. Correlations were measured by SparCC method. Correlations with difference in correlation strengths between AOM+Smoking and AOM group >0.6 were selected for visualisation. AOM, azoxymethane; FC, fold change; PCoA, principal coordinates analysis; PERMANOVA, permutational multivariate analyses of variance.",
+  "group_0_name": "Smoke-free control group intraperitoneally injected with carcinogen azoxymethane (AOM) (10 mg/kg)",
+  "group_1_name": "Smoke-exposed group intraperitoneally injected with carcinogen, AOM (AOM + Smoking)"
+ },
+ {
+  "id": "PMC12428781",
+  "study_id": "40943094",
+  "figure": "Figure 2",
+  "image_path": "data/figbench/images/PMC12428781_F2.jpg",
+  "legend": "Heatmap illustration showing microbiome signature with significant differences between MASLD and severe MASLD groups, divided for study participants. Legend: MASLD, metabolic dysfunction-associated steatotic liver disease; sMASLD, severe metabolic dysfunction-associated steatotic liver disease; UCG, unclassified clostridia group; Unc, unclassified. * p < 0.05; ** p < 0.01; *** p < 0.001. p-values were not corrected for multiple testing.",
+  "group_0_name": "Metabolic dysfunction-associated steatotic liver disease (MASLD)",
+  "group_1_name": "Severe metabolic dysfunction-associated steatotic liver disease (sMASLD)"
+ },
+ {
+  "id": "PMC6337822",
+  "study_id": "30675188",
+  "figure": "Fig. 3",
+  "image_path": "data/figbench/images/PMC6337822_F3.jpg",
+  "legend": "Genera strikingly different in gut microbiota of healthy controls (a), NBNC-HCC (b) and B-HCC (c)",
+  "group_0_name": "healthy controls",
+  "group_1_name": "non-HBV non-HCV related HCC"
+ }
+]

@@ -1,0 +1,40 @@
+{
+  "id": "PMC9664112",
+  "figure": "Figure 2",
+  "panel_used": "C (heatmap of differentially abundant species)",
+  "color_map": "column header green = AOM (group_0); column header red = AOM+Smoking (group_1). Heatmap cell color is a per-row z-scored abundance scale (blue=low -2.5, red=high 2.5), independent of the group color coding.",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": [
+        "Eggerthella lenta",
+        "Staphylococcus capitis",
+        "Escherichia coli",
+        "Muribaculum sp. TLL-A4",
+        "Bifidobacterium choerinum",
+        "Gordonibacter pamelaeae",
+        "Gordonibacter urolithinfaciens",
+        "Gordonibacter massiliensis",
+        "Bacillus thuringiensis",
+        "Bacillus velezensis"
+      ]
+    },
+    {
+      "direction": "decreased",
+      "taxa": [
+        "Streptococcus suis",
+        "Bacteroides cellulosilyticus",
+        "Bacteroides dorei",
+        "Bacteroides vulgatus",
+        "Parabacteroides distasonis",
+        "Parabacteroides sp. CT06",
+        "Clostridiales bacterium CCNA10",
+        "Erysipelotrichaceae bacterium GAM147",
+        "Lactobacillus reuteri",
+        "Libanicoccus massiliensis"
+      ]
+    }
+  ],
+  "legible": true,
+  "notes": "Panel C heatmap lists 20 species names on the right; columns are individual samples grouped under green 'AOM' (group_0) and red 'AOM+Smoking' (group_1) headers. Visually, the first 10 rows (Eggerthella lenta through Bacillus velezensis) show blue/dark (low) cells under the AOM columns and red (high) cells under the AOM+Smoking columns -> increased in group_1; this is corroborated by panel D (qPCR validation showing Eggerthella lenta relative abundance is significantly higher in AOM+Smoking, p<0.01). The remaining 10 rows (Streptococcus suis through Libanicoccus massiliensis) show the reverse pattern (bright red cells under AOM, dark/blue under AOM+Smoking) -> decreased in group_1. Panels A (alpha diversity), B (PCoA/beta diversity), and E (correlation network) were ignored per instructions."
+}

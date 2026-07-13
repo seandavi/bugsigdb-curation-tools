@@ -1,0 +1,22 @@
+{
+  "id": "PMC8180047",
+  "figure": "Fig. 2",
+  "panel_used": "Panel C, boxplots of relative abundance for taxa with significant differences (p-values shown) between POI and control (NG) groups; panels A and B are stacked-bar composition plots (phylum and top-10 genera) without significance testing and were not used.",
+  "color_map": "Salmon/pink = NG (Healthy controls, group_0); teal/cyan = POI (Primary ovarian insufficiency, group_1), per the panel C legend.",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": ["Bacteroidetes", "Dorea", "Lachnobacterium", "Sutterella"]
+    },
+    {
+      "direction": "decreased",
+      "taxa": ["Faecalibacterium", "Firmicutes"]
+    },
+    {
+      "direction": "unknown",
+      "taxa": ["Bulleidia", "Butyricimonas"]
+    }
+  ],
+  "legible": true,
+  "notes": "Box positions for Bacteroidetes, Faecalibacterium, and Firmicutes are clearly legible from the colored box fill (pixel-measured IQR): Bacteroidetes NG~3-17 vs POI~10-31 (POI higher); Faecalibacterium NG~8-33 vs POI~6-20 (POI lower); Firmicutes NG~70-85 vs POI~57-78 (POI lower). For the four near-zero-abundance taxa (Bulleidia, Butyricimonas, Dorea, Lachnobacterium, Sutterella) box heights are compressed to only 1-3 pixels at this image resolution. Pixel-level inspection of outlier points/whisker tips above baseline showed POI extending measurably higher than NG for Dorea, Lachnobacterium, and Sutterella (called increased), while Bulleidia and Butyricimonas showed NG and POI collapsing to indistinguishable pixel patterns at baseline (called unknown) despite significant p-values (<0.01, 0.03) reported in the figure."
+}

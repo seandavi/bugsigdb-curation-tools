@@ -1,0 +1,18 @@
+{
+  "id": "PMC11383188",
+  "figure": "Fig. 4",
+  "panel_used": "c (LEfSe LDA bar chart)",
+  "color_map": "red = Low to moderate drinking (group_1); blue = Non-drinking (group_0), per the panel c legend",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": ["Coprobacillus", "Pseudobutyrivibrio", "Cetobacterium", "Clostridiaceae", "Clostridium_sensu_stricto", "Peptostreptococcaceae", "Romboutsia"]
+    },
+    {
+      "direction": "decreased",
+      "taxa": ["Xanthomonadales", "Stenotrophomonas", "Pasteurellaceae", "Pasteurellales", "Haemophilus", "Xanthomonadaceae", "Tessaracoccus"]
+    }
+  ],
+  "legible": true,
+  "notes": "Panel c LEfSe LDA bar chart (LDA score log10, threshold 2.0) lists all taxa with the group they are enriched in via bar color/side. Red bars (negative LDA axis) = enriched in Low-to-moderate drinking group (group_1) = increased; blue bars (positive LDA axis) = enriched in Non-drinking group (group_0) = decreased relative to group_1. Panel d cladogram shows the same taxa/coloring but was not used for extraction since panel c gives explicit taxon names. Panels a/b (stacked composition bar charts at family/genus level) and were ignored per instructions."
+}

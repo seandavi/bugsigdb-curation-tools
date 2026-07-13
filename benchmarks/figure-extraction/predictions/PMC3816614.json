@@ -1,0 +1,18 @@
+{
+  "id": "PMC3816614",
+  "figure": "Figure 1.",
+  "panel_used": "Panel A, LEfSe effect-size bar chart (NORA on the left/negative axis, HLT on the right/positive axis). Panel B is a PCoA ordination and panel C is a per-subject sorted abundance plot for only Prevotella/Bacteroides -- both excluded per instructions to ignore ordination panels; panel A is the differential-abundance test result.",
+  "color_map": "Axis: negative effect size (left) = enriched in NORA = group_1; positive effect size (right) = enriched in HLT = group_0. Orange-filled bars and blue-filled bars specifically highlight the two focus genera (Prevotella-related = orange/NORA side, Bacteroides-related = blue/HLT side) discussed in the legend text; gray bars are the remaining significant LEfSe taxa (not specially colored) but their direction is still read directly from which side of the NORA/HLT axis each bar extends toward. One bar (Veillonella OTU436) is marked with an asterisk indicating significance at q<0.05 rather than q<0.01 for the rest.",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": ["Prevotella OTU934", "Catenibacterium OTU98", "Veillonella OTU436", "Catenibacterium", "Veillonella", "Prevotella OTU4", "Prevotella", "Prevotellaceae"]
+    },
+    {
+      "direction": "decreased",
+      "taxa": ["Bacteroidaceae", "Bacteroides", "unclassified_Lachnospiraceae", "Phascolarctobacterium", "Phascolarctobacterium OTU20", "Clostridia Group XIV", "Clostridia Group XIV Blautia", "unclassified_Ruminococcaceae OTU336", "unclassified_Lachnospiraceae OTU92", "unclassified_Lachnospiraceae OTU429", "unclassified_Ruminococcaceae OTU236"]
+    }
+  ],
+  "legible": true,
+  "notes": "Zoomed crop of panel A made all 19 taxon labels and bar directions clearly legible. All bars in this LEfSe chart represent significant results per the legend text (q<0.01 except the asterisked Veillonella OTU436 at q<0.05), so all were included as differentially abundant regardless of highlight color; only the two genera of primary interest (Prevotella, Bacteroides) are specially colored orange/blue, the rest are gray but direction is unambiguous from bar position relative to the NORA/HLT axis labels."
+}

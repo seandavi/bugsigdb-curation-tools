@@ -1,0 +1,22 @@
+{
+  "id": "PMC7473061",
+  "figure": "Figure 2.",
+  "panel_used": "Panel C, paired box-and-whisker plots of relative abundance per genus (purple = MTB-, blue = MTB+), with red-boxed genus labels and P-values marking the taxa with significant Mann-Whitney U test differences (Streptococcus P=0.02, Prevotella P=0.02, Neisseria P=0.03, Selenomonas P=0.04, Bifidobacterium P=0.04, Mycobacterium P=0.005). Panel A (stacked bar, overall composition) and Panel B (stacked bar, per-subject composition) were ignored as they do not show statistical comparisons.",
+  "color_map": "Purple boxes = MTB- (group_0); blue boxes = MTB+ (group_1), per the in-figure legend in panel C.",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": ["Mycobacterium"]
+    },
+    {
+      "direction": "decreased",
+      "taxa": ["Streptococcus", "Prevotella"]
+    },
+    {
+      "direction": "unknown",
+      "taxa": ["Neisseria", "Selenomonas", "Bifidobacterium"]
+    }
+  ],
+  "legible": true,
+  "notes": "Streptococcus and Prevotella boxes are large enough to clearly see the purple (MTB-) box positioned further right (higher relative abundance) than the blue (MTB+) box, so both are decreased in MTB+ (group_1). Mycobacterium shows an unmistakably huge blue (MTB+) box (~0.15-0.75 relative abundance) versus a near-zero purple box, so it is strongly increased in MTB+ -- consistent with M. tuberculosis presence defining the MTB+ group. Neisseria, Selenomonas, and Bifidobacterium are marked significant by red boxes/P-values but their boxes are compressed to a sliver near zero at native image resolution (750x503 px); pixel-level zoom showed a slight rightward (purple/MTB-) offset for Neisseria consistent with a decreased call, but the signal was too close to the resolution limit to confidently distinguish box color/position for any of these three, so all three are reported as unknown direction rather than guessed. Acinetobacter has a visually large blue bar but was not red-boxed/P-labeled in the figure, so it was not included as a called-out significant result."
+}

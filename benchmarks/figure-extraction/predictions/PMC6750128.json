@@ -1,0 +1,18 @@
+{
+  "id": "PMC6750128",
+  "figure": "Figure 2",
+  "panel_used": "Panel B, LDA bar chart (bottom of panel B) showing LEfSe effect sizes for differentially abundant taxa between symptomatic and asymptomatic groups prior to cerclage; panel A is relative-abundance stacked bars (not a differential-abundance test) and the cladogram in the top of B is the same LEfSe result but without a directly readable magnitude/label list.",
+  "color_map": "In the LDA bar chart, red = Symptomatic (group_1), green = Asymptomatic (group_0). Bars extending in the red direction are enriched in group_1 (symptomatic); the single green bar (Lactobacillus_crispatus) is enriched in group_0 (asymptomatic).",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": ["Gardnerella_vaginalis", "Gardnerella", "Prevotella_disiens", "Streptococcus_pseudopneumoniae"]
+    },
+    {
+      "direction": "decreased",
+      "taxa": ["Lactobacillus_crispatus"]
+    }
+  ],
+  "legible": true,
+  "notes": "LDA bar chart labels and colors are clearly legible and match the legend text describing Gardnerella vaginalis, Prevotella disiens, and Streptococcus pseudopneumoniae enriched in symptomatic women, and Lactobacillus crispatus enriched in asymptomatic women. Panel A's stacked-bar genus legend (e.g. Gardnerella red, L. crispatus dark green) is consistent with the panel B color mapping."
+}

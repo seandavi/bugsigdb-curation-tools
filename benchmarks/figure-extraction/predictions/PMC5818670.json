@@ -1,0 +1,18 @@
+{
+  "id": "PMC5818670",
+  "figure": "Figure 1",
+  "panel_used": "LDA bar chart (labeled panel 'C' in the image itself, though the caption text calls it panel B) showing LEfSe effect sizes for taxa differing between vaginally-delivered and C-section-delivered neonate meconium samples; panel A is PCA ordination (ignored) and the cladogram (labeled 'B' in the image / 'C' in the caption text) shows the same result without a directly readable flat taxon list, so the bar chart was used.",
+  "color_map": "In the LDA bar chart legend: red = CS (C-section, group_1), green = V (vaginal delivery, group_0). This matches the cladogram's legend (red=CS, green=V) directly below it.",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": ["o_Deinococcales", "p_Deinococcus_Thermus", "c_Deinococci", "g_Deinococcus", "f_Deinococcaceae", "s_Deinococcus_unclassified", "s_Faecalibacterium_prausnitzii", "g_Faecalibacterium", "t_Faecalibacterium_prausnitzii_unclassified", "t_Aeromonas_veronii_unclassified", "s_Aeromonas_veronii", "o_Xanthomonadales", "f_Xanthomonadaceae", "g_Stenotrophomonas", "s_Bacteroides_vulgatus", "t_Bacteroides_vulgatus_unclassified", "g_Eubacterium", "s_Eubacterium_rectale", "t_Eubacterium_rectale_unclassified", "f_Eubacteriaceae", "c_Alphaproteobacteria", "t_PRJNA15127", "f_Podoviridae", "s_Pseudomonas_phage_F116", "g_Podoviridae_noname", "s_Bacillus_amyloliquefaciens", "t_Bacillus_amyloliquefaciens_unclassified", "s_Bacillus_licheniformis", "t_Bacillus_licheniformis_unclassified", "c_Bacilli", "p_Firmicutes", "o_Bacillales", "f_Bacillaceae", "g_Bacillus"]
+    },
+    {
+      "direction": "decreased",
+      "taxa": ["c_Actinobacteria", "p_Actinobacteria", "o_Actinomycetales", "f_Propionibacteriaceae", "c_Gammaproteobacteria", "s_Propionibacterium_acnes", "t_Propionibacterium_acnes_unclassified", "g_Propionibacterium", "o_Pseudomonadales", "f_Pseudomonadaceae", "g_Pseudomonas", "o_Burkholderiales", "c_Betaproteobacteria", "g_Comamonas", "f_Comamonadaceae", "s_Parabacteroides_unclassified", "s_Comamonas_testosteroni", "t_Comamonas_testosteroni_unclassified"]
+    }
+  ],
+  "legible": true,
+  "notes": "Bar labels are legible with rank prefixes (p/c/o/f/g/s/t) as printed in the figure. The chart mixes multiple taxonomic ranks of the same lineages (e.g. Deinococcus at order/phylum/class/genus/family/species level all appear as separate bars) as LEfSe reports each rank independently; all are reported as shown, exactly as legible. 't_PRJNA15127' is a strain-level label (an NCBI BioProject accession used as an unclassified strain identifier, appears grouped with the Podoviridae/Pseudomonas phage F116 bars) reported verbatim since no cleaner name is legible."
+}

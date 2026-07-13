@@ -1,0 +1,18 @@
+{
+  "id": "PMC7342497",
+  "figure": "Figure 2",
+  "panel_used": "Panel A, LEfSe LDA bar chart (LDA score log10, threshold >3), red bars = C (paracancerous), green bars = P (cancerous). Panels B and C (relative-abundance bar charts for the same taxa, split into cancerous-enriched vs paracancerous-enriched groups) were used to cross-check direction and are fully consistent with panel A.",
+  "color_map": "Red = C = paracancerous tissues = group_0; green = P = cancerous lesions = group_1, per the in-figure legend and the panel B/C group labels.",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": ["Streptophyta", "Brevundimonas", "Paenibacillus", "Microbacterium", "Desulfovibrio", "Mucispirillum", "Arthrobacter"]
+    },
+    {
+      "direction": "decreased",
+      "taxa": ["Filifactor", "Tannerella", "Parvimonas", "Carnobacterium", "Peptostreptococcus", "Streptococcus", "Treponema", "Fusobacterium"]
+    }
+  ],
+  "legible": true,
+  "notes": "All 15 genus labels and bar directions in panel A are clearly legible. Green bars (positive LDA score) = enriched in cancerous (P/group_1) = increased; red bars (negative LDA score) = enriched in paracancerous (C/group_0) = decreased in group_1. Panel B confirms red(C)>green(P) relative abundance for Fusobacterium, Treponema, Streptococcus, Peptostreptococcus, Tannerella, Parvimonas, Filifactor, Carnobacterium; panel C confirms green(P)>red(C) for Brevundimonas, Streptophyta, Microbacterium, Mucispirillum, Arthrobacter, Paenibacillus, Desulfovibrio."
+}
