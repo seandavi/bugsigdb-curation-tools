@@ -168,6 +168,87 @@ def test_validate_instance_unknown_schema_path_raises(tmp_path):
         validate_instance(VALID_STUDY, "Study", tmp_path / "nonexistent.yaml")
 
 
+# --- Problem.path (_extract_path) --------------------------------------------
+#
+# These lock in the JSON-pointer-ish `path` field derived from the LinkML
+# jsonschema plugin's message text, so a future message-format change (which
+# would silently break `_extract_path`'s regex) gets caught by a test rather
+# than only showing up as a missing `path` in --format json output.
+
+
+def test_validate_instance_path_for_top_level_field():
+    bad = dict(VALID_STUDY, pmid="not-an-integer")
+    problems = validate_instance(bad, "Study", default_schema_path())
+    assert len(problems) == 1
+    assert problems[0].path == "/pmid"
+
+
+def test_validate_instance_path_for_list_item():
+    bad = dict(VALID_STUDY, study_design=["not-a-real-design"])
+    problems = validate_instance(bad, "Study", default_schema_path())
+    assert len(problems) == 1
+    assert problems[0].path == "/study_design/0"
+
+
+def test_validate_instance_path_for_nested_field():
+    bad = dict(
+        VALID_STUDY,
+        experiments=[dict(VALID_STUDY["experiments"][0], host_species=12345)],
+    )
+    problems = validate_instance(bad, "Study", default_schema_path())
+    assert len(problems) == 1
+    assert problems[0].path == "/experiments/0/host_species"
+
+
+# --- closed=True: unknown/extra properties -----------------------------------
+#
+# `_get_validator` explicitly wires up `JsonschemaValidationPlugin(closed=True)`
+# to catch typo'd/extra field names. These tests exercise that: flipping
+# `closed=True` -> `closed=False` should make each of them fail.
+
+
+def test_validate_instance_rejects_unknown_property_on_study():
+    bad = dict(VALID_STUDY, bogus_top_level_field="oops")
+    problems = validate_instance(bad, "Study", default_schema_path())
+    assert len(problems) == 1
+    assert "bogus_top_level_field" in problems[0].message
+
+
+def test_validate_instance_rejects_unknown_property_on_nested_experiment():
+    bad = dict(
+        VALID_STUDY,
+        experiments=[dict(VALID_STUDY["experiments"][0], bogus_experiment_field="oops")],
+    )
+    problems = validate_instance(bad, "Study", default_schema_path())
+    assert len(problems) == 1
+    assert "bogus_experiment_field" in problems[0].message
+    assert problems[0].path == "/experiments/0"
+
+
+def test_validate_instance_rejects_unknown_property_on_nested_signature():
+    experiment = VALID_STUDY["experiments"][0]
+    bad_signature = dict(experiment["signatures"][0], bogus_signature_field="oops")
+    bad = dict(VALID_STUDY, experiments=[dict(experiment, signatures=[bad_signature])])
+    problems = validate_instance(bad, "Study", default_schema_path())
+    assert len(problems) == 1
+    assert "bogus_signature_field" in problems[0].message
+    assert problems[0].path == "/experiments/0/signatures/0"
+
+
+def test_validate_instance_rejects_unknown_property_on_experiment_target_class():
+    bad = dict(VALID_EXPERIMENT, bogus_field="oops")
+    problems = validate_instance(bad, "Experiment", default_schema_path())
+    assert len(problems) == 1
+    assert "bogus_field" in problems[0].message
+
+
+def test_validate_instance_rejects_unknown_property_on_signature_target_class():
+    bad = dict(VALID_SIGNATURE, bogus_field="oops")
+    problems = validate_instance(bad, "Signature", default_schema_path())
+    assert len(problems) == 1
+    assert "bogus_field" in problems[0].message
+
+
 # --- validate_file ------------------------------------------------------------
 
 

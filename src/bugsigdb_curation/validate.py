@@ -70,8 +70,18 @@ def default_schema_path() -> Path:
     """
     resource = resources.files("bugsigdb_curation").joinpath("data", "bugsigdb.yaml")
     if resource.is_file():
-        with resources.as_file(resource) as path:
-            return path
+        # We deliberately do NOT use `importlib.resources.as_file(resource)` as a
+        # context manager here. That API exists for the zip-import case, where the
+        # resource has to be extracted to a temporary file for the duration of the
+        # `with` block; returning a path from inside that block would hand back a
+        # path to a file that's deleted the instant the block exits. This package
+        # is only ever distributed as a wheel/sdist (never a zipapp), so for both
+        # the installed-wheel case (hatch's `force-include`, see pyproject.toml)
+        # and this editable-install fallback, `resource` is a concrete on-disk
+        # `pathlib.Path` that stays valid for the caller's lifetime — no
+        # extraction needed. If this package is ever shipped as a zipapp, this
+        # branch will need to extract to a stable cache dir instead.
+        return Path(resource)
 
     dev_path = Path(__file__).resolve().parent.parent.parent / "schema" / "bugsigdb.yaml"
     if dev_path.is_file():

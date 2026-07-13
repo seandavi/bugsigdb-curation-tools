@@ -150,3 +150,72 @@ def test_validate_unknown_target_class_exits_two(tmp_path):
     assert result.exit_code == 2
     assert "Traceback" not in result.output
     assert "NotAClass" in result.output
+
+
+# --- rich markup injection (bracket-containing user/file-derived strings) ---
+#
+# `rich` interprets "[...]"/"[/...]" as markup tags. A lone unmatched *opening*
+# tag like "[bracket]" is silently swallowed by rich (a quieter but separate
+# data-loss bug), but an unmatched *closing* tag like "[/x]" raises
+# `rich.errors.MarkupError` from inside `console.print()` — these tests use
+# that "[/x]" shape (rather than plain "[...]") to actually reproduce the
+# crash. Pre-fix, the nonexistent-file, malformed-YAML, and unknown-target-
+# class error paths print such strings (filename, YAML parser message,
+# target-class value) directly without `rich.markup.escape()`, so the
+# MarkupError propagates as an uncaught exception (a traceback and exit code
+# 1) instead of the contracted, clean exit code 2.
+
+
+def test_validate_nonexistent_file_with_brackets_exits_two_cleanly(tmp_path):
+    path = tmp_path / "missing[/x].yaml"
+    result = runner.invoke(app, ["validate", str(path)])
+    assert result.exit_code == 2
+    assert "Traceback" not in result.output
+    assert isinstance(result.exception, SystemExit)
+
+
+def test_validate_unknown_target_class_with_brackets_exits_two_cleanly(tmp_path):
+    path = _write_yaml(tmp_path, "study.yaml", VALID_STUDY)
+    result = runner.invoke(app, ["validate", str(path), "--target-class", "Not[/x]Class"])
+    assert result.exit_code == 2
+    assert "Traceback" not in result.output
+    assert isinstance(result.exception, SystemExit)
+
+
+def test_validate_malformed_yaml_with_brackets_exits_two_cleanly(tmp_path):
+    path = tmp_path / "bad.yaml"
+    path.write_text("pmid: [/x]unterminated\n  - broken")
+    result = runner.invoke(app, ["validate", str(path)])
+    assert result.exit_code == 2
+    assert "Traceback" not in result.output
+    assert isinstance(result.exception, SystemExit)
+
+
+# --- closed=True: unknown/extra properties -----------------------------------
+
+
+def test_validate_extra_property_on_study_exits_one(tmp_path):
+    bad = dict(VALID_STUDY, bogus_top_level_field="oops")
+    path = _write_yaml(tmp_path, "study.yaml", bad)
+    result = runner.invoke(app, ["validate", str(path)])
+    assert result.exit_code == 1
+    assert "bogus_top_level_field" in result.output
+
+
+def test_validate_extra_property_on_nested_experiment_exits_one(tmp_path):
+    bad_experiment = dict(VALID_STUDY["experiments"][0], bogus_experiment_field="oops")
+    bad = dict(VALID_STUDY, experiments=[bad_experiment])
+    path = _write_yaml(tmp_path, "study.yaml", bad)
+    result = runner.invoke(app, ["validate", str(path)])
+    assert result.exit_code == 1
+    assert "bogus_experiment_field" in result.output
+
+
+def test_validate_extra_property_on_nested_signature_exits_one(tmp_path):
+    experiment = VALID_STUDY["experiments"][0]
+    bad_signature = dict(experiment["signatures"][0], bogus_signature_field="oops")
+    bad = dict(VALID_STUDY, experiments=[dict(experiment, signatures=[bad_signature])])
+    path = _write_yaml(tmp_path, "study.yaml", bad)
+    result = runner.invoke(app, ["validate", str(path)])
+    assert result.exit_code == 1
+    assert "bogus_signature_field" in result.output

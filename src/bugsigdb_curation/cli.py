@@ -201,7 +201,7 @@ def validate_command(
         "-C",
         help="LinkML class to validate each instance against.",
     ),
-    schema: Path = typer.Option(
+    schema: Path | None = typer.Option(
         None,
         "--schema",
         "-s",
@@ -221,7 +221,7 @@ def validate_command(
     try:
         schema_path = schema if schema is not None else default_schema_path()
     except FileNotFoundError as exc:
-        error_console.print(f"[red]Error:[/red] {exc}")
+        error_console.print(f"[red]Error:[/red] {escape(str(exc))}")
         raise typer.Exit(code=2) from None
 
     all_results: list[InstanceResult] = []
@@ -229,7 +229,7 @@ def validate_command(
         for path in files:
             all_results.extend(validate_file(path, target_class, schema_path))
     except ValidationInputError as exc:
-        error_console.print(f"[red]Error:[/red] {exc}")
+        error_console.print(f"[red]Error:[/red] {escape(str(exc))}")
         raise typer.Exit(code=2) from None
 
     if output_format is OutputFormat.json:
