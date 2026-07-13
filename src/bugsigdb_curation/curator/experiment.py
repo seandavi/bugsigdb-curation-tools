@@ -69,13 +69,27 @@ def _as_optional_bool(value: object) -> bool | None:
     return value if isinstance(value, bool) else None
 
 
+def _as_list(value: object) -> list:
+    """Coerce a model-response field meant to be a list into one.
+
+    Mirrors `extract.py`'s `extract_study_design` guard: a model that returns
+    a single bare string (e.g. `"LEfSe"`) for a multivalued field must not be
+    iterated character-by-character -- wrap it as a one-element list instead.
+    """
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    return list(value)
+
+
 def extract_experiment(bundle: EvidenceBundle, stub: ExperimentStub, *, model: Model) -> ExperimentFields:
     """S4: one model call filling in one experiment stub's §1b fields."""
     response = model.complete(stage="experiment_metadata", messages=build_experiment_messages(bundle, stub))
 
     sequencing_type = normalize_enum(response.get("sequencing_type"), SEQUENCING_TYPE_VALUES)
     statistical_test = tuple(
-        v for v in (normalize_enum(x, STATISTICAL_TEST_VALUES) for x in (response.get("statistical_test") or [])) if v
+        v for v in (normalize_enum(x, STATISTICAL_TEST_VALUES) for x in _as_list(response.get("statistical_test"))) if v
     )
     host_species = response.get("host_species")
     host_species = str(host_species).strip() if host_species else None

@@ -170,6 +170,25 @@ def test_extract_experiment_mht_correction_only_true_or_false_or_none():
     assert fields.mht_correction is None
 
 
+def test_extract_experiment_keeps_bare_string_statistical_test():
+    """A model reply of `"statistical_test": "LEfSe"` (bare string, not a
+    list) must not be iterated character-by-character -- see extract.py's
+    `extract_study_design` isinstance(raw, str) guard for the same class of
+    bug. Pre-fix, this dropped to `()` (each of 'L','E','F','S','e' fails
+    `normalize_enum` and is silently discarded)."""
+    model = MockModel(responses={"experiment_metadata": {"statistical_test": "LEfSe"}})
+    fields = extract_experiment(_bundle(), ExperimentStub(index=0, description=""), model=model)
+    assert fields.statistical_test == ("LEfSe",)
+
+
+def test_extract_experiment_keeps_bare_string_body_site():
+    """Same bare-string coercion, for a free-text multivalued field
+    (`body_site` uses `_as_str_list`, which already guards this case)."""
+    model = MockModel(responses={"experiment_metadata": {"body_site": "Feces"}})
+    fields = extract_experiment(_bundle(), ExperimentStub(index=0, description=""), model=model)
+    assert fields.body_site == ("Feces",)
+
+
 # --- S5a locate_artifact -----------------------------------------------------------------------
 
 
