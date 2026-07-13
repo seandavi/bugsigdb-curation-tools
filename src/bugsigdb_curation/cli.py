@@ -35,8 +35,9 @@ from bugsigdb_curation.export import (
     filter_files,
     human_size,
 )
+from bugsigdb_curation.split import split_full_dump
 
-app = typer.Typer(help="Download BugSigDB export artifacts from waldronlab/bugsigdbexports.")
+app = typer.Typer(help="Download and manage BugSigDB curation artifacts.")
 
 
 @app.callback()
@@ -170,3 +171,32 @@ def _print_file_table(files: list[ExportFile], ref: str, console: Console) -> No
     for f in sorted(files, key=lambda f: (f.group, f.name)):
         table.add_row(f.name, f.group, human_size(f.size))
     console.print(table)
+
+
+@app.command("split")
+def split_command(
+    input_file: Path = typer.Option(
+        DEFAULT_OUTPUT_DIR / "full_dump.csv",
+        "--input",
+        "-i",
+        help="Path to the flat full_dump.csv file to split.",
+    ),
+    output_dir: Path = typer.Option(
+        DEFAULT_OUTPUT_DIR / "relational",
+        "--output-dir",
+        "-o",
+        help="Directory to write relational CSV files to (created if missing).",
+    ),
+) -> None:
+    """Split a flat full_dump.csv export into normalized relational CSV files."""
+    console = Console()
+    error_console = Console(stderr=True)
+    try:
+        counts = split_full_dump(input_file, output_dir)
+        console.print("[green]Successfully split full dump into relational CSVs:[/green]")
+        for filename, count in counts.items():
+            console.print(f"  - [bold]{filename}[/bold]: {count} rows written")
+    except FileNotFoundError as exc:
+        error_console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from None
+
