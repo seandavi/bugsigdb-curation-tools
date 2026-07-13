@@ -88,6 +88,30 @@ usage/IO errors (file not found, unparseable YAML/JSON, unknown
 `--target-class`, bad `--schema` path). Run `uv run bugsigdb validate --help`
 for all options.
 
+`bugsigdb load` parses a `full_dump.csv` export (denormalized: one row per
+Signature, with Study/Experiment columns repeated) into nested
+Study -> Experiment -> Signature records matching `schema/bugsigdb.yaml`'s
+slot names:
+
+```bash
+uv run bugsigdb load data/exports/full_dump.csv                     # -> YAML on stdout
+uv run bugsigdb load data/exports/full_dump.csv --format json       # JSON instead
+uv run bugsigdb load data/exports/full_dump.csv -o studies.yaml      # to a file
+uv run bugsigdb load data/exports/full_dump.csv --limit 20           # first 20 studies only
+```
+
+Studies are keyed by PMID (falling back to the `Study` column for studies
+without one). Cells are coerced to the schema's types (ints, floats, bools,
+enum values) and multivalued cells are split into lists; blank ("NA") cells
+are simply omitted rather than defaulted or invented. `MetaPhlAn taxon names`
+and `NCBI Taxonomy IDs` are paired up into `Taxon` records (id + name + rank
++ lineage). The output is plain nested dicts (no `linkml`/`pydantic`
+dependency) so it can later be checked structurally, e.g. by a `bugsigdb
+validate` command. See `bugsigdb_curation/loader.py` for the exact
+column -> slot mapping and delimiter conventions (derived from inspecting the
+real dump, not just the wiki docs — some columns disagree with the wiki's
+documented delimiters).
+
 ## License
 
 Schema released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),

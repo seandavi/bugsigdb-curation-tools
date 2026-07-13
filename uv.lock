@@ -160,6 +160,7 @@ source = { editable = "." }
 dependencies = [
     { name = "httpx" },
     { name = "linkml" },
+    { name = "pyyaml" },
     { name = "rich" },
     { name = "typer" },
 ]
@@ -174,6 +175,7 @@ dev = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "linkml", specifier = ">=1.11.1" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "rich", specifier = ">=15.0.0" },
     { name = "typer", specifier = ">=0.26.8" },
 ]

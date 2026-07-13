@@ -9,13 +9,14 @@ in those modules so it can be unit tested without a CLI in the loop.
 from __future__ import annotations
 
 import asyncio
-import json as json_module
+import json
 import sys
 from enum import Enum
 from pathlib import Path
 
 import httpx
 import typer
+import yaml
 from rich.console import Console
 from rich.markup import escape
 from rich.progress import (
@@ -37,6 +38,7 @@ from bugsigdb_curation.export import (
     filter_files,
     human_size,
 )
+from bugsigdb_curation.loader import load_studies, summarize
 from bugsigdb_curation.split import split_full_dump
 from bugsigdb_curation.validate import (
     InstanceResult,
@@ -262,7 +264,7 @@ def validate_command(
         raise typer.Exit(code=2) from None
 
     if output_format is OutputFormat.json:
-        print(json_module.dumps([_result_to_dict(r) for r in all_results], indent=2))
+        print(json.dumps([_result_to_dict(r) for r in all_results], indent=2))
     else:
         _render_validation_text(all_results, Console())
 
@@ -313,3 +315,53 @@ def _render_validation_text(results: list[InstanceResult], console: Console) -> 
         console.print(f"\n[green]{valid_count}/{total} valid.[/green]")
     else:
         console.print(f"\n[red]{valid_count}/{total} valid.[/red]")
+
+
+class LoadFormat(str, Enum):
+    """Output serialization format for `bugsigdb load`."""
+
+    yaml = "yaml"
+    json = "json"
+
+
+@app.command("load")
+def load_command(
+    csv_path: Path = typer.Argument(
+        ..., help="Path to a BugSigDB full_dump.csv export (or a sample of it)."
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="File to write the nested studies to (default: stdout).",
+    ),
+    format: LoadFormat = typer.Option(
+        LoadFormat.yaml, "--format", help="Output serialization format."
+    ),
+    limit: int | None = typer.Option(
+        None,
+        "--limit",
+        "-n",
+        help="Only load the first N studies (handy for sampling the full 30 MB dump).",
+    ),
+) -> None:
+    """Parse a full_dump.csv export into nested Study -> Experiment -> Signature records."""
+    error_console = Console(stderr=True)
+    if not csv_path.exists():
+        error_console.print(f"[red]Error:[/red] {csv_path} does not exist.")
+        raise typer.Exit(code=1)
+
+    studies = load_studies(csv_path, limit=limit)
+    n_studies, n_experiments, n_signatures = summarize(studies)
+
+    if format is LoadFormat.json:
+        text = json.dumps(studies, indent=2, ensure_ascii=False) + "\n"
+    else:
+        text = yaml.safe_dump(studies, sort_keys=False, allow_unicode=True)
+
+    if output is not None:
+        output.write_text(text, encoding="utf-8")
+    else:
+        sys.stdout.write(text)
+
+    error_console.print(f"{n_studies} studies, {n_experiments} experiments, {n_signatures} signatures")
