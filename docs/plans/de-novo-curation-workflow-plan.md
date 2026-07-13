@@ -500,3 +500,28 @@ Design 3)` — **not** `3 × 6 × …`.
 
 Discipline retained from §5: cache all MCP/authority calls; cap fan-out; run the smoke set on every
 change and the full corpus only at phase boundaries.
+
+### 6e. Data firewall — the curated gold is held out (non-negotiable)
+
+The human-curated records in `data/exports/relational/*.csv` and `data/eval/pmid_pmcid_map.csv` are
+**evaluation-only ground truth**. They must never enter the curator/pipeline in any form — doing so
+turns a de-novo evaluation into a leaked one. Hard rules:
+
+- **The curator receives only a PMID/PMCID + source artifacts it fetches itself** (text, main tables,
+  figures). It never reads any relational gold CSV, any gold-derived record, or the gold contents of
+  the smoke set. Every gold field — `study_design`, experiment segmentation, `body_site`/`condition`/
+  `uberon_id`/`efo_id`, group orientation, taxa sets, directions, `source` — is invisible to extraction.
+- **`pmc-map` is usable only for S0 resolve** (PMID→PMCID is public NCBI data, not curation), never as
+  a hint source for anything downstream.
+- **The curator's S6 taxonomy normalization uses a general NCBI authority** (E-utilities / a general
+  NCBI names+synonyms dump), **not `taxa.csv`** — that file is the gold taxa set and would leak which
+  taxa get curated. The scorer's synonym resolver (which may seed from `taxa.csv`) is a **scorer-side
+  artifact**; the curator instantiates its own resolver from the general authority and never imports
+  the scorer's.
+- **The scorer is the only component allowed to read gold.** It sees prediction + gold and compares.
+- **Smoke/dev/test selection uses study IDs only** (a work list); choosing which studies to run never
+  implies reading their gold.
+
+Enforcement: keep the import boundary clean — curator modules must not import `eval.gold` (or any
+gold loader); only the eval/scorer entrypoints accept `--relational` / `--pmc-map`. The pipeline
+package takes **no** gold path as an argument.
