@@ -113,6 +113,26 @@ column -> slot mapping and delimiter conventions (derived from inspecting the
 real dump, not just the wiki docs — some columns disagree with the wiki's
 documented delimiters).
 
+`bugsigdb pmc-map` maps curated studies' PMIDs to PubMed Central IDs
+(PMCIDs) via the [NCBI PMC ID Converter API](https://www.ncbi.nlm.nih.gov/pmc/tools/id-converter-api/),
+producing a gold/eval set for de-novo curation workflows (which typically
+need PMC full text, not just a PubMed abstract):
+
+```bash
+uv run bugsigdb pmc-map                                  # data/exports/relational/studies.csv -> data/eval/pmid_pmcid_map.csv
+uv run bugsigdb pmc-map --input studies.csv --output map.csv
+uv run bugsigdb pmc-map --email me@example.org            # NCBI etiquette for unauthenticated use
+uv run bugsigdb pmc-map --limit 50                        # first 50 distinct PMIDs only, for testing
+```
+
+Reads distinct numeric PMIDs from a relational `studies.csv` (as produced by
+`bugsigdb split`; the 16 or so studies with no PMID at all are skipped),
+queries idconv in batches of 200 with bounded (3-way) concurrency, and
+writes `study_id,pmid,pmcid,doi,has_pmc` — one row per study, so studies
+that share a PMID both appear. A coverage summary (`N PMIDs: M with PMCID
+(X%), K without.`) is printed to stderr. Of the current 2068 curated
+studies, 2052 have a numeric PMID, of which about 84% resolve to a PMCID.
+
 ## License
 
 Schema released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
