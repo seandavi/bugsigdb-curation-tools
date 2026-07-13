@@ -13,7 +13,8 @@ description: >-
   controlled vocabularies and ontology terms (EFO for condition, UBERON for body site,
   NCBI Taxonomy for host species and signature taxa).
 
-  HIERARCHY. A Study is one publication (page name = PMID). A Study contains one or more
+  HIERARCHY. A Study is one publication (identified by `uid`, the wiki page name — usually
+  a PMID, but not always). A Study contains one or more
   Experiments; each Experiment is a single two-group comparison (Group 0 = control/reference,
   Group 1 = case/exposed) with its subject, laboratory and statistical context. Each Experiment
   contains one or more Signatures; a Signature is the set of taxa reported as changing in one

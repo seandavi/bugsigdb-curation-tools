@@ -31,7 +31,7 @@ behind Cloudflare, so pages were pulled via the MediaWiki API at `/w/api.php`):
 A three-level hierarchy, annotated with controlled vocabularies and ontology terms:
 
 ```
-Study            one publication (page name = PMID)
+Study            one publication (identified by `uid`, the wiki page name; usually a PMID)
 └── Experiment   one two-group comparison (Group 0 = control, Group 1 = case)
     └── Signature  taxa changing in one direction (increased/decreased in Group 1)
 ```
@@ -100,8 +100,9 @@ uv run bugsigdb load data/exports/full_dump.csv -o studies.yaml      # to a file
 uv run bugsigdb load data/exports/full_dump.csv --limit 20           # first 20 studies only
 ```
 
-Studies are keyed by PMID (falling back to the `Study` column for studies
-without one). Cells are coerced to the schema's types (ints, floats, bools,
+Studies are keyed by `uid` (the stable `Study` page name, always present);
+`pmid` is captured separately as an optional integer when present. Cells are
+coerced to the schema's types (ints, floats, bools,
 enum values) and multivalued cells are split into lists; blank ("NA") cells
 are simply omitted rather than defaulted or invented. `MetaPhlAn taxon names`
 and `NCBI Taxonomy IDs` are paired up into `Taxon` records (id + name + rank
