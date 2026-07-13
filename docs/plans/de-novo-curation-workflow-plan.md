@@ -407,3 +407,96 @@ on every change and the full corpus only at phase boundaries.
 6. **Ontology validation posture** — inherit the ontology plan's offline-OAK-pinned default;
    confirm CURIE (not UMLS) and whether V3/V4 gate the pipeline or advise.
 ```
+
+---
+
+## 6. Experiment-design addendum — the end-to-end evaluation (decided 2026-07-13)
+
+**Why this section exists.** §2's A/B/C vary *orchestration topology* (linear vs hierarchical vs
+verifier-layer). The end-to-end evaluation we're actually building holds topology roughly fixed and
+varies two **stage-design** decisions instead. This addendum re-projects the design space onto those
+two axes, folds in the model dimension, and re-sequences §5's phases accordingly. It supersedes §5's
+phase order for the first end-to-end pass; §1–§4 (stage DAG, grounding, eval harness) stand unchanged.
+
+Decisions locked with Sean on 2026-07-13:
+- **Design set:** the three below, evaluated **as-is** (not a fuller cross of the two axes).
+- **First source config:** **text + main tables + figures** from the start — the figure channel is
+  already proven end-to-end (`benchmarks/figure-extraction/`), so the walking skeleton includes it
+  rather than deferring it to a later step. **Supplements stay deferred** (§5 open decision #1).
+
+### 6a. The two axes (what varies) over a fixed backbone (what doesn't)
+
+Fixed for all three designs: **S0–S4 + S5a (locate) + S8 (assemble) + S9 (structural validate)**,
+run initially in the Architecture-A single-worker form (which is B with one Experiment Worker, so
+scaling to B later is a strict superset — no rework of the stage contracts).
+
+**New: split S5 into S5a + S5b** (the figure benchmark already showed these separate cleanly):
+- **S5a — locate** (cheap, model-insensitive): find the differential-abundance artifact/region that
+  holds the signature (the legend/caption reliably points at the DA panel; the table header at the
+  DA columns). Same across all three designs.
+- **S5b — extract** (model-sensitive): read per-direction taxon-name sets + `abundance_in_group_1`
+  out of the located artifact. This is where model quality bites.
+
+The two axes that the three designs vary:
+
+| Axis | Stage(s) | Cheap end | Robust end |
+| --- | --- | --- | --- |
+| **A1 — NER↔reconcile split** | S5b / S6 | **fused**: one agent emits taxa names + direction **and** proposes the `ncbi_id` (tool-*verified* only — the ID must resolve) | **split**: an NER agent emits name strings + direction; a **deterministic cached NCBI reconcile** maps name→taxid; a disambiguation agent runs only on ambiguous hits |
+| **A2 — reviewer/validator stage** | S10 | **structural only**: `bugsigdb validate` + ID/CURIE-resolves; no semantic re-derivation | **independent semantic review**: fresh-context re-derivation of the claim from source, targeted at the two known failure modes |
+
+### 6b. The three designs (a diagonal across the two axes)
+
+They are deliberately a **diagonal** (cheapest→most-verified), not a full 2×… cross — Sean chose the
+3 as-is. Each is a stage-design spec, topology-agnostic; the skeleton runs them single-worker (A),
+scaling to hierarchical (B) later.
+
+| # | Design | A1 (S5b/S6) | A2 (S10) | Role in the eval |
+| --- | --- | --- | --- | --- |
+| **1** | **Fused-Lean** | Fused: one agent extracts taxa+direction **and** proposes NCBI IDs (each tool-verified to resolve) | Structural only (`validate` + ID/CURIE resolves) | Cheapest baseline / floor |
+| **2** | **Split-Verify** | Split: NER agent → deterministic cached NCBI reconcile (+ disambiguation agent on ambiguous hits) | **Adversarial verifier** on the two known failure modes — **(a) taxon-in-source** (the name actually appears in the cited `source`), **(b) direction** (re-derive orientation vs Group 0/1) — with **bounded repair**; unfixable → flag | Isolates precision/direction gains from a targeted verifier |
+| **3** | **Split-Panel** | Split (same as 2) | **Independent reviewer panel**: fresh-context re-derivation of the whole signature from source, **arbitration** between extractor and reviewer, then repair | The design where a **stronger/different model reviews a cheap extractor** — this is what makes the model-agnostic eval *end-to-end* meaningful (the mixed-model axis lives here) |
+
+Design 1 counters fabricated IDs (resolve-gate) but not confidently-wrong taxa/direction. Design 2
+adds precision against exactly the two failure modes the figure benchmark surfaced (missed/invented
+labels; the one all-directions-flipped LEfSe figure). Design 3 additionally decorrelates *extractor
+model* from *reviewer model*, so "cheap worker + strong reviewer" becomes a measurable configuration
+rather than an assumption.
+
+### 6c. Factored eval matrix (factor, don't cross)
+
+The parameter space is kept additive, not multiplicative:
+
+- **Fixed everywhere:** source config = **text + tables + figures** (supplements deferred); smoke set
+  = the ~20-study set in §4a; gold snapshot; alignment + scoring per §4b (scored on **NCBI taxid
+  sets**, so the deferred **synonym-resolution scorer** — resolve predicted names→taxids via a cached
+  NCBI lookup — is a prerequisite for trustworthy numbers here, not string-match luck).
+- **Phase A — design comparison at a single fixed cheap worker model.** Run designs 1/2/3 at one
+  pinned cheap model (candidate: `claude-haiku-4-5`). Headline metrics: taxa-set micro/macro F1,
+  direction correctness, structural-pass rate, **cost & latency per study**. → **pick a winner.**
+- **Phase B — model sweep on the winner only.** Sweep worker model over Claude {haiku-4-5, sonnet-5,
+  opus-4-8} + Gemini {flash-lite, flash, pro} (pin exact Gemini IDs against live docs at build time —
+  training cutoff predates current Gemini). For **Design 3** additionally sweep the **reviewer model**
+  independently of the worker (the mixed-model cell). This is where the reproducibility packaging
+  (LiteLLM one-interface runner, pinned IDs, versioned prompts, archived predictions, `runs/<date>_<model>/`)
+  folds in.
+
+So the run count is `3 designs + (≤6 worker models on 1 winner) + (mixed-model reviewer cells for
+Design 3)` — **not** `3 × 6 × …`.
+
+### 6d. Re-sequenced build order (supersedes §5 phase order for the first pass)
+
+1. **Eval harness + walking skeleton (M).** Build §4 (gold join + metrics + source-type ablation
+   scaffold + **taxid-set scorer with synonym resolution**) **and** Design 1 end-to-end over
+   **text + tables + figures** at the fixed cheap model, on the smoke set. Figures are in from the
+   start (Sean's call): wire in the existing `benchmarks/figure-extraction/` retrieval + extractor +
+   scorer as S5a/S5b's figure path. Deliverable: schema-valid records + a baseline score. **This is
+   the first worktree-pipeline build.**
+2. **Designs 2 & 3 (M).** Add the split NER→reconcile path + disambiguation agent (Design 2's A1),
+   the adversarial verifier + bounded repair (Design 2's A2), and the reviewer panel + arbitration
+   (Design 3's A2). Reuse §2-C's verifier spec.
+3. **Design comparison → winner (S).** Phase A of §6c at the fixed model; report the factored matrix.
+4. **Model sweep on the winner (M).** Phase B of §6c; reproducibility packaging lands here.
+5. **Later:** supplements (§5 open decision #1), then §5 Phase-4 hardening.
+
+Discipline retained from §5: cache all MCP/authority calls; cap fan-out; run the smoke set on every
+change and the full corpus only at phase boundaries.
