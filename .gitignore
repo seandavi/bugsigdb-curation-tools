@@ -6,6 +6,9 @@ venv/
 /tmp/
 *.egg-info/
 .pytest_cache/
+# Secrets (e.g. GOOGLE_API_KEY for the curator's LiteLLM model backend) --
+# never committed. See curator/model.py's resolve_google_api_key().
+.env
 # Generated / downloaded data artifacts (exports, split CSVs, loaded YAML, …)
 /data/*
 !/data/.gitkeep

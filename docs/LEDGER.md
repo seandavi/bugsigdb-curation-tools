@@ -259,3 +259,50 @@ and a Pro tier. Current Gemini IDs verified against ai.google.dev/gemini-api/doc
 (2026-07): stable = `gemini-3.5-flash`, `gemini-3.1-flash-lite`, `gemini-2.5-{pro,flash,flash-lite}`
 (2.5 family sunsets 2026-10); `gemini-3.1-pro` is preview. Re-pin at sweep time. This supersedes
 the earlier "Claude {haiku/sonnet/opus} + Gemini" framing in the deferred model-sweep notes.
+
+## L017 — CI + formal PR process established — 2026-07-13
+**Commits:** `e2bc11e` (CI workflow), `7f45084` (test fix), merge `03a3756` (**PR #1**).
+GitHub Actions CI (`.github/workflows/ci.yml`): `uv sync` + `uv run pytest` on every push to
+`main` and every PR, matrix over Python **3.11 & 3.12**, concurrency-cancel on superseded runs.
+Network-marked tests are deselected by the pyproject `-m 'not network'` default, so **CI needs no
+secrets** and runs fully offline. Local `main` (24 commits) was pushed to `origin` to establish the
+trunk baseline; CI was landed as **the first formal PR** (PR #1). CI immediately earned its keep —
+it surfaced a latent, path-length-dependent test-brittleness bug (rich word-wrapped a long CI
+tmp-path so `"does not exist"` straddled a newline, failing three eval-CLI substring assertions
+that pass locally); fixed by whitespace-normalizing the assertions (verified under `COLUMNS=40`).
+**Standing workflow set by the PI (memory `agent-workflow`):** work is done in a worktree
+(implement → review → fix), then **commit → PR → merge on green** (`gh pr merge --merge
+--delete-branch`; merge commit, never rebase/squash); optional GitHub Copilot review for
+particularly tangled/high-stakes PRs.
+
+## L018 — Design-1 (Fused-Lean) curator walking skeleton — 2026-07-13 — STATUS: PR open, awaiting green+merge
+**Branch:** `feature/curator-design1` (base `3c37b2f`; `main` merged in for CI).
+**Process.** Worktree pipeline: implement → independent review → fix; then PR + CI + Copilot review
+(this PR clears the "second pair of eyes" bar — firewall-critical, ~a dozen new modules).
+**What it is.** The §6d walking skeleton — a scripted linear pipeline turning a PMID into a
+schema-valid nested prediction the eval-harness scores, under the L013 firewall. Modules under
+`src/bugsigdb_curation/curator/`: `resolve` (S0, live idconv), `evidence` (S1, REST text+tables+
+figures via the new shared `retrieval.py`), `extract` (S2), `segment` (S3), `experiment` (S4),
+`locate` (S5a, shared-artifact heuristic), `signature` (S5b **fused extract+verify**), `taxonomy`
+(S6, **live NCBI E-utilities only — never `taxa.csv`**), `assemble` (S8, `closed=True` schema-clean),
+`pipeline` (`curate`/`curate_async`). **Model seam** (`model.py`): `Model` ABC → `LiteLLMModel`
+(wraps `litellm.completion`, JSON-mode + retry, default `gemini/gemini-3.1-flash-lite`, key resolved
+`GOOGLE_API_KEY`→`GEMINI_API_KEY`→`GOOGLE_GENERATIVE_AI_API_KEY` via `.env`+env) and a deterministic
+`MockModel` (offline CI path). `retrieval.py` consolidates the figbench parsers (benchmark now a
+re-export shim; its 26 tests unchanged). CLI: `bugsigdb curate --pmid/--smoke [--model] [--mock]`.
+**Prediction contract** = the loader nested-dict shape exactly (validated `closed=True`); provenance
+(`pmcid`/`has_pmc`/`valid`/`problems`) lives on `CurationResult`, outside the record.
+**Firewall (verified on review).** No curator module imports `eval`; S0 live idconv (not the cached
+map); S6 live NCBI only (no seed/`taxa_csv` param); guard test (`test_curator_firewall.py`, 30 checks)
+does AST import + gold-path-literal scans, a resolver/`curate` signature check, and a subprocess
+`sys.modules` check — hard to evade.
+**Review (independent) → fixes applied:** (must) `study_design: null` crash → `or []` guard; (should,
+crux stage) direction membership was case-sensitive so `"Increased"` silently dropped the whole
+taxon → normalize direction (real recall loss the moment live Gemini runs, invisible under
+`MockModel`); (cheap) within-direction taxon dedup; (nit) rename shared `_extract_leading_number`.
+Each with a regression test. Two Architecture-A gaps left as tracked `# NOTE:`s (per-experiment error
+isolation; sync model call in async) — deferred to Architecture-B, per plan.
+**Live proof.** A real `curate --pmid 30854760` run produced a schema-valid record whose taxa
+verified against live NCBI. **Tests: 413 passed, 7 deselected** (+122 over the pre-curator 291).
+**Next after merge:** the first real Design-1 numbers — `curate` the smoke set with Gemini →
+`bugsigdb eval score` → report (a future ledger entry). A closing note will record the merge commit.
