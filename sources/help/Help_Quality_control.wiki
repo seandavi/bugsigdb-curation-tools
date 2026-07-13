@@ -1,0 +1,55 @@
+[[image:Quality control tools.png|thumb|''Picture 1.'' Quality control tools.]]
+[[image:Quality issues flags applied.png|thumb|''Picture 2''. The currently applied tags appear as "turned on" in the dropdown.]]
+[[image:Refreshing data.png|thumb|''Picture 3''. This link can refresh the displayed data immediately.]]
+There are 2 primary methods of quality control on the {{SITENAME}} data, in addition to the review system.
+
+== Study-level flags ==
+Wiki editors can manually flag Studies as having quality issues. The list of tags is controlled by the [[Property:Quality control tag]] and includes (as of today):
+<ul>
+{{#arraymap: {{#show: Property:Quality control tag |?Allows value |valuesep=;}}
+  |;
+  |@
+  |<li>@</li>
+  |
+}}</ul>
+
+
+If a Study is flagged with at least one tag, the "Quality issues" label is displayed below the Review state label (''see Picture 1'').
+
+Studies have the "Quality control" dropdown with the list of tags, that can be "turned on / off" with a click (''see Picture 2''). Tags for the current Study are stored along with the Study Review. Please, note that quality issues tags do not affect / depend on the [[Help:Needs review|Review state]], and reflect possible issues with the Study itself, not with the way it was entered into the wiki.
+
+For example, “Results are suspect (various reasons)” means that the wiki’s editors looked at the original study and decided the results look suspicious. Editors can enable/disable one or more tags. Clicking on the tag labels does not close the dropdown. In this way, editors can send multiple instructions to tag or untag: when all desired tags are set, editors must click the "Apply tags" button once to submit the tags to the database. Explanation as to why the tag was applied can and should be supplied on the page's "Discussion."
+
+The "Apply tags" button is only available to editors. Readers will only see the status of the tags for the current study in a drop-down list.
+
+It can take up to a minute for tags on the current page to update. For immediate control, consider using the "Refresh" link in the page tools dropdown (''see Picture 3'').
+
+== Taxon-level alerts ==
+If '''the taxon itself or any of its parent taxa''' is found in the list, a warning icon with a tooltip is displayed next to the name of the taxon (''see Picture 4''). 
+
+The quality control for taxa implements the tests described below. Each taxon on the Signatures pages is checked against all the tests and marked with a specific icon if a match is found. 
+
+=== Potential contaminants (<span style="height:30px; width:30px; background: #ff5e5e; font-size: 16px; padding-left: 5px; padding-right: 5px; position:relative;"><span style=" border-radius:50%; background: #ffffff; padding-left: 7px; padding-right: 7px; color: #ff5e5e; text-align: center; height:10%; width:10%;">'''!'''</span></span>) ===
+[[image:Taxon-alert_updated.png|thumb|''Picture 4''. Potential contaminant alert.]]
+Individual taxa that should not be found in signatures are automatically marked as suspicious. Tests are run on page load, with each taxon being compared against a list of "potential contaminants."
+
+Taxa are checked against the potential contaminants stored at the [[:MediaWiki:ContaminationList]] page. This list was derived from the [https://openlooper.hgc.jp/opencontami/db_Blacklist.php OpenContaminant Blacklist]. The taxon is marked as a potential contaminant if the taxon ID or any of its parent taxa match one of the IDs listed at that page.
+
+The list of potential contaminants on [[:MediaWiki:ContaminationList]] can be modified by wiki administrators or members of the <code>interface-admin</code> group with the standard <code>edit</code> action [https://bugsigdb.org/w/index.php?title=MediaWiki:ContaminationList&action=edit here]. The only requirement is to put one [[Property:NCBI|NCBI ID]] per line.
+
+=== Not host-associated (<span style="height:30px; width:30px; background: #9b8aca; font-size: 16px; padding-left: 5px; padding-right: 5px; position:relative;"><span style="  border-radius:50%; background: #ffffff; padding-left: 5px; padding-right: 5px; color: #9b8aca; text-align: center; height:10%; width:10%;">'''X'''</span></span>) ===
+
+Taxa are checked against the curated list not host-associated NCBI Taxonomy IDs stored at the [[:MediaWiki:ContaminationNotHostList]] page. The taxon is marked as a not host-associated taxaon if the taxon ID or any of its parent taxa match one of the IDs listed at that page.
+
+Not host-associated taxa were obtained from screening through the NCBI taxonomy at phylum level, and tracing further down the taxonomy where a host-associated habitat could not be ruled out at phylum level. However, it should be noted that these classifications are not always clear-cut and may be modified by administrators over time as new findings are published.
+
+The list of not host-associated taxa on [[:MediaWiki:ContaminationNotHostList]] can be modified by wiki administrators or members of the <code>interface-admin</code> group with the standard <code>edit</code> action [https://bugsigdb.org/w/index.php?title=MediaWiki:ContaminationNotHostList&action=edit here]. The only requirement is to put one [[Property:NCBI|NCBI ID]] per line.
+
+=== Body site-typical (prevalent) (<span style="height:30px; width:30px; background: #bc59f4; font-size: 16px; padding-left: 5px; padding-right: 5px; position:relative;"><span style="  border-radius:50%; background: #ffffff; padding-left: 7px; padding-right: 7px; color: #bc59f4; text-align: center; height:10%; width:10%;">'''?'''</span></span>) ===
+
+Taxa are checked (regardless of the Experiment's associated body site) against taxon IDs stored at the [[Study 562]] page which indicate body-site typical taxa at a 50% prevalence level for healthy children and adults. Typical taxa are available for vagina, skin, feces, nasal cavity, milk, and oral cavity body sites. The taxon is marked as prevalent in a specific body site if the taxon ID or any of its parent taxa match one of the IDs listed at that page.
+
+Data can be modified by changing the linked Signatures in the [[Study_562]] page.
+
+== See also ==
+* [[Help:Needs review]]

@@ -1,0 +1,2 @@
+This is a property of type [[Has type::Text]]. [[Has property description::Data transformation applied to microbial abundance measurements prior to differential abundance testing (if any).@en]]
+{{Set validation}}

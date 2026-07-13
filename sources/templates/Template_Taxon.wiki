@@ -1,0 +1,156 @@
+<includeonly>{{#if: {{{Taxon|}}}{{{NCBI|}}}{{{Body site|}}}{{{Condition|}}}
+|{{#if: {{{Taxon|}}}
+  |{{#vardefine: ncbi
+     |{{#ask:
+        [[-Has subobject::+]]
+        [[Taxon name::{{{Taxon|}}}]]
+        |?NCBI 
+        |mainlabel=- 
+        |headers=hide 
+        |link=none 
+        |limit=1 
+        |searchlabel= 
+      }}
+   }}
+}}<!--
+
+-->{{#vardefine: sName
+     |{{#taxonomy:{{{NCBI|{{#var:ncbi}}}}}|Taxon/ScientificName}}
+   }}<!--
+
+-->{{#vardefine: rank
+     |{{#taxonomy:{{{NCBI|{{#var:ncbi}}}}}|Taxon/Rank}}
+   }}<!--
+
+-->{{#arraydefine: lineage 
+     |{{#taxonomy:{{{NCBI|{{#var:ncbi}}}}}|Taxon/Lineage}}
+     |;
+   }}<!--
+
+-->{{Get descendants|{{#var:sName}}|{{#var:rank}}|{{{NCBI|{{#var:ncbi}}}}}}}<!--
+
+--><div class="taxon-lookup card bg-light px-3 pb-3 mt-2" aria-label="breadcrumb">
+<ol class="breadcrumb card-body mb-0 px-0">
+{{#loop: lineage
+  |1
+  |{{#arraysize: lineage|;}}
+  |<span class="breadcrumb-item simple-tooltip simple-tooltip-inline tooltipstered" data-simple-tooltip="{{#taxonomy:{{{NCBI|{{#var:ncbi}}}}}
+     |Taxon/LineageEx/Taxon[{{#var:lineage}}]/Rank
+   }}"><!--
+
+-->{{#queryformlink: form=Taxon
+     |link text={{#arrayindex:lineage|{{#expr:{{#var:lineage}}-1}}}}
+     |Taxon[NCBI]={{#taxonomy:{{{NCBI|{{#var:ncbi}}}}}|Taxon/LineageEx/Taxon[{{#var:lineage}}]/TaxId}}
+     |Taxon[Body site]={{{Body site|}}}
+     |Taxon[Condition]={{{Condition|}}}
+     |_run=1
+   }}</span>
+}}
+</ol>
+<h1 class="border-0 font-weight-bold mt-0 py-2">{{ucfirst: {{#taxonomy:{{{NCBI|{{#var:ncbi}}}}}|Taxon/Rank}}}}: {{#queryformlink: form=Taxon
+      |link text={{#var:sName}}
+      |Taxon[NCBI]={{{NCBI|{{#var:ncbi}}}}}
+      |Taxon[Body site]={{{Body site|}}}
+      |Taxon[Condition]={{{Condition|}}}
+      |_run=1
+    }}</h1>
+<span class="simple-tooltip simple-tooltip-inline tooltipstered" data-simple-tooltip="NCBI ID"><!--
+-->[[Image:NCBI.png|15px|link=https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={{{NCBI|{{#var:ncbi}}}}}]] <!--
+-->[https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id={{{NCBI|{{#var:ncbi}}}}} {{{NCBI|{{#var:ncbi}}}}}]</span> <!-- --><span>&middot; {{#queryformlink: form=Taxon drilldown
+  |link text=Filter studies
+  |Drilldown[Taxon]={{#var:sName}}
+  |_run=1
+}} ({{#arraydefine: studies|{{#ask:[[Related directly::{{{NCBI|}}}]]|mainlabel=-|?Related study|format=array|sep=;|limit=20000|searchlabel=|link=none}}|;|unique}}{{#arraysize: studies}})</span>
+{{#vardefine:child
+  |{{#ask: 
+     [[-Has subobject::+]]
+     [[Tax parent id::{{{NCBI|{{#var:ncbi}}}}}]]
+     |?Taxonomic rank
+     |limit=1
+     |searchlabel=
+     |mainlabel=-
+     |headers=hide
+   }}
+}}
+{{#ask:
+  [[:+]]
+  [[-Has subobject::+]]
+  [[Tax parent id::{{{NCBI|{{#var:ncbi}}}}}]]
+  |?NCBI
+  |mainlabel=-
+  |format=tagcloud
+  |link=none
+  |template=Taxon queryformlink{{!}}Body site={{{Body site|}}}{{!}}Condition={{{Condition|}}}
+  |minsize=100
+  |maxsize=100
+  |intro=<p class="font-weight-bold">{{ucfirst: {{#var:child}} taxa in this {{#var:rank}}}}:</p>
+  |default=No further descendants found.  
+  |limit=20000
+  |searchlabel=
+  |@deferred
+}}
+</div>
+{{#if: {{#var: sName}}|
+{{#ask:
+  [[Category:Signatures]]
+  [[Related directly::{{{NCBI|{{#var:ncbi}}}}}]]
+  [[Modification date::+]]
+    {{#arraymap: Body site,Condition|,|^^
+      |{{#if: {{{^^|}}}|[[^^::{{{^^|}}}]]}}|
+    }}
+  |sort=Related study,Related experiment,Page sort number
+  |order=asc,asc,asc
+  |link=none
+  |format=plainlist
+  |template=Sig item{{!}}NCBI={{{NCBI|{{#var:ncbi}}}}}{{!}}Property=Related directly{{!}}Body site={{{Body site|}}}{{!}}Condition={{{Condition|}}}
+  |limit=10
+  |intro=<p class="h3 mt-3 font-weight-bold">{{Taxon queryrerun
+    |NCBI={{{NCBI|{{#var:ncbi}}}}}
+    |Body site={{{Body site|}}}
+    |Condition={{{Condition|}}}
+   }} Signatures containing the ''{{#var:sName}}'' {{#var: rank}} ({{{NCBI|{{#var:ncbi}}}}}) DIRECT <span class="text-info" title="Body site">{{#if:{{{Body site|}}}|~{{{Body site|}}}&#32;}}</span><span class="text-info" title="Condition">{{#if:{{{Condition|}}}|~{{{Condition|}}}}}</span></p>
+{{Taxon lookup legend}}
+<table id="direct" class="wikitable taxon-query-results direct">
+<tr>
+<th>Study</th>
+<th>Signature</th>
+<th>Differential Abundance</th>
+<th class="w-50">Taxa</th>
+</tr>
+  |outro=</table>
+  |searchlabel=<div id="further-results-direct" class="alert alert-info">&uarr; Showing 10 direct signatures. For more results '''click here'''.</div>
+}}
+{{#ask:
+  [[Category:Signatures]]
+  [[Inherits::{{{NCBI|{{#var:ncbi}}}}}]]
+    {{#arraymap: Body site,Condition|,|^^
+      |{{#if: {{{^^|}}}|[[^^::{{{^^|}}}]]}}|
+    }}
+  [[Modification date::+]]
+  |sort=Related study,Related experiment,Page sort number
+  |order=asc,asc,asc
+  |link=none
+  |format=plainlist
+  |template=Sig item{{!}}NCBI={{{NCBI|{{#var:ncbi}}}}}{{!}}Property=Inherits{{!}}Body site={{{Body site|}}}{{!}}Condition={{{Condition|}}}
+  |limit=10
+  |intro=<p class="h3 mt-3 font-weight-bold">{{Taxon queryrerun
+    |NCBI={{{NCBI|{{#var:ncbi}}}}}
+    |Body site={{{Body site|}}}
+    |Condition={{{Condition|}}}
+   }} Signatures containing the ''{{#var:sName}}'' {{#var: rank}} ({{{NCBI|{{#var:ncbi}}}}}) INHERITED <span class="text-info" title="Body site">{{#if:{{{Body site|}}}|~{{{Body site|}}}&#32;}}</span><span class="text-info" title="Condition">{{#if:{{{Condition|}}}|~{{{Condition|}}}}}</span></p>
+{{Taxon lookup legend}}
+<table id="inherited" class="wikitable taxon-query-results inherited">
+<tr>
+<th>Study</th>
+<th>Signature</th>
+<th>Differential Abundance</th>
+<th class="w-50">Taxa</th>
+</tr>
+  |outro=</table>
+  |searchlabel=<div id="further-results-inherited" class="alert alert-info">&uarr; Showing 10 signatures by inheritance. For more results '''click here'''.</div>
+}}
+</div>
+  |No ID matches found.
+}}
+  |
+}}__NOEDITSECTION__ __NOTOC__ </includeonly>

@@ -1,0 +1,145 @@
+== Information for users ==
+
+=== Video tutorials ===
+To get started, please see our [https://www.youtube.com/playlist?list=PLIUETfW6tVu2OGgZcIxqI7DbUBReHVdIq collection of video tutorials], which includes:
+
+* a [https://www.youtube.com/watch?v=NXeYPU6VTFQ&list=PLIUETfW6tVu2OGgZcIxqI7DbUBReHVdIq&index=1 summary] of what BugSigDB is and why it might be useful for you,  
+* an [https://www.youtube.com/watch?v=1SYn6JaHif0&list=PLIUETfW6tVu2OGgZcIxqI7DbUBReHVdIq&index=2 overview] of BugSigDB functionality, including how to use the wiki, how to search for studies, and how to export BugSigDB data for external analysis,
+* a step-by-step [https://www.youtube.com/watch?v=yfpnwxefLFc&list=PLIUETfW6tVu2OGgZcIxqI7DbUBReHVdIq&index=4 walk-through] of how to add a new study through the curation interface of BugSigDB, and
+* a [https://www.youtube.com/watch?v=skte2aVHhek&list=PLIUETfW6tVu2OGgZcIxqI7DbUBReHVdIq&index=3 demo] of how to work with BugSigDB data in R using the [https://bioconductor.org/packages/bugsigdbr bugsigdbr] R/Bioconductor package.
+
+=== Quality control flags for studies and for taxa (<span style="height:30px; width:30px; background: #ff5e5e; font-size: 16px; padding-left: 5px; padding-right: 5px; position:relative;"><span style=" border-radius:50%; background: #ffffff; padding-left: 7px; padding-right: 7px; color: #ff5e5e; text-align: center; height:10%; width:10%;">'''!'''</span></span>&#10240;<span style="height:30px; width:30px; background: #9b8aca; font-size: 16px; padding-left: 5px; padding-right: 5px; position:relative;"><span style="  border-radius:50%; background: #ffffff; padding-left: 5px; padding-right: 5px; color: #9b8aca; text-align: center; height:10%; width:10%;">'''X'''</span></span>&#10240;<span style="height:30px; width:30px; background: #bc59f4; font-size: 16px; padding-left: 5px; padding-right: 5px; position:relative;"><span style="  border-radius:50%; background: #ffffff; padding-left: 7px; padding-right: 7px; color: #bc59f4; text-align: center; height:10%; width:10%;">'''?'''</span></span>) ===
+
+How and why Quality Control flags are set: [[Help:Quality_control]]
+* Study-level flags (''retracted paper, contamination issues suspected, batch effect issues suspected, uncontrolled confounding suspected, results are suspect (various reasons)'') are set manually by wiki editors.
+* Taxon-level flags for ''potential contaminants'' (<span style="height:30px;
+  width:30px;
+  background: #ff5e5e;
+  font-size: 16px;
+  padding-left: 5px;
+  padding-right: 5px;
+  position:relative;"><span style="  border-radius:50%;
+  background: #ffffff;
+  padding-left: 7px;
+  padding-right: 7px;
+  color: #ff5e5e;
+  text-align: center;
+  height:10%;
+  width:10%;">'''!'''</span></span>), not ''host-associated'' (<span style="height:30px;
+  width:30px;
+  background: #9b8aca;
+  font-size: 16px;
+  padding-left: 5px;
+  padding-right: 5px;
+  position:relative;"><span style="  border-radius:50%;
+  background: #ffffff;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #9b8aca;
+  text-align: center;
+  height:10%;
+  width:10%;">'''X'''</span></span>), and ''body site-typical (prevalent)'' (<span style="height:30px;
+  width:30px;
+  background: #bc59f4;
+  font-size: 16px;
+  padding-left: 5px;
+  padding-right: 5px;
+  position:relative;"><span style="  border-radius:50%;
+  background: #ffffff;
+ padding-left: 7px;
+  padding-right: 7px;
+  color: #bc59f4;
+  text-align: center;
+  height:10%;
+  width:10%;">'''?'''</span></span>) are set automatically by matching to site-wide lists
+
+== Information for curators ==
+
+=== How can I get involved? ===
+
+First, [[Special:RequestAccount|request an account]]. You can immediately start contributing as much or as little as you want, and your edits will become part of BigSigDB ([[Project:About|About]]). See a [[Special:ContributionScores/|table of recent contributions and curators]], and [[Testimonials]] from other curators.
+
+* For a detailed explanation of the process of entering studies, experiments, and signatures, refer to the [[Curation Policy]].
+* To participate in regular curator meetings, contact waldronlab@gmail.com.
+* To join discussions with  administrators and curators, join the [https://community-bioc.zulipchat.com/join/4k2tpsy7h6zjbaduydwm2n56/ #bugsigdb channel] of the [https://community-bioc.zulipchat.com/join/4k2tpsy7h6zjbaduydwm2n56/ community-bioc Zulip].
+* See/edit the presentation schedule at [[PresentationSignup]].
+
+=== Where can I start? ===
+
+You can enter a new study by clicking [[Special:FormEdit/Study|Add a Study]] at the top of the page. But there are also other ways to contribute:
+
+* Help [[:Category:Pages_with_missing_NCBI_ID|match unknown names to the NCBI taxonomy]].
+* Complete [[Help:Cleanup#Studies_that_have_no_Experiments|Studies that have no experiments]] (these are usually studies of interest that have not yet been curated).
+* [[Property:Processing_error|Fix improper values]], such as matching study conditions to the [https://www.ebi.ac.uk/efo/ Experimental Factor Ontology], body sites to the [https://www.ebi.ac.uk/ols/ontologies/uberon Uber-anatomy Ontology], and other vocabulary to BugSigDB-defined values. Sometimes it requires requesting that an administrator add a missing term.
+* Work on a previously identified [https://github.com/waldronlab/BugSigDBcuration/issues?q=is%3Aissue+is%3Aopen+label%3A%22paper+to+curate%22 Paper to Curate].
+
+===Do I need permission to add a study to BugSigDB?===
+
+Since bugsigdb doesn't publish copyrighted material, we don't require permission from publishers or authors to curate information from published studies. If you are unsure whether a study is within scope for BugSigDB, see the [[Curation Policy]] or ask on the [https://community-bioc.slack.com/archives/C04RATV9VCY/p1697144958544289 #bugsigdb channel] of the [https://slack.bioconductor.org/ community-bioc Slack team].
+
+== TODO for reviewers ==
+
+Reviewers double-check BugSigDB for accuracy and consistency. Some key links:
+* [[Help:Needs_review]]: identifies pages that have never been reviewed ("Missing review"), have been edited since the previous review ("Stale reviews"), or have been manually flagged for review ("Flagged for review").
+* [[Help:Cleanup]]: identifies pages with outstanding issues, such as missing or invalid data. It makes heavy queries so it may take a while to load or purge.
+* {{#ask:
+[[State::Incomplete]]
+|limit=0
+|searchlabel=Incomplete pages (marked as incomplete by curator)
+|format=ol
+}}
+* [[:Category:Pages with missing NCBI ID|Pages with missing NCBI ID]]
+* [[Property:Processing error|Pages with a disallowed value]]
+
+== Other important links for reviewers ==
+
+* [[Special:ReplaceText]]: site-wide search and replace
+* [[Special:Log/delete]]: Deletion log
+* Standardize values [[How to standardize property values]]
+* Information on data transformation [[Data transformation definitions]]
+
+Contact waldronlab@gmail.com to request to become a reviewer of contributed data.
+
+== NCBI cleanup ==
+
+* [[:Category:Pages with missing NCBI ID|Signatures with missing NCBI ID]]: These are taxa names that original curators were unable to match to a valid NCBI identifier and name, and may benefit from additional expert review.
+
+== Information for administrators ==
+
+Key links for administrators:
+
+* [[Help:Editing_using_the_API|Editing using the API]] and [[Special:ApiSandbox|the API sandbox]]
+* [[Help:Admin]]: Edit auto-complete fields
+* [[Help:Quality_control]]: Edit QC flags
+* [[Special:SpecialPages]]: All special pages
+* [[Special:CreateAccount]]: Create accounts
+* [[Special:ConfirmAccounts]]: Approve/reject account requests
+* [[Special:ListUsers]]: list users and roles
+* [[Special:UserRights]]: change roles for one of the above users (requires knowing user name, can be found above).
+* [[Special:Log]]: site-wide log
+* [https://groups.google.com/g/bugsigdb User Forum] on Google Groups: Discussion Board
+
+Finally, [[MediaWiki general help]].
+
+== Information for data analysts and tool developers==
+
+The data in BugSigDB are made available under the Creative Commons Attribution 4.0 International ([https://creativecommons.org/licenses/by/4.0/ CC BY 4.0]). Please feel free to copy, redistribute, and adapt, even commercially, as long as you provide attribution and do not apply additional restrictions. Semantic MediaWiki software and customizations made for this website are licensed under GPL>=2.0.
+
+Some useful links:
+
+* Access BugSigDB data in R using the [https://bioconductor.org/packages/bugsigdbr/ bugsigdbr Bioconductor package]. bugsigdbr provides some additional conveniences over raw csv file export, such as harmonizing taxonomic level and selecting on body site or study condition, and provides three options for data source:
+**bleeding edge data as [[Help:Export|csv file exports of bugsigdb.org]]
+**[https://github.com/waldronlab/BugSigDBExports hourly exports]
+**[https://doi.org/10.5281/zenodo.5606165 semi-annual releases on Zenodo], synced with the Bioconductor release cycle
+* [https://github.com/waldronlab/bugsigdb Source code and issue tracking] for the bugsigdb.org Semantic MediaWiki site
+* [http://waldronlab.io/bugSigSimple/ Example analyses of bugsigdb.org]
+
+For other information, see [[Project:About|About BugSigDB]].
+
+== Citing BugSigDB ==
+
+If you use BugSigDB in published research, please cite:
+
+Geistlinger L, Mirzayi C, Zohra F, Azhar R, Elsafoury S, Grieve C, Wokaty J, Gamboa-Tuz SD, Sengupta P, Hecht I, Ravikrishnan A, Gonçalves RS, Franzosa E, Raman K, Carey V, Dowd JB, Jones HE, Davis S, Segata N, Huttenhower C, Waldron L: BugSigDB captures patterns of differential abundance across a broad range of host-associated microbial signatures. ''Nat. Biotechnol.'' 2023. https://doi.org/10.1038/s41587-023-01872-y ([https://citation-needed.springer.com/v2/references/10.1038/s41587-023-01872-y?format=refman&flavour=citation download citation as .ris file])
+
+For a short summary of the work, see the associated Research Briefing [https://rdcu.be/dlVRl BugSigDB — a database for identifying unusual abundance patterns in human microbiome studies] or Press Release [https://sph.cuny.edu/life-at-sph/news/2023/09/12/database-published-microbial-signatures/ CUNY SPH researchers unveil comprehensive database of published microbial signatures].

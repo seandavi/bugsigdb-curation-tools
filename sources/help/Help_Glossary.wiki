@@ -1,0 +1,29 @@
+== Glossary sections ==
+There are two sections - "condition" and "body site" - in the context of the [[:Category:Glossary|glossary]]:
+
+; [[:Category:Condition|Condition]]
+: Terms categorized under "condition" typically refer to health-related issues, diseases, or medical conditions that affect the overall well-being of a subject. These terms describe various illnesses, disorders, or abnormalities a subject may experience. Examples include diabetes, hypertension, asthma, or other medical or social conditions.
+
+; [[:Category:Body site|Body site]]
+: Terms categorized under "body site" generally provide information about the physical location or region on or within the body where a medical condition or symptom is observed or experienced. These terms help identify where a particular medical condition or symptom manifests. Examples include terms like "head", "abdomen", "knee", or "chest".
+
+== Terms ==
+[[image:Glossary Form.png|thumb|The [[Form:Glossary|Glossary form]] allows adding a new term and guides the addition of its metadata. ]]
+Each term has its wiki page. This page comprises the term's definition, categorization as either a "condition" or "body site", links the term to its respective ID in external ontologies (such as UBERON, OBO, etc.), and enumerates different expressions of orthographic forms that should be regarded as synonyms or [[Property:Alias|aliases]] for the term. Conditions and body sites [[Help:How to add a Study|specified by submitters of experiments]] are compared to the list of aliases to find the term's matching "canonical" form.
+
+The default naming convention in MediaWiki mandates that the initial letter to be capitalized. The term page automatically preserves both variations &ndash; with the first letter capitalized and in lowercase.
+
+Terms can be edited or added using [[Form:Glossary]].
+
+== Usage Reports ==
+MediaWiki analyzes the use of the term on BugSigDB and prints out the list of studies that mention the current term as an experiment "condition" or "body site".
+
+Other tools allow searching for studies at the intersection of conditions, body sites, host species, locations and taxa:
+<div class="mb-3 plainlinks">
+* [{{fullurl: Special:RunQuery/Drilldown|_run=1}} Drilldown]
+* [{{fullurl: Special:RunQuery/Drill|Drill%5BCondition%20logic%5D=AND&Drill%5BLocation%20logic%5D=AND&Drill%5BSite%20logic%5D=AND&_run=1}} Advanced Search] 
+</div>
+Please read some [[Help:Wildcard Semantic Search|hints about using wildcards while searching]].
+
+== See also ==
+* [[Help:How to add a Study|How to add a Study]]

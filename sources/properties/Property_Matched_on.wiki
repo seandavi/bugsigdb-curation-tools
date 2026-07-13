@@ -1,0 +1,6 @@
+This is a property of type [[Has type::Text]].
+
+[[Has property description::Factors on which subjects have been matched on in a case-control study@en]]
+
+This property shares autocomplete values with the [[Property:Confounders controlled for]]. 
+{{Set validation}}

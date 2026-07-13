@@ -1,0 +1,3 @@
+This is a property of type [[Has type::Text]].
+
+[[Has property description::The experimental condition / phenotype studied according to the Experimental Factor Ontology@en]]

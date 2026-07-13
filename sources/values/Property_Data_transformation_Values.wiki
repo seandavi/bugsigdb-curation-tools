@@ -1,0 +1,6 @@
+raw counts
+relative abundances
+centered log-ratio
+arcsine square-root
+log transformation
+additive log-ratio

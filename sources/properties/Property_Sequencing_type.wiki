@@ -1,0 +1,4 @@
+This is a property of type [[Has type::Text]].
+
+[[Has property description::Experimental technique used for quantifying microbial abundance@en]]
+{{Set validation}}

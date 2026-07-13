@@ -1,0 +1,18 @@
+DNA-DNA Hybridization
+Human Intestinal Tract Chip
+Illumina
+Ion Torrent
+Mass spectrometry
+Non-quantitative PCR
+PacBio Vega (VS)/Revio (RS)/Sequel II
+PhyloChip
+Roche454
+RT-qPCR
+Sanger
+Nanopore
+BGISEQ-500 Sequencing
+DNBSEQ-G400
+DNBSEQ-T7
+MGISEQ-2000
+HTF-Microbi.Array
+2b-RAD

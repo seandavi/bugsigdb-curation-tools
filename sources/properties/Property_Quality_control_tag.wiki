@@ -1,0 +1,8 @@
+This is a property of type [[Has type::Text]]. [[Has property description::Indicators of potential problems with the results@en]]
+
+The allowed values for this property are:
+* [[Allows value::Retracted paper]]
+* [[Allows value::Contamination issues suspected]]
+* [[Allows value::Batch effect issues suspected]]
+* [[Allows value::Uncontrolled confounding suspected]]
+* [[Allows value::Results are suspect (various reasons)]]

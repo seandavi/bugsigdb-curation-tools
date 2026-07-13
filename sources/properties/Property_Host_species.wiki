@@ -1,0 +1,4 @@
+This is a property of type [[Has type::Text]].
+
+[[Has property description::Species from which microbiome was sampled. Contact us to have more species added.@en]]
+{{Set validation}}

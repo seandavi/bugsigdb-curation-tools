@@ -1,0 +1,4 @@
+This is a property of type [[Has type::External identifier]].
+[[Has property description::Digital object identifier for electronic documents.@en]]
+
+[[External formatter uri::http://dx.doi.org/$1]]

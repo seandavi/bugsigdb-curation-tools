@@ -1,0 +1,390 @@
+<noinclude>
+This is the "Experiment" template.
+It should be called in the following format:
+<pre>
+{{Experiment
+|Antibiotics exclusion=
+|Location of subjects=
+|Condition=
+|Group 0 sample size=
+|Group 0 name=
+|Group 1 sample size=
+|Group 1 name=
+|Group 1 definition=
+|Host species=
+|Body site=
+|Sequencing type=
+|Sequencing platform=
+|Statistical test=
+|LDA Score above=
+|Significance threshold=
+|MHT correction=
+|Matched on=
+|Confounders controlled for=
+|Pielou=
+|Shannon=
+|Chao1=
+|Simpson=
+|Inverse Simpson=
+|Richness=
+|Study=
+|State=
+}}
+</pre>
+Edit the page to see the template text.
+</noinclude><includeonly><div class="d-none" hidden>{{#arraydefine: bodysitealias
+  |{{#arraymap:{{{Body site|}}}
+    |;
+    |@@
+    |{{#ask: [[Glossary-Term::@@]][[Glossary-Section::Body site]]
+          |?Alias
+          |mainlabel=-
+          |headers=hide
+          |format=array
+          |link=none
+          |propsep=;
+          |manysep=;
+          |sep=;
+          |default={{#ask:[[Alias::@@]][[Glossary-Section::Body site]]  
+             |?Alias
+             |mainlabel=-
+             |headers=hide
+             |format=array
+             |link=none
+             |propsep=;
+             |manysep=;
+             |sep=;
+             |default=@@
+           }}
+         }}
+    |;
+  }}
+ |;
+ |unique
+}}
+{{#arraydefine: conditionalias
+  |{{#arraymap:{{{Condition|}}}
+    |;
+    |@@
+    |{{#ask: [[Glossary-Term::@@]][[Glossary-Section::Condition]]
+          |?Alias
+          |mainlabel=-
+          |headers=hide
+          |format=array
+          |link=none
+          |propsep=;
+          |manysep=;
+          |sep=;
+          |default={{#ask:[[Alias::@@]][[Glossary-Section::Condition]]  
+             |?Alias
+             |mainlabel=-
+             |headers=hide
+             |format=array
+             |link=none
+             |propsep=;
+             |manysep=;
+             |sep=;
+             |default=@@
+           }}
+         }}
+    |;
+   }}
+  |;
+  |unique
+}}
+{{#set:
+  |Original page name={{SUBPAGENAME}}
+  |Base page={{BASEPAGENAME}}
+  |Semantic Dependency={{BASEPAGENAME}}
+  |Page sort number={{#replace:{{#titleparts:{{CURRENTFULLPAGENAME}}||-1}}|Experiment |}}
+  |Related study={{#titleparts:{{BASEPAGENAME}}|1|1}}
+  |State={{{State|Incomplete}}}
+  |Body site={{#arraymap:{{{Body site|}}}
+     |;
+     |@@
+     |{{#if: {{#ask: [[Glossary-Term::@@]][[Glossary-Section::Body site]] |link=none}}
+        |@@
+        |{{#ask: [[Alias::@@]][[Glossary-Section::Body site]] 
+           |?Glossary-Term 
+           |mainlabel=- 
+           |headers=hide 
+           |default=@@ 
+           |link=none
+           |format=array
+           |sep=;
+           |manysep=;
+         }}
+      }}
+     |;
+   }}|+sep=;
+  |Body site alias={{#ifexpr:0{{#arraysize:bodysitealias}}>0|{{#arrayprint:bodysitealias|;}}}}|+sep=;
+  |Condition={{#arraymap: {{{Condition|}}}
+     |;
+     |@@
+     |{{#ask: 
+        [[Glossary-Term::@@]]
+        [[Glossary-Section::Condition]]
+        |mainlabel=-
+        |headers=hide
+        |?Glossary-Term
+        |link=none
+        |default={{#ask:
+           [[Alias::@@]]
+           [[Glossary-Section::Condition]] 
+           |?Glossary-Term 
+           |mainlabel=- 
+           |headers=hide 
+           |default=@@ 
+           |limit=5000
+           |searchlabel=
+           |link=none
+           |format=array
+           |sep=;
+           |manysep=;
+         }}
+      }}
+     |;
+   }}|+sep=;
+  |Condition alias={{#ifexpr:0{{#arraysize:conditionalias}}>0|{{#arrayprint:conditionalias|;}}}}|+sep=;
+}}<!--
+
+-->{{#if:{{#show: {{BASEPAGENAME}}|?Modification date}}||[[Category:Orphaned experiments]]}}<!--
+
+-->{{#ifeq:{{#var:inside_embed_loop}}|yes|
+     |{{DISPLAYTITLE:{{#getdisplaytitle:{{#titleparts:{{CURRENTFULLPAGENAME}}|1|1}}}}/{{#titleparts:{{CURRENTFULLPAGENAME}}||-1}}}}
+   }}
+</div>
+<div class="bg-light btn-group mt-3 study-btn study-btn-group"><!--
+
+-->{{#formlink:form=Experiment|link text=Edit|target={{CURRENTFULLPAGENAME}}|reload|returnto={{FULLPAGENAMEE}} }}<!--
+-->{{HistoryButton}}<!--
+-->{{DeleteButton}}<!--
+-->{{#ifeq:{{{State|}}}|Complete|{{ReviewButton}}<!--
+  -->{{#set: Has stale review={{#if:{{#show:Review:{{PAGENAME}}|?Modification date#-F[Ymd]}}
+        |{{#ifexpr: 0{{#show:Review:{{PAGENAME}}|?Modification date#-F[Ymd]}} < {{#time:Ymd|{{REVISIONTIMESTAMP}}}}
+           |true
+           |false
+         }}
+       }}
+     }}
+   }}<!--
+-->{{#formlink:form=Experiment|link text=Duplicate this Experiment|query string=Experiment[Base page]={{BASEPAGENAMEE}}&{{#arraymap:Location of subjects, Host species, Body site, Condition, Group 0 name, Group 1 name, Group 1 definition, Group 0 sample size, Group 1 sample size, Antibiotics exclusion, Sequencing type, 16S variable region (lower bound), 16S variable region (upper bound), Sequencing platform, Statistical test, Significance threshold, MHT correction, LDA Score above, Matched on, Confounders controlled for, Pielou, Shannon, Chao1, Simpson, Inverse Simpson, Richness, Faith|,|abc|{{#if:{{{abc|}}}|Experiment[abc]={{urlencode:{{{abc}}}|PATH}}}}|&}}|reload|returnto={{FULLPAGENAMEE}} }}<!--
+-->{{#formlink:form=Signature|query string=Signature[Base page]={{CURRENTFULLPAGENAME}}|link text=Add a new Signature|reload|returnto={{FULLPAGENAMEE}} }}
+</div>
+<div class="mb-2 p-3 alert alert-success experiment">
+  <div class="float-right">{{Display state|{{{State|}}}}}</div>
+  <div>{{Curation
+    |Curator={{{Curator|}}}
+    |Curated date={{{Curated date|}}}
+  }}</div>
+</div>{{#if: {{#ask: [[Category:Studies]][[{{FULLPAGENAME}}]][[Modification date::+]]}}<!-- We check that we are on a study page (the following code will only make sense when transcluded to the parent study page). -->
+        |{{#ifeq:{{#titleparts:{{CURRENTFULLPAGENAME}}||-1}}|Experiment 1|<!-- We skip the first experiment -->|
+           <div class="alert bg-light border mb-0 py-2"><i class="fas fa-not-equal mr-2" style="color:#45C1FB;"></i> Differences from previous experiment shown</div>
+         }}
+       }}<!--
+
+--><div class="row"><!--
+--><div class="col-sm">
+{{SectionHeading|Subjects|{{{Location of subjects|}}}{{{Host species|}}}{{{Body site|}}}{{{Condition|}}}{{{Group 0 name|}}}{{{Group 1 name|}}}{{{Group 1 definition|}}}{{{Group 0 sample size|}}}{{{Group 1 sample size|}}}{{{Antibiotics exclusion|}}}}}
+<!--
+-->{{#ifeq: {{{Location of subjects|}}}|{{#var: Location of subjects}}||{{#vardefine: Location of subjects|{{{Location of subjects|}}}}}
+<dl>
+<dt class="mb-0">Location of subjects {{FieldTooltip|{{{Location of subjects|}}}}}</dt>
+{{#if:{{{Location of subjects|}}}
+  |{{#arraymap: {{{Location of subjects|}}}
+     |,
+     |@@@
+     |<dd>{{#queryformlink: form=Quick filter
+         |link text=@@@
+         |Quick filter[category]=Experiments
+         |Quick filter[property]=Location of subjects
+         |Quick filter[value]=@@@
+         |_run=1
+       }} {{#set:Location of subjects=@@@}}</dd>
+     |
+   }}
+  |<dd>''Not specified''</dd>
+}}
+</dl>
+}}
+{{Experiment field|Host species|{{{Host species|}}}}}<!-- Temporary check -->{{#ifeq:{{{Host species|}}}||{{#set:Host species=Not specified}}}}
+{{#ifeq: {{{Body site|}}}|{{#var: Body site}}||<div>{{#vardefine: Body site|{{{Body site|}}}}}
+;Body site {{#info: Anatomical site where microbial samples were extracted from according to the [https://www.ebi.ac.uk/ols/ontologies/uberon Uber Anatomy Ontology]}}<!--
+
+-->{{#arraydefine:bodysite
+     |{{#arraymap:{{{Body site|}}}
+        |;
+        |@@
+        |{{#if: {{#ask: [[Glossary-Term::@@]][[Glossary-Section::Body site]]|link=none}}
+           |@@
+           |{{#ask: [[Alias::@@]][[Glossary-Section::Body site]] 
+              |?Glossary-Term 
+              |mainlabel=- 
+              |headers=hide 
+              |default=@@ 
+              |link=none
+              |format=array
+              |sep=;
+              |manysep=;
+            }}
+         }}
+        |;
+      }}
+     |;|unique}}
+:{{#if: {{{Body site|}}}|{{#arrayprint:bodysite
+  |,&#32;
+  |@
+  |{{#arraydefine: idurl|{{#ask: [[Glossary-Term::@]][[Glossary-Section::Body site]]|mainlabel=-|headers=hide|link=none|?Has URL}}|/}}{{Term|Term=@|Class=uberon|Link={{#ifexpr:0{{#arraysize:idurl}}>0|{{#arrayprint:idurl|/}}}}}} <!--
+
+-->{{#ifeq: {{uc:{{#explode:{{#arrayindex:idurl|-1}}|_|0}}}}
+     |UBERON
+     |{{#set: UBERON ID=UBERON:{{#explode:{{#arrayindex:idurl|-1}}|_|1}}}}
+   }}
+}}<!--
+
+-->{{#ifexpr:0{{#arraysize:bodysitealias}}>0|<span class="d-none">{{#arrayprint:bodysitealias|,}}</span>}}
+  |''Not specified''
+}}
+</div>
+}}
+{{#ifeq: {{{Condition|}}}|{{#var: Condition}}||<div>{{#vardefine: Condition|{{{Condition|}}}}}
+;Condition {{#info: The experimental condition / phenotype studied according to the [https://www.ebi.ac.uk/ols/ontologies/efo Experimental Factor Ontology]}}<!--
+
+-->{{#arraydefine:condition
+     |{{#arraymap:{{{Condition|}}}
+        |;
+        |@@
+        |{{#ask: [[Glossary-Term::@@]][[Glossary-Section::Condition]]
+           |mainlabel=-
+           |headers=hide
+           |?Glossary-Term
+           |link=none
+           |default={{#ask: [[Alias::@@]][[Glossary-Section::Condition]]
+              |?Glossary-Term 
+              |mainlabel=- 
+              |headers=hide 
+              |default=@@ 
+              |link=none
+              |format=array
+              |sep=;
+              |manysep=;
+            }}
+         }}
+        |;
+      }}
+     |;|unique}}
+:{{#if:{{{Condition|}}}|{{#arrayprint:condition
+  |,&#32;
+  |@
+  |{{#arraydefine: idurl|{{#ask:[[Glossary-Term::@]][[Glossary-Section::Condition]]|mainlabel=-|headers=hide|link=none|?Has URL}}|/}}<!--
+  -->{{#invoke:GetFromEFO|ancestors
+       |ontology={{#arrayindex:idurl|-2}}
+       |condition={{#arrayindex:idurl|-1}}
+     }}<!--
+  -->{{Term|Term=@|Class=efo|Link={{#ifexpr:0{{#arraysize:idurl}}>0
+  |{{#arrayprint:idurl|/}}{{#set: EFO ID={{uc:{{#explode:{{#arrayindex:idurl|-1}}|_|0}}}}:{{#explode:{{#arrayindex:idurl|-1}}|_|1}}}} }}}}}}<!--
+-->{{#ifexpr:0{{#arraysize:conditionalias}}>0|<span class="d-none">{{#arrayprint:conditionalias|,}}</span>}}
+ |''Not specified''
+}}
+</div>
+}}
+{{#arraymap: Group 0 name, Group 1 name, Group 1 definition, Group 0 sample size, Group 1 sample size, Antibiotics exclusion|,|abc|
+{{Experiment field|abc|{{{abc|}}}}}
+|\n}}
+</div><!--
+--><div class="col-sm">
+{{SectionHeading|Lab analysis|{{{Sequencing type|}}}{{{16S variable region (lower bound)|}}}{{{16S variable region (upper bound)|}}}{{{Sequencing platform|}}}}}
+<!--
+-->{{#ifeq: {{{Sequencing type|}}}|{{#var: Sequencing type}}||{{#vardefine: Sequencing type|{{{Sequencing type|}}}}}
+<dl>
+<dt class="mb-0">Sequencing type {{FieldTooltip|{{{Sequencing type|}}}}}</dt>
+<dd>{{#if:{{{Sequencing type|}}}
+      |{{#queryformlink: form=Quick filter
+         |link text={{{Sequencing type|}}}
+         |Quick filter[category]=Experiments
+         |Quick filter[property]=Sequencing type
+         |Quick filter[value]={{{Sequencing type|}}}
+         |_run=1
+       }} {{#set:Sequencing type={{{Sequencing type|}}}}}
+      |''Not specified''
+    }}</dd>
+</dl>
+}}<!--
+
+-->{{#ifeq:{{{16S variable region (lower bound)|}}}-{{{16S variable region (upper bound)|}}}
+     |{{#var:16S variable region}}
+     |<!-- If current value is unchanged then: do nothing -->
+     |<!-- else: store current value 
+      -->{{#vardefine:16S variable region|{{{16S variable region (lower bound)|}}}-{{{16S variable region (upper bound)|}}}}}<!--
+      display a label with tooltip 
+      --><dl>
+<dt class="mb-0">16S variable region {{FieldTooltip|16S variable region}}</dt>
+<dd>{{#switch:{{#var:16S variable region}}
+           |
+           |-=''Not specified''
+           |#default=<!--
+      display the text
+      -->{{#if:{{{16S variable region (lower bound)|}}}
+           |V[[16S variable region::{{{16S variable region (lower bound)|}}}]]
+         }}{{#if:{{{16S variable region (upper bound)|}}}
+             |-V{{{16S variable region (upper bound)|}}}{{#vardefine: i | {{{16S variable region (lower bound)|}}} }}<!--
+          -->{{#while:
+               | {{#ifexpr: {{#var: i }} <= {{{16S variable region (upper bound)|}}} | true }}
+               | {{#set:16S variable region={{#var: i }}}}{{#vardefine: i | {{#expr: {{#var: i }} + 1 }} }}
+             }}
+           }}
+}}</dd>
+</dl>
+}}
+{{Experiment field|Sequencing platform|{{{Sequencing platform|}}}|,}}
+{{SectionHeading|Statistical Analysis|{{{Statistical test|}}}{{{Significance threshold|}}}{{{MHT correction|}}}{{{LDA Score above|}}}{{{Matched on|}}}{{{Confounders controlled for|}}}}}
+{{Experiment field|Data transformation|{{{Data transformation|}}}}}<!--
+-->{{#ifeq: {{{Statistical test|}}}|{{#var: Statistical test}}||{{#vardefine: Statistical test|{{{Statistical test|}}}}}
+<dl>
+<dt class="mb-0">Statistical test {{FieldTooltip|{{{Statistical test|}}}}}</dt>
+{{#if:{{{Statistical test|}}}
+  |{{#arraymap: {{{Statistical test|}}}
+     |,
+     |@@@
+     |<dd>{{#queryformlink: form=Quick filter
+         |link text=@@@
+         |Quick filter[category]=Experiments
+         |Quick filter[property]=Statistical test
+         |Quick filter[value]=@@@
+         |_run=1
+       }} {{#set:Statistical test=@@@}}</dd>
+     |
+   }}
+  |<dd>''Not specified''</dd>
+}}
+</dl>
+}}
+{{#arraymap: Significance threshold, MHT correction, LDA Score above|,|abc|{{Experiment field|abc|{{{abc|}}}}}|\n}}<!--
+-->{{Experiment field|Matched on|{{{Matched on|}}}|,}}<!--
+-->{{Experiment field|Confounders controlled for|{{{Confounders controlled for|}}}|,}}
+{{SectionHeading|Alpha Diversity|{{{Pielou|}}}{{{Shannon|}}}{{{Chao1|}}}{{{Simpson|}}}{{{Inverse Simpson|}}}{{{Richness|}}}{{{Faith|}}}}}
+{{#arraymap:Pielou, Shannon, Chao1, Simpson, Inverse Simpson, Richness, Faith|,|abc|
+{{Experiment field|abc|{{{abc|}}}|allow_repeated=1}}
+|\n}}
+</div>
+</div>
+<div class="row cards">{{#vardefine:inside_embed_loop|yes}}
+{{#arraymap:{{#ask:
+[[Base page::{{CURRENTFULLPAGENAME}}]]
+[[Category:Signatures]]
+[[Modification date::+]]
+|format=array
+|link=none
+|order=asc
+|sort=Page sort number
+|sep=;
+}}|;|@@@|
+<div class="card col-12 col-md-6 border-0">
+<div class="card-body p-0">
+==={{SUBPAGENAME:@@@}}===
+{{Set page name|@@@}}
+{{#ask:[[@@@]][[Modification date::+]]|format=embedded|embedonly=yes}}
+</div>
+</div>
+|\n}}
+</div>{{#if: {{#ask:[[Category:Experiments]][[{{FULLPAGENAME}}]]}}|__NOTOC__|}}[[Category:Experiments|{{#sub:{{FULLPAGENAME}}|{{#expr:{{#rpos:{{FULLPAGENAME}}|}}+1}}}}]]{{#ifexist:{{{Condition|}}}|[[Semantic Dependency::{{{Condition|}}}| ]]}}{{#ifexist:{{{Body site|}}}|[[Semantic Dependency::{{{Body site|}}}| ]]}}__NOTOC__ __NOEDITSECTION__</includeonly>

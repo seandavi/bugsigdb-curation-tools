@@ -1,0 +1,18 @@
+<noinclude>
+
+Params:
+
+* Curator
+* Curated date
+
+The template displays the curation values and sets the properties. If empty or no values are passed it will use "Page creator" and "Creation date" semantic properties of a page instead.
+
+</noinclude><includeonly>
+
+'''Curated date:''' {{FieldTooltip|Curated date}} [[Curated date::{{#if:{{{Curated date|}}}|{{{Curated date}}}|{{#time:Y/m/d|{{#show:{{CURRENTFULLPAGENAME}}|?Creation date}}}}}}]]
+
+'''Curator:''' {{FieldTooltip|Curator}} {{#if:{{{Curator|}}}|[[Curator::{{{Curator}}}| ]][[:User:{{{Curator}}}|{{{Curator}}}]]|{{#show:{{CURRENTFULLPAGENAME}}|?Page creator}}[[Curator::{{#replace:{{#show:{{CURRENTFULLPAGENAME}}|?Page creator|link=none}}|User:|}}| ]]}}
+
+'''Revision editor(s):''' {{FieldTooltip|Revision editor}} {{DisplayRevisionEditors}}
+
+<includeonly>

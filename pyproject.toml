@@ -1,0 +1,7 @@
+[project]
+name = "bugsigdb-curation"
+version = "0.1.0"
+description = "LinkML schema for the BugSigDB curation data model, foundation for an automated microbial-signature curator"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []

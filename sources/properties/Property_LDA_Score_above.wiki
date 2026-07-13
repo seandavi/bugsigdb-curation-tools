@@ -1,0 +1,3 @@
+This is a property of type [[Has type::Number]].
+
+[[Has property description::Threshold for the linear discriminant analysis (LDA) score for studies using the popular LEfSe tool@en]]

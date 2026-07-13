@@ -1,0 +1,4 @@
+This is a property of type [[Has type::Text]].
+
+[[Has property description::Country from which study subjects were recruited@en]]
+{{Set validation}}

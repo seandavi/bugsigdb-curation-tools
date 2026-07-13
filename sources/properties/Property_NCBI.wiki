@@ -1,0 +1,3 @@
+This is a property of type [[Has type::External identifier]].
+
+[[External formatter uri::https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=$1]]

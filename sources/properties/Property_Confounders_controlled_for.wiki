@@ -1,0 +1,6 @@
+This is a property of type [[Has type::Text]].
+
+[[Has property description::Confounding factors that have been accounted for by stratification or model adjustment@en]]
+
+This property shares autocomplete values with the [[Property:Matched on]]. 
+{{Set validation}}

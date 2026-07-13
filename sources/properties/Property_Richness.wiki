@@ -1,0 +1,8 @@
+This is a property of type [[Has type::Text]].
+
+[[Has property description::Number of species@en]]
+
+The allowed values for this property are:
+* [[Allows value::decreased]]
+* [[Allows value::increased]]
+* [[Allows value::unchanged]]

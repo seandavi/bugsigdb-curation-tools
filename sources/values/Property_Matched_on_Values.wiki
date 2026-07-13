@@ -1,0 +1,290 @@
+abdominalhernia
+abnormal glucose tolerance
+accute-on-chronic liver failure
+acetaldehyde
+acute graft vs. host disease
+acute lymphoblastic leukemia
+acute myeloid leukemia
+adenoma
+age
+AIDS
+air pollution
+alcohol consumption measurement
+alcohol drinking
+allergic rhinitis
+alzheimer's disease
+anal intercourse
+anorexia nervosa
+antibiotic
+antibiotic exposure
+antibiotic therapy
+antimicrobial agent
+antimicrobial agent during labor
+antiretroviral therapy
+anxiety disorder
+aortic valve insufficiency
+arthritis
+ascites
+asthma
+atopic asthma
+atopic eczema
+attention deficit hyperactivity disorder
+autism
+behcet's syndrome
+bipolar disorder
+birth country
+birth weight
+bladder calculus
+bladder disease
+blood pressure
+body height
+body mass index
+body odor measurement
+body weight
+breast cancer
+breast carcinoma
+breast feeding
+breast milk measurement
+breastfeeding duration
+bronchitis
+cannabis dependence
+cannabis use
+cellulitis
+cervical cancer
+cervical cerclage
+cervical glandular intraepithelial neoplasia
+cesarean section
+chemotherapy
+chlamydia trachomatis infectious disease
+chorioamnionitis
+chronic fatigue syndrome
+chronic hepatitis B virus infection
+chronic hepatitis C virus infection
+chronic kidney disease
+chronic obstructive pulmonary disease
+chronic pancreatitis
+cirrhosis of liver
+class/grade level
+coeliac
+colorectal cancer
+comorbidity
+constipation
+contraception
+cough
+COVID-19
+COVID-19 or sequela
+crohn disease
+cystitis
+date
+decreased circulating HDL cholesterol level
+delivery procedure
+demographics
+dental caries
+dental enamel hypoplasia
+diabetes mellitus
+diabetic retinopathy
+diet
+digestive system cancer
+digestive system infectious disease
+drug dependence
+EC 3.6.3.10 (H(+)/K(+)-exchanging ATPase) inhibitor
+eczema
+education level
+egg allergy
+encephalomyelitis
+end stage renal disease
+endometrial cancer
+epilepsy
+equol
+esophageal cancer
+esophageal carcinoma
+esophageal squamous cell carcinoma
+ethical considerations
+ethnic group
+extrahepatic cholestasis
+family history of cancer
+feeding practices
+female reproductive organ cancer
+food allergy
+formula feeding
+gangrene
+gastric adenocarcinoma
+gastric cancer
+gastric carcinoma
+geographic area
+gestational age
+gestational diabetes
+gingival disease
+gingivitis
+graft versus host disease
+graves disease
+graves ophthalmopathy
+hashimoto's thyroiditis
+HDL cholesterol change measurement
+head and neck carcinoma
+head and neck malignant neoplasia
+head and neck squamous cell carcinoma
+health
+health trait
+Helicobacter pylori
+Helicobacter pylori infectious disease
+Henoch-Schoenlein purpura
+hepatitis
+hepatitis, alcoholic
+hepatocellular carcinoma
+high fat diet
+history of GI
+HIV infection
+HIV/AIDS pre-exposure prophylaxis
+HLA match
+homelessness
+household income
+hp infection
+human papilloma virus infection
+huntington disease
+hygiene
+hyperlipidemia
+hyperplastic polyp
+hypertension
+hypertriglyceridemia
+idiopathic rapid eye movement
+immunosuppressant use measurement
+immunodeficiency 74, COVID-19-related, X-linked
+inflammatory bowel disease
+intake of diabetes medication
+iron deficiency anemia
+irritable bowel syndrome
+kidney stone
+leukemia
+leukocyte
+life style
+lung cancer
+lymphoma
+major depressive disorder
+marijuana
+marital status
+maternal age
+medical procedure
+medroxyprogesterone acetate
+menopause
+metabolic syndrome
+methamphetamine dependence
+milk allergic reaction
+mode of birth
+multiple myeloma
+multiple organ failure
+multiple sclerosis
+necrotizing enterocolitis
+neonatal jaundice
+neurogenic bladder
+neuromyelitis optica
+nicotine dependence
+non-alcoholic fatty liver
+non-alcoholic fatty liver disease
+non-hodgkins lymphoma
+non-small cell lung carcinoma
+number of sex partners
+number of teeth measurement
+nutritional supplement exposure measurement
+obesity
+obsessive-compulsive disorder
+opioid dependence
+oral candidiasis
+oral halitosis
+oral hygiene
+oral leukoplakia
+oral mucositis
+oral squamous cell carcinoma
+orthocoronavirinae infectious disease
+osteoarthritis
+otitis media with effusion
+ovarian cancer
+pancreatic carcinoma
+parity
+parkinson's disease
+pemphigus vulgaris
+peptic esophagitis
+peri-implantitis
+peridontal microbiome
+periodontal disease
+periodontal pocket
+periodontitis
+phenylketonuria
+physical activity
+pneumonia
+polycystic ovary syndrome
+polyp
+post-traumic stress disorder
+postpartum
+pre-exposure prophylaxis 
+premature birth
+preterm premature rupture of the membranes
+primary care clinic
+probiotics during pregnancy
+prostate cancer
+proton-pump inhibitor
+psoriasis
+psoriatic arthritis
+psychosis
+pulmonary tuberculosis
+pyelonephritis
+race
+receptive anal intercourse frequency
+region
+region of residence
+renal cell carcinoma
+response to allogeneic hematopoietic stem cell transplant
+response to antineoplastic agent
+response to cancer immunotherapy
+rheumatoid arthritis
+salmonella gastroenteritis
+salmonellosis
+schizophrenia
+sepsis
+sequela of COVID-19
+sessile serrated adenoma
+severe aplastic anemia
+sex
+sex design
+sexual preference
+sexually transmitted infection
+sjogren's syndrome
+socioeconomic status
+smoking behavior
+smoking status
+spontaneous abortion 
+squamous cell carcinoma
+staphylococcus skin infection
+status asthmaticus
+stimulus or stress design
+substance related disorder
+substance use
+syncope
+thyroid carcinoma
+time
+time from diagnosis
+titanium dioxide nanoparticles
+tongue neoplasm
+tonsillitis
+total cholesterol measurement
+transplant conditioning
+triglycerides
+tuberculosis
+type I diabetes mellitus
+type II diabetes mellitus
+ulcerative colitis
+unipolar depression
+urinary tract infection
+vaginal pH
+vital capacity
+vulvovaginitis
+waist circumference
+watching tv
+wilson disease
+diabetic neuropathy
+prediabetes syndrome
+vitiligo
+endometriosis
+life style
+sequence read depth
+test entry (do not use)

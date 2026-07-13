@@ -1,0 +1,3 @@
+This is a property of type [[Has type::Text]].
+
+[[Has property description::Number of days without antibiotics usage (if applicable) and other antibiotics-related criteria used to exclude participants (if any) @en]]

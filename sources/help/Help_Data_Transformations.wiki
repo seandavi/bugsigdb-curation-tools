@@ -1,0 +1,19 @@
+Raw Counts (Deseq2, negative binomial/poisson regression)
+
+# of times that taxon was observed in the sample
+
+Relative Abundance (t-test, Mann-Whitney's U, linear regression, etc.) *should be basic assumption*
+
+Compared to the overall composition, what % of the microbiome was each taxon?
+
+Centered log ratio (CORNCOB, linear regression, ANCOM but not always)
+
+Take the log of the relative abundance and then you center it mean=0, variance=1
+
+Arcsine square root (rarely in linear models)
+
+Square root of the relative abundance or raw count?
+
+Log transformation (linear model, t-test, U, etc.)
+
+Take the natural log and make the data look more normal. Fairly rare.

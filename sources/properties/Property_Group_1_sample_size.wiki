@@ -1,0 +1,3 @@
+This is a property of type [[Has type::Number]].
+
+[[Has property description::Number of subjects in the case (exposed) group@en]]

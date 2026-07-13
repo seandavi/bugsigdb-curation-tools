@@ -1,0 +1,8 @@
+This is a property of type [[Has type::Text]].
+
+The allowed values for this property are:
+* [[Allows value::decreased]]
+* [[Allows value::increased]]
+* [[Allows value::unchanged]]
+
+[[Has property description::Phylogenetic diversity, takes into account phylogenetic distance of all taxa identified in a sample@en]]

@@ -1,0 +1,50 @@
+ANCOM
+ANCOM-BC
+ANCOM-BC2
+ANOSIM
+ANOVA
+Beta Binomial Regression
+Chi-Square
+Cox Proportional-Hazards Regression
+Decision Trees (xgBoost, gradient boosting)
+distance-based redundancy analysis (db-RDA)
+Dunn's test
+Dunnett's test
+DESeq2
+edgeR
+Fisher's Exact Test
+Fold-change cutoff
+G-test
+Jonckheere's trend test
+Kolmogorov-Smirnov Test
+Kruskall-Wallis
+LASSO Regression
+LEfSe
+Linear Discriminant Analysis
+Linear Regression
+Logistic Regression
+Mann-Whitney (Wilcoxon)
+MaAsLin2
+MaAsLin3
+metagenomeSeq
+Meta-Analysis
+Metastats
+Mixed-Effects Regression
+Negative Binomial Regression
+NLMIXED
+Pearson Correlation
+PERMANOVA
+Permutation Test
+PLS-DA (Partial least square discriminant analysis)
+Post-Hoc Pairwise
+Random Forest Analysis
+Songbird
+Sparse Correlations for Compositional data (SparCC)
+Spearman Correlation
+Structural Equation Modeling (SEM)
+T-Test
+treeDA
+Wald Test
+Welch's T-Test
+Zero-Inflated Beta Regression
+Zero-Inflated Negative Binomial Regression

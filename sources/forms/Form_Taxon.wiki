@@ -1,0 +1,41 @@
+<includeonly>
+<div class="taxon-filters alert-info border-top-0"><!--
+
+-->{{{info|query title=Taxon lookup|query form at top}}}{{{for template|Taxon}}}{{{field
+ |NCBI
+ |input type=regexp
+ |regexp=/^\d*$/
+ |message={{int:only-numbers}}
+ |class=form-control
+ |placeholder=Enter NCBI ID
+ |hidden
+}}}
+<div class="d-flex flex-column flex-lg-row w-100">
+<div class="d-flex flex-column flex-lg-row px-1 mb-2 mb-lg-0 align-items-lg-center justify-content-lg-center">
+<div class="font-weight-bold pr-3">Body site:</div>
+<div>{{{field
+  |Body site
+  |input type=combobox
+  |values from property=Body site
+}}}
+</div>
+</div>
+<div class="d-flex flex-column flex-lg-row px-1 mb-2 mb-lg-0 align-items-lg-center justify-content-lg-center">
+<div class="font-weight-bold pr-3">Condition:</div>
+<div>{{{field
+  |Condition
+  |input type=combobox
+  |values from property=Condition
+}}}
+</div>
+</div>
+<div class="d-flex flex-column flex-lg-row px-1 mb-2 mb-lg-0 align-items-lg-center justify-content-lg-center">{{{standard input|run query|class=mw-ui-button mw-ui-progressive|label=Filter}}}
+</div>
+</div>
+{{{end template}}}
+</div>
+</includeonly><noinclude>
+Check also a [[Form:Taxon lookup|twin form]]:
+
+{{#queryformlink: form=Taxon_lookup|link text=<span class="mw-ui-button mw-ui-progressive">Taxon lookup</span>}}
+</noinclude>

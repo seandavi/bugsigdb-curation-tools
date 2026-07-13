@@ -1,0 +1,26 @@
+<noinclude>
+
+This is the "Review" form to create an edit pages at the Review namespace.
+[[Category:Document states]]
+
+</noinclude><includeonly>
+{{{info|create title=Create a Review|edit title=Edit a <page name>}}}
+<div id="wikiPreview" style="display: none; padding-bottom: 25px; margin-bottom: 25px; border-bottom: 1px solid #AAAAAA;"></div>
+{{{for template|Review}}}
+{| class="formtable"
+! Reviewer: {{FieldTooltip|Reviewer}}
+| {{{field|Reviewer|default=current user}}}
+|-
+! Review date: {{FieldTooltip|Review date}}
+| {{{field|Review date|default=now}}}
+|-
+! Review state: {{FieldTooltip|Review state}}
+| {{{field|Review state|input type=dropdown|mandatory|values=Reviewed,Incorrect|default=Reviewed}}}
+|-
+! Quality control tags: {{FieldTooltip|Quality control tag}}
+| {{{field|Quality control tag|property=Quality control tag|input type=tokens|list}}}
+|}
+{{{end template}}}
+
+{{{standard input|save|label=Save the Review}}} {{{standard input|cancel}}}
+</includeonly>

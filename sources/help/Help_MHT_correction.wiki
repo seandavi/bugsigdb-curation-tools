@@ -1,0 +1,10 @@
+https://multipletesting.com/publication
+
+LEfSe doesn’t do multiple testing correction. However, it is possible to take the p-value from LEfSe and adjust them for multiple testing in R. This is uncommon.
+
+Identifying MHT correction in a paper
+The use of MHT correction is usually denoted by the name of the correction in the methods or results (e.g. "Bonferroni", "False Discovery Rate," "FDR," "Benjamini-Hochberg")
+It is also present if the authors use q-values instead of p-values or mention a correction for multiple hypotheses.
+Common pitfalls
+Some statistical tests such as DESeq2 correct for MHT by default while others such as LEfSe do not.
+Occasionally, some studies will report both MHT-corrected and uncorrected p-values. Generally, we curate the MHT-corrected list.

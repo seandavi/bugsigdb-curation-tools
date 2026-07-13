@@ -1,0 +1,13 @@
+<noinclude>
+
+Queries property by name equal to the first parameter value (without prefix) and displays its description text as an info tooltip.
+
+The template will return nothing if target property page does not exist.
+
+<pre>{{FieldTooltip|Host species}}</pre>
+
+produces:
+
+{{FieldTooltip|Host species}}
+
+</noinclude><includeonly>{{#invoke:FieldTooltip|tooltip|{{{1|}}}}}</includeonly>

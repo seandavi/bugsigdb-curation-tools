@@ -1,0 +1,3 @@
+This is a property of type [[Has type::Text]].
+
+[[Has property description::Diagnostic criteria applied to define the specific condition / phenotype represented in the case (exposed) group @en]]

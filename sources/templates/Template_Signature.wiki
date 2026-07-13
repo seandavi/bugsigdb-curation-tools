@@ -1,0 +1,32 @@
+<noinclude>
+This is the "Signature" template.
+It should be called in the following format:
+<pre>
+{{Signature
+|study=
+|Pielou=
+|Shannon=
+|Chao1=
+|Simpson=
+|Inverse Simpson=
+|Richness=
+|source=
+|description=
+|body site=
+|condition=
+|curated date=
+|curator=
+|revision editor=
+|statistical test=
+|significance threshold=
+|MHT correction=
+|Group 0 sample size=
+|Group 1 sample size=
+|Group 0 definition=
+|Group 1 definition=
+|Abundance in Group 1=
+|State=
+}} 
+</pre>
+Edit the page to see the template text.
+</noinclude><includeonly>{{#invoke:Signature|signature}}</includeonly>

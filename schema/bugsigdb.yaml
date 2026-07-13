@@ -1,0 +1,995 @@
+id: https://bugsigdb.org/schema/bugsigdb
+name: bugsigdb
+title: BugSigDB Curation Schema
+description: >-
+  LinkML representation of the BugSigDB curation model, reverse-engineered from the
+  Semantic MediaWiki + Page Forms application at https://bugsigdb.org (Forms, Templates,
+  Properties, and controlled-vocabulary "/Values" pages, plus the Help: curation guidance
+  pages).
+
+  BugSigDB captures published *microbial signatures*: sets of microbial taxa reported as
+  differentially abundant between two groups of samples in a published study. The curation
+  model is a three-level hierarchy — Study -> Experiment -> Signature — annotated with
+  controlled vocabularies and ontology terms (EFO for condition, UBERON for body site,
+  NCBI Taxonomy for host species and signature taxa).
+
+  HIERARCHY. A Study is one publication (page name = PMID). A Study contains one or more
+  Experiments; each Experiment is a single two-group comparison (Group 0 = control/reference,
+  Group 1 = case/exposed) with its subject, laboratory and statistical context. Each Experiment
+  contains one or more Signatures; a Signature is the set of taxa reported as changing in one
+  direction (increased or decreased in Group 1 relative to Group 0). A paper reporting, e.g.,
+  "increased" and "decreased" taxa for one comparison yields two Signatures under one Experiment.
+
+  CURATION + REVIEW WORKFLOW. Every curatable page carries a form-completion State: a curator
+  works in 'Incomplete' while editing and switches to 'Complete' to submit the page to a
+  reviewer (see CurationStateEnum). Reviewers then attach Review pages whose Review state is
+  'Reviewed' (verified correct) or 'Incorrect'. Pages can additionally be flagged 'Missing
+  review', 'Stale reviews' (edited since last review) or 'Flagged for review' (see
+  Help:Needs_review). Study-level quality problems are recorded with QualityControlTagEnum.
+
+  ENRICHMENT PASS (this file). Structure (classes, slots, enums, cardinalities, ontology
+  bindings) is unchanged from the first pass; descriptions, curator/agent comments, examples,
+  defaults and constraints have been added from the wiki sources (Forms, Templates, Property
+  tooltips, /Values snapshots and Help pages).
+license: https://creativecommons.org/licenses/by/4.0/
+see_also:
+  - https://bugsigdb.org
+  - https://bugsigdb.org/Help:How_to_add_a_Study
+  - https://bugsigdb.org/Help:Study_Design
+  - https://bugsigdb.org/Help:Quality_control
+  - https://bugsigdb.org/Help:Needs_review
+  - https://bugsigdb.org/Help:MHT_correction
+  - https://bugsigdb.org/Help:Glossary
+  - https://bioconductor.org/packages/bugsigdbr
+  - https://doi.org/10.1038/s41587-023-01872-y
+comments:
+  - "Source of truth for this schema is the live Semantic MediaWiki at https://bugsigdb.org; a local scrape lives under sources/ (forms/, templates/, properties/, values/, help/)."
+  - "AGENT: the extraction target is one Study page per publication, with nested Experiment and Signature subobjects. Emit taxa as NCBI Taxonomy IDs; emit condition/body_site/host_species as controlled-vocabulary labels that map to EFO/UBERON/NCBITaxon terms respectively."
+  - "AGENT: many fields are optional and legitimately absent in a paper. Leave a field blank rather than guessing; only 'Host species' has an explicit sentinel default ('Not specified')."
+default_range: string
+default_prefix: bugsigdb
+
+prefixes:
+  bugsigdb: https://bugsigdb.org/schema/bugsigdb/
+  linkml: https://w3id.org/linkml/
+  schema: http://schema.org/
+  dcterms: http://purl.org/dc/terms/
+  skos: http://www.w3.org/2004/02/skos/core#
+  EFO: http://www.ebi.ac.uk/efo/EFO_
+  UBERON: http://purl.obolibrary.org/obo/UBERON_
+  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_
+  DOID: http://purl.obolibrary.org/obo/DOID_
+  MONDO: http://purl.obolibrary.org/obo/MONDO_
+  ORPHANET: http://www.orpha.net/ORDO/Orphanet_
+  NCIT: http://purl.obolibrary.org/obo/NCIT_
+  GAZ: http://purl.obolibrary.org/obo/GAZ_
+  PMID: http://identifiers.org/pubmed/
+  DOI: https://doi.org/
+
+imports:
+  - linkml:types
+
+# ---------------------------------------------------------------------------
+# CLASSES
+# ---------------------------------------------------------------------------
+classes:
+
+  CurationProvenance:
+    mixin: true
+    description: >-
+      Curation-workflow metadata attached to every curatable page in BugSigDB
+      (Study, Experiment, Signature). Not part of the scientific content; records
+      who curated the page, when, and where it sits in the review workflow.
+    comments:
+      - "AGENT: these are provenance/workflow fields, not scientific content. Curator, curated_date and revision_editor are set by the wiki from the page's creator/editor history and normally should not be fabricated during extraction. curation_state defaults to 'Incomplete'."
+    slots:
+      - curation_state
+      - curator
+      - curated_date
+      - revision_editor
+      - reviews
+
+  Study:
+    description: >-
+      A single published study (usually one PubMed publication) from which one or
+      more microbial signatures were curated. The wiki page name is the PMID (or
+      "Study_<id>" when no PMID applies).
+    comments:
+      - "CURATOR: create a Study by entering the PMID (integers only, no leading zeroes) as the page name (Help:How_to_add_a_Study). If the PMID does not apply, name the page 'Study_<other identifier>'. If 'must be unique' appears, the study is already in BugSigDB."
+      - "CURATOR: in Auto citation mode almost all bibliographic fields are pulled from PubMed; you normally only choose the study design and optionally add DOI/URI."
+      - "AGENT: one Study == one publication. Do not split a single paper into multiple Studies; use nested Experiments for its separate comparisons."
+    mixins:
+      - CurationProvenance
+    slots:
+      - pmid
+      - doi
+      - uri
+      - citation_mode
+      - title
+      - authors
+      - journal
+      - year
+      - pages
+      - first_page
+      - keywords
+      - abstract
+      - study_design
+      - experiments
+    slot_usage:
+      pmid:
+        identifier: true
+
+  Experiment:
+    description: >-
+      A single comparison within a study: one set of samples split into two groups
+      (Group 0 = control/reference, Group 1 = case/exposed) that were tested for
+      differential microbial abundance, together with the host, epidemiological,
+      laboratory, and statistical context of that comparison. Page name is
+      "<Study>/Experiment_<n>".
+    comments:
+      - "CURATOR: add an Experiment from the Study page ('Add a new experiment'). If a subsequent comparison reuses most fields, use 'Duplicate this Experiment' and edit the differences. Group 0 is always the control/reference/unexposed arm and Group 1 the case/exposed arm — keep this orientation consistent because every downstream direction (abundance, alpha diversity) is expressed relative to it."
+      - "AGENT: create one Experiment per distinct two-group comparison in the paper (e.g. per body site, per cohort, per timepoint). A study comparing cases vs controls at two body sites is two Experiments. Populate subject/epidemiology, lab and statistical context per comparison."
+      - "AGENT: fields under '16S variable region' apply only when sequencing_type == '16S' (form shows them conditionally). Leave them blank for 18S/WMS/ITS/PCR."
+    mixins:
+      - CurationProvenance
+    slots:
+      - study
+      # subject / epidemiology
+      - location_of_subjects
+      - host_species
+      - body_site
+      - condition
+      - group_0_name
+      - group_1_name
+      - group_0_definition
+      - group_1_definition
+      - group_0_sample_size
+      - group_1_sample_size
+      - antibiotics_exclusion
+      # lab analysis
+      - sequencing_type
+      - variable_region_lower_bound
+      - variable_region_upper_bound
+      - sequencing_platform
+      # statistical analysis
+      - data_transformation
+      - statistical_test
+      - significance_threshold
+      - mht_correction
+      - lda_score_above
+      - matched_on
+      - confounders_controlled_for
+      # alpha diversity (whole-community, not per-taxon)
+      - pielou
+      - shannon
+      - chao1
+      - simpson
+      - inverse_simpson
+      - richness
+      - faith
+      # contained signatures
+      - signatures
+
+  Signature:
+    description: >-
+      A microbial signature: the set of taxa reported as differentially abundant in
+      one direction (increased or decreased in Group 1 relative to Group 0) within a
+      single experiment. Page name is "<Study>/Experiment_<n>/Signature_<m>".
+    comments:
+      - "CURATOR: add a Signature from an Incomplete Experiment page. Each Signature holds ONE direction of change; a comparison reporting both up- and down-abundant taxa is entered as two Signatures (one with Abundance in Group 1 = increased, one = decreased)."
+      - "CURATOR: enter taxa by name (autocomplete only knows names already in BugSigDB) or, if not found, by numeric NCBI Taxonomy ID looked up at the NCBI Taxonomy Browser."
+      - "AGENT: read the direction from the paper (which group the taxon was enriched in) and set abundance_in_group_1 accordingly; then list every taxon reported for that direction. Map each taxon to an NCBI Taxonomy ID; if no ID can be found, still record the name (it becomes a 'Pages with missing NCBI ID' cleanup item)."
+    mixins:
+      - CurationProvenance
+    slots:
+      - source
+      - description
+      - abundance_in_group_1
+      - taxa
+
+  Taxon:
+    description: >-
+      A microbial (or, for host_species, organismal) taxon identified by its NCBI
+      Taxonomy ID. Used both as the members of a Signature and, via the Taxon lookup
+      form, as a browseable node in the NCBI taxonomy tree.
+    comments:
+      - "AGENT: the authoritative identifier is the integer NCBI Taxonomy ID (ncbi_id). taxon_name, taxonomic_rank and lineage are derived from the NCBI taxonomy for that ID and need not be extracted independently; when curating, prefer resolving the reported name to its NCBI ID."
+      - "CURATOR: taxa may be reported at any rank (phylum to strain). Record the taxon at the rank the paper reports it; the taxonomy tree provides parents/lineage automatically."
+    slots:
+      - ncbi_id
+      - taxon_name
+      - taxonomic_rank
+      - lineage
+    slot_usage:
+      ncbi_id:
+        identifier: true
+
+  Review:
+    description: >-
+      A curator/reviewer's assessment of a Study, Experiment, or Signature page.
+      Lives in the Review namespace and drives the review workflow (see Help:Needs review).
+    comments:
+      - "CURATOR/REVIEWER: a Review is created from a 'Complete' page via the 'Mark for review / as reviewed' control. Reviewer defaults to the current user and Review date to now. Review state is mandatory (Reviewed or Incorrect). Quality control tags are optional and describe problems with the underlying study, not with the data entry."
+      - "AGENT: Reviews are a human QC artifact and are generally NOT produced by automated extraction from a paper. An extraction agent populates Study/Experiment/Signature content; leave Review creation to human reviewers unless explicitly tasked."
+    slots:
+      - reviewer
+      - review_date
+      - review_state
+      - quality_control_tags
+      - review_subject
+
+# ---------------------------------------------------------------------------
+# SLOTS
+# ---------------------------------------------------------------------------
+slots:
+
+  # --- identifiers & citation (Study) ---
+  pmid:
+    description: >-
+      PubMed identifier of the source publication. Tooltip: "PubMed identifier for
+      scientific articles." Serves as the Study page name (integers only, no leading zeroes).
+    range: integer
+    slot_uri: bugsigdb:PMID
+    exact_mappings:
+      - PMID
+    comments:
+      - "CURATOR: the PMID IS the page name. Enter integers only with no leading zeroes. If the article has no PMID, name the page 'Study_<other identifier>' and leave this empty; a PMID acquired later is added by moving/renaming the page."
+      - "AGENT: extract the numeric PubMed ID from the article record. Do not include the 'PMID:' prefix. External URL pattern: https://pubmed.ncbi.nlm.nih.gov/$1/"
+    examples:
+      - value: "27409883"
+  doi:
+    description: >-
+      Digital Object Identifier of the source publication. Tooltip: "Digital object
+      identifier for electronic documents."
+    slot_uri: bugsigdb:DOI
+    comments:
+      - "CURATOR: optional but encouraged for reader context. External formatter URI: http://dx.doi.org/$1"
+      - "AGENT: record the bare DOI (e.g. 10.1038/s41587-023-01872-y), not a full URL."
+    examples:
+      - value: "10.1038/s41587-023-01872-y"
+  uri:
+    description: >-
+      URL/URI of the source publication. Tooltip (from Property:URL): "Uniform resource
+      identifier for web resources."
+    slot_uri: schema:url
+    comments:
+      - "CURATOR: optional direct link to the publication's external page; use when a DOI is unavailable or to give readers fuller context."
+  citation_mode:
+    description: >-
+      Whether citation metadata was filled automatically from the PMID (Auto) or entered
+      manually (Manual). Mandatory radio button on the Study form; default Auto.
+    range: CitationModeEnum
+    required: true
+    ifabsent: string(Auto)
+    comments:
+      - "CURATOR: leave on Auto for PMID-based studies — title/authors/journal/year/pages/keywords/abstract are pulled from PubMed. Switch to Manual only when no PMID applies; the manual citation fields (title, authors, journal, year, pages, first_page, keywords, abstract) are revealed only in Manual mode."
+      - "AGENT: use Auto when a PMID is available (leave the citation fields for PubMed to fill). Use Manual and populate the citation fields yourself only when there is no PMID."
+  title:
+    description: Publication title. Populated from PubMed in Auto mode; entered by hand in Manual mode.
+    slot_uri: dcterms:title
+    comments:
+      - "AGENT: only extract when citation_mode is Manual; in Auto mode PubMed supplies it."
+  authors:
+    description: Publication authors. Multivalued; comma-delimited on the Study form's manual citation.
+    multivalued: true
+    slot_uri: dcterms:creator
+    comments:
+      - "CURATOR: multiple values allowed. Manual-mode delimiter is a comma."
+      - "AGENT: only populate in Manual mode; otherwise PubMed provides the author list."
+  journal:
+    description: Journal name. Manual-mode field accepts a single value (select existing or type a new title).
+    comments:
+      - "AGENT: single-valued; only populate in Manual mode."
+  year:
+    description: Publication year (four digits).
+    range: integer
+    comments:
+      - "AGENT: four-digit calendar year of publication; Manual mode only."
+  pages:
+    description: Page range (or number of pages) of the publication.
+    comments:
+      - "CURATOR: 'number of pages or page range'. Manual mode only. Stored as free text (e.g. '123-145')."
+  first_page:
+    description: First page of the article within the journal volume.
+    range: integer
+    comments:
+      - "CURATOR: numeric first page. Manual mode only."
+  keywords:
+    description: Publication keywords. Multivalued; semicolon-delimited on the manual citation form.
+    multivalued: true
+    comments:
+      - "CURATOR: multiple values allowed; form delimiter is a semicolon. Manual mode only."
+  abstract:
+    description: Publication abstract (a synopsis of the study scope and results).
+    comments:
+      - "AGENT: Manual mode only; in Auto mode PubMed supplies the abstract."
+  study_design:
+    description: >-
+      Design(s) of the study, chosen from a fixed vocabulary (see StudyDesignEnum and
+      Help:Study_Design for definitions and worked examples). Multivalued on the Study form.
+    multivalued: true
+    range: StudyDesignEnum
+    comments:
+      - "CURATOR: mandatory in practice — chosen from the dropdown on every Study. Form is multivalued with a SEMICOLON (;) delimiter; more than one design is unusual but allowed (e.g. a nested case-control within a cohort). See Help:Study_Design for how to distinguish case-control vs cross-sectional vs longitudinal vs prospective cohort."
+      - "AGENT: infer from Methods. Key discriminators (Help:Study_Design): Case-control = subjects selected BY case/control status; Cross-sectional = individuals compared at one timepoint, not selected on outcome; Time series/longitudinal = repeated observations of the SAME subjects over time; Prospective cohort = recruited on a shared trait then followed forward; RCT = treatment assigned randomly by researchers; Laboratory experiment = researcher controls the contrast (often animal models); Meta-analysis = pools external datasets/literature (pooling the authors' own two datasets does NOT count)."
+    examples:
+      - value: case-control
+      - value: prospective cohort
+
+  # --- containment ---
+  experiments:
+    description: Experiments (group comparisons) curated from this study.
+    multivalued: true
+    range: Experiment
+    inlined_as_list: true
+  signatures:
+    description: Signatures (up/down taxon sets) curated from this experiment.
+    multivalued: true
+    range: Signature
+    inlined_as_list: true
+  study:
+    description: The study this experiment belongs to (back-reference).
+    range: Study
+  taxa:
+    description: Member taxa of the signature.
+    multivalued: true
+    range: Taxon
+    inlined_as_list: true
+
+  # --- subject / epidemiology (Experiment) ---
+  location_of_subjects:
+    description: >-
+      Country/countries from which study subjects were recruited. Tooltip: "Country from
+      which study subjects were recruited."
+    multivalued: true
+    comments:
+      - "CURATOR: token input restricted to existing values; the vocabulary is a list of country names (see Property:Location of subjects/Values, ~197 countries in sources/values/Property_Location_of_subjects_Values.wiki). Multivalued, COMMA-delimited. Leave empty if the paper does not state where subjects were recruited."
+      - "AGENT: normalize to the country name form used by the value list (English short names close to ISO-3166, e.g. 'United States of America', 'Korea, Republic of'). Extract the country where subjects/samples were RECRUITED, not the authors' affiliation country. If unstated, leave blank."
+      - "AGENT: the wiki stores plain country labels (no ontology CURIE); a GAZ/ISO-3166 mapping is not stored. Do not invent codes."
+    examples:
+      - value: China
+      - value: United States of America
+  host_species:
+    description: >-
+      Host organism from which the microbiome was sampled. Tooltip: "Species from which
+      microbiome was sampled. Contact us to have more species added." Mandatory dropdown;
+      defaults to the sentinel 'Not specified'.
+    required: true
+    ifabsent: string(Not specified)
+    comments:
+      - "CURATOR: MANDATORY single-select dropdown; if the host is not stated choose 'Not specified' (the default). The closed list (~128 species plus 'Not specified') lives at Property:Host species/Values (sources/values/Property_Host_species_Values.wiki); to add a missing species, contact the administrators."
+      - "AGENT: default to 'Homo sapiens' only when the paper is clearly a human microbiome study; otherwise use the exact scientific (Latin binomial) name as it appears in the value list. If the host cannot be determined, emit 'Not specified' rather than guessing."
+      - "AGENT: values are organismal NCBI Taxonomy names (single-valued here, unlike the microbial signature taxa). Match the NCBITaxon organismal scientific name."
+    examples:
+      - value: Homo sapiens
+      - value: Mus musculus
+      - value: Not specified
+  body_site:
+    description: >-
+      Anatomical site(s) from which microbial samples were extracted. Tooltip: "Anatomical
+      site where microbial samples were extracted from according to the Uber Anatomy Ontology."
+    multivalued: true
+    comments:
+      - "CURATOR: token input, EXISTING VALUES ONLY, SEMICOLON (;) delimiter. Pick a canonical BugSigDB Glossary term (Category:Body site); the form matches typed text against term aliases. Use the 'Find a term' link to the UBERON ontology in OLS to locate the right anatomy term. If the desired site is missing, ask an administrator to add a Glossary term. ~61 current terms in sources/values/Property_Body_site_Values.wiki."
+      - "AGENT: ontology = UBERON (Uber-anatomy Ontology). Map the sampled anatomical site to the closest existing BugSigDB body-site Glossary label (e.g. 'feces', 'oral cavity'->'mouth', 'gut'->map to the specific site sampled). Prefer the specific sampled site over a general region. Emit the Glossary LABEL (the wiki stores the UBERON CURIE separately via the term page). Leave blank if not stated."
+      - "AGENT: the term page carries the UBERON id; the Experiment template derives 'UBERON ID' (UBERON:nnnnnnn) from the matched Glossary term. You supply the label, not the CURIE."
+    examples:
+      - value: feces
+      - value: nasal cavity
+  condition:
+    description: >-
+      Experimental condition / phenotype studied. Tooltip: "The experimental condition /
+      phenotype studied according to the Experimental Factor Ontology."
+    multivalued: true
+    comments:
+      - "CURATOR: token input, EXISTING VALUES ONLY, SEMICOLON (;) delimiter. Pick a canonical BugSigDB Glossary term (Category:Condition); typed text is matched against term aliases. Use the 'Find a term' link to the EFO ontology in OLS. Conditions are health-related issues, diseases, exposures or social conditions (Help:Glossary). If missing, request that an administrator add the Glossary term."
+      - "AGENT: ontology = EFO (Experimental Factor Ontology). Map the studied phenotype/disease/exposure that DEFINES the case group to the closest existing Condition Glossary label (e.g. 'colorectal cancer', 'type II diabetes mellitus', 'cigarette smoking'). Emit the Glossary LABEL; the term page holds the EFO id and the template derives 'EFO ID'. Leave blank if the comparison is not defined by a condition."
+    examples:
+      - value: colorectal cancer
+      - value: type II diabetes mellitus
+  group_0_name:
+    description: >-
+      Short name of the control/reference (Group 0) arm. Tooltip: "Corresponds to the
+      control (unexposed) group for case-control studies."
+    comments:
+      - "CURATOR: Group 0 is the control/reference/unexposed/baseline arm. Give a concise label (e.g. 'Controls', 'Non-smokers', 'Healthy')."
+      - "AGENT: identify the reference arm of the comparison and name it. All direction fields (abundance_in_group_1, alpha diversity) are relative to Group 0 as baseline, so getting the orientation right is critical."
+    examples:
+      - value: Non-smokers
+  group_1_name:
+    description: >-
+      Short name of the case/exposed (Group 1) arm. Tooltip: "Corresponds to the case
+      (exposed) group for case-control studies."
+    comments:
+      - "CURATOR: Group 1 is the case/exposed/treated arm — the group of interest whose enrichment is described."
+      - "AGENT: name the exposed/case arm (e.g. 'Smokers', the disease group). This is the group that 'increased'/'decreased' abundance refers to."
+    examples:
+      - value: Smokers
+  group_0_definition:
+    description: >-
+      Full definition / inclusion criteria of the control (Group 0) arm.
+    comments:
+      - "CURATOR: free text. NOTE: the Experiment form does not expose a 'Group 0 definition' field (only Group 1 definition is on the form); this property exists in the data model and may be populated via templates/import. Human follow-up: confirm whether Group 0 definitions are curated in practice."
+      - "AGENT: not a standard Experiment-form field — do not fabricate. Populate only if a control-group definition is explicitly available."
+  group_1_definition:
+    description: >-
+      Diagnostic/inclusion criteria defining the case (Group 1) arm. Tooltip: "Diagnostic
+      criteria applied to define the specific condition / phenotype represented in the case
+      (exposed) group."
+    comments:
+      - "CURATOR: textarea. Capture how the case group was defined (diagnostic criteria, exposure threshold, etc.)."
+      - "AGENT: extract the operational definition of the case group from Methods (e.g. 'Endoscopically and histologically confirmed colorectal adenocarcinoma')."
+    examples:
+      - value: "Histologically confirmed colorectal adenocarcinoma"
+  group_0_sample_size:
+    description: >-
+      Number of subjects in the control (Group 0) arm. Tooltip: "Number of subjects in the
+      control (unexposed) group."
+    range: integer
+    comments:
+      - "AGENT: integer count of subjects/samples in the reference arm for THIS comparison (may differ from the study-wide N if the comparison uses a subset)."
+    examples:
+      - value: "45"
+  group_1_sample_size:
+    description: >-
+      Number of subjects in the case (Group 1) arm. Tooltip: "Number of subjects in the
+      case (exposed) group."
+    range: integer
+    comments:
+      - "AGENT: integer count of subjects/samples in the case arm for THIS comparison."
+    examples:
+      - value: "52"
+  antibiotics_exclusion:
+    description: >-
+      Antibiotic-related exclusion criteria applied to participants. Tooltip: "Number of
+      days without antibiotics usage (if applicable) and other antibiotics-related criteria
+      used to exclude participants (if any)."
+    comments:
+      - "CURATOR: free text (textarea). Record the antibiotic washout period and any other antibiotic-related exclusion rule."
+      - "AGENT: extract from Methods, e.g. 'No antibiotics within 3 months prior to sampling'. Leave blank if the paper is silent."
+    examples:
+      - value: "No antibiotic use within the prior 3 months"
+
+  # --- lab analysis (Experiment) ---
+  sequencing_type:
+    description: >-
+      Experimental technique used for quantifying microbial abundance. Tooltip:
+      "Experimental technique used for quantifying microbial abundance." One of 16S, 18S,
+      WMS (whole-metagenome shotgun), ITS / ITS2, PCR.
+    range: SequencingTypeEnum
+    comments:
+      - "CURATOR: single-select dropdown. Selecting '16S' reveals the 16S variable region (lower/upper bound) fields; they stay hidden for other types."
+      - "AGENT: read from Methods. 16S rRNA amplicon -> '16S'; shotgun metagenomics -> 'WMS'; 18S rRNA -> '18S'; fungal ITS -> 'ITS / ITS2'; targeted qPCR/PCR of specific taxa -> 'PCR'."
+  variable_region_lower_bound:
+    description: >-
+      Lower (or only) 16S rRNA hypervariable region sequenced. Property tooltip: "One or
+      more hypervariable region(s) of the bacterial 16S gene." Region number 1-9 (shown as V1..V9).
+    range: SixteenSRegionEnum
+    comments:
+      - "CONDITIONAL: only applies when sequencing_type == '16S' (form hides these fields otherwise). Leave blank for 18S/WMS/ITS/PCR."
+      - "CURATOR: displayed prefixed with 'V' (e.g. V3). For a single region (e.g. V4) set only the lower bound; for a range (e.g. V3-V4) set lower=3 and upper=4."
+      - "AGENT: extract the amplified region(s), e.g. 'V3-V4' -> lower_bound=3, upper_bound=4; 'V4' -> lower_bound=4, upper_bound blank."
+    examples:
+      - value: "3"
+  variable_region_upper_bound:
+    description: >-
+      Upper 16S rRNA hypervariable region when a contiguous range was sequenced (only set
+      if the amplicon spans more than one region). Region number 1-9.
+    range: SixteenSRegionEnum
+    comments:
+      - "CONDITIONAL: only applies when sequencing_type == '16S'. Set ONLY when a range of regions was sequenced (e.g. V3-V4); leave blank for a single region."
+      - "AGENT: the tooltip note on the form reads 'upper bound - only set if needed'."
+    examples:
+      - value: "4"
+  sequencing_platform:
+    description: >-
+      Manufacturer/instrument platform used to quantify microbial abundance. Tooltip:
+      "Manufacturer and experimental platform used for quantifying microbial abundance."
+    multivalued: true
+    range: SequencingPlatformEnum
+    comments:
+      - "CURATOR: token input, existing values only; multivalued (COMMA-delimited) since some studies use more than one platform. ~17 permissible values (SequencingPlatformEnum)."
+      - "AGENT: map the sequencer named in Methods to the closest enum value (e.g. 'Illumina MiSeq/HiSeq/NovaSeq' -> 'Illumina'; 'Ion PGM' -> 'Ion Torrent'; '454 pyrosequencing' -> 'Roche454'; 'Oxford Nanopore' -> 'Nanopore'). Leave blank if unstated."
+    examples:
+      - value: Illumina
+
+  # --- statistical analysis (Experiment) ---
+  data_transformation:
+    description: >-
+      Transformation applied to microbial abundance measurements before differential
+      abundance testing. Tooltip: "Data transformation applied to microbial abundance
+      measurements prior to differential abundance testing (if any)."
+    range: DataTransformationEnum
+    comments:
+      - "CURATOR: single-select dropdown. See Help:Data_Transformations for pairing with tests (e.g. raw counts with DESeq2/negative binomial; relative abundance with t-test/Mann-Whitney/linear regression; centered log-ratio with ANCOM/CORNCOB)."
+      - "AGENT: infer from the abundance representation described in Methods. 'CLR' -> 'centered log-ratio'; proportions/% -> 'relative abundances'; untransformed OTU/ASV counts -> 'raw counts'; ln(x) -> 'log transformation'; ALR -> 'additive log-ratio'; asin(sqrt(x)) -> 'arcsine square-root'. Leave blank if none stated."
+  statistical_test:
+    description: >-
+      Statistical test or computational tool used for differential abundance testing.
+      Tooltip: "Statistical test or computational tool used for differential abundance testing."
+    multivalued: true
+    range: StatisticalTestEnum
+    comments:
+      - "CURATOR: token input, existing values only; multivalued (COMMA-delimited) — a study may use several tests. ~49 permissible values snapshot in sources/values/Property_Statistical_test_Values.wiki; the enum in this schema is a superset kept from the first pass."
+      - "AGENT: record every method used for the differential-abundance result being curated (e.g. 'LEfSe', 'DESeq2', 'Mann-Whitney (Wilcoxon)', 'ANCOM-BC'). Match tool names to the exact enum spelling. If a named tool is absent from the enum, flag for administrator addition rather than approximating."
+    examples:
+      - value: LEfSe
+      - value: DESeq2
+  significance_threshold:
+    description: >-
+      p-value or FDR/q-value threshold used for differential abundance testing. Tooltip:
+      "p-value or FDR threshold used for differential abundance testing (if any)."
+    range: float
+    comments:
+      - "CURATOR: numeric. Record the cutoff applied to declare significance (commonly 0.05, 0.01, 0.1). If MHT correction was applied this is typically the FDR/q threshold."
+      - "AGENT: extract the numeric alpha/FDR used to define the reported signature. Leave blank if no explicit threshold is given."
+    examples:
+      - value: "0.05"
+  mht_correction:
+    description: >-
+      Whether the statistical tests were corrected for multiple hypothesis testing.
+      Tooltip: "Have statistical tests be corrected for multiple hypothesis testing (MHT)?"
+    range: boolean
+    comments:
+      - "CURATOR: yes/no. See Help:MHT_correction — correction is indicated by naming a method (Bonferroni, FDR, Benjamini-Hochberg) or by reporting q-values. Note DESeq2 corrects by default; LEfSe does not. If both corrected and uncorrected results are reported, curate the corrected list."
+      - "AGENT: set true if the Methods mention any MHT-correction method or q-values/FDR; false if explicitly uncorrected p-values only. Leave blank if genuinely indeterminable."
+  lda_score_above:
+    description: >-
+      Linear discriminant analysis (LDA) score threshold for LEfSe analyses. Tooltip:
+      "Threshold for the linear discriminant analysis (LDA) score for studies using the
+      popular LEfSe tool."
+    range: float
+    comments:
+      - "CURATOR: numeric; applies to LEfSe-based signatures (common cutoffs 2.0, 3.0, 4.0). Leave blank for non-LEfSe analyses."
+      - "AGENT: extract only when LEfSe/LDA is used and a score cutoff is stated (e.g. 'LDA score > 2')."
+    examples:
+      - value: "2.0"
+  matched_on:
+    description: >-
+      Factors on which cases and controls were matched in the study design. Tooltip:
+      "Factors on which subjects have been matched on in a case-control study."
+    multivalued: true
+    comments:
+      - "CURATOR: token input; multivalued (COMMA-delimited). Shares its ~289-value autocomplete list with 'Confounders controlled for' (sources/values/Property_Matched_on_Values.wiki). Matching is a DESIGN-stage control (subjects paired on a factor); distinct from confounders_controlled_for, which is an ANALYSIS-stage adjustment."
+      - "AGENT: extract factors the authors matched participants on (e.g. age, sex, BMI). Normalize to the shared value list where possible; leave blank if no matching was done."
+    examples:
+      - value: age
+      - value: sex
+  confounders_controlled_for:
+    description: >-
+      Confounding factors accounted for by stratification or model adjustment. Tooltip:
+      "Confounding factors that have been accounted for by stratification or model adjustment."
+    multivalued: true
+    comments:
+      - "CURATOR: token input; multivalued (COMMA-delimited). Draws from the same value list as 'Matched on' (Property:Confounders controlled for/Values transcludes Property:Matched on/Values). Use for factors adjusted for statistically, as opposed to design-stage matching."
+      - "AGENT: extract covariates included in the statistical model or used for stratification (e.g. age, BMI, antibiotic use). Leave blank if none reported."
+    examples:
+      - value: body mass index
+
+  # --- alpha diversity (Experiment) ---
+  # NOTE: every alpha-diversity slot records the whole-community direction of change in
+  # Group 1 (case/exposed) RELATIVE TO Group 0 (control/reference): increased / decreased /
+  # unchanged. These are per-Experiment (not per-taxon). AGENT: only populate when the paper
+  # reports a between-group alpha-diversity comparison for that specific metric; leave blank
+  # if the metric was not reported. 'unchanged' means reported as not significantly different.
+  pielou:
+    description: >-
+      Direction of change in Pielou's evenness in Group 1 vs Group 0. Metric tooltip:
+      "Quantifies how equal the community is numerically."
+    range: AlphaDiversityChangeEnum
+  shannon:
+    description: >-
+      Direction of change in Shannon diversity in Group 1 vs Group 0. Metric tooltip:
+      "Estimator of species richness and species evenness: more weight on species richness."
+    range: AlphaDiversityChangeEnum
+    comments:
+      - "CURATOR: Shannon is the most commonly reported alpha-diversity index; record its direction if the paper compares it between groups."
+    examples:
+      - value: decreased
+  chao1:
+    description: >-
+      Direction of change in Chao1 richness in Group 1 vs Group 0. Metric tooltip:
+      "Abundance-based estimator of species richness."
+    range: AlphaDiversityChangeEnum
+  simpson:
+    description: >-
+      Direction of change in Simpson diversity in Group 1 vs Group 0. Metric tooltip:
+      "Estimator of species richness and species evenness: more weight on species evenness."
+    range: AlphaDiversityChangeEnum
+  inverse_simpson:
+    description: >-
+      Direction of change in Inverse Simpson diversity in Group 1 vs Group 0. Metric
+      tooltip: "Modification of Simpsons index D as 1/D to obtain high values in datasets of
+      high diversity and vice versa."
+    range: AlphaDiversityChangeEnum
+  richness:
+    description: >-
+      Direction of change in observed richness (number of species) in Group 1 vs Group 0.
+      Metric tooltip: "Number of species."
+    range: AlphaDiversityChangeEnum
+  faith:
+    description: >-
+      Direction of change in Faith's phylogenetic diversity in Group 1 vs Group 0. Metric
+      tooltip: "Phylogenetic diversity, takes into account phylogenetic distance of all taxa
+      identified in a sample."
+    range: AlphaDiversityChangeEnum
+
+  # --- signature ---
+  source:
+    description: >-
+      Where in the publication the signature was found (the specific figure, table, or
+      supplementary item the taxon list was transcribed from).
+    comments:
+      - "CURATOR: cite the exact location so the signature is traceable and verifiable, e.g. 'Figure 3B', 'Table 2', 'Supplementary Table S4'. (Property:Source data has no stored tooltip.)"
+      - "AGENT: record the figure/table/supplement identifier from which you extracted the taxa. Do not leave blank when a specific source exists."
+    examples:
+      - value: "Table 2"
+      - value: "Figure 3B"
+  description:
+    description: Free-text description/label of the signature.
+    comments:
+      - "CURATOR: textarea. Optional short human-readable summary of what the signature represents (e.g. 'Taxa increased in smokers vs non-smokers, oral')."
+      - "AGENT: optional; may be left blank. Do not duplicate the group definitions here."
+  abundance_in_group_1:
+    description: >-
+      Direction of differential abundance of the signature's taxa in Group 1 relative to
+      Group 0: 'increased' or 'decreased'. (Property:Abundance in Group 1.)
+    range: AbundanceDirectionEnum
+    comments:
+      - "CURATOR: single-select dropdown (increased/decreased). Every taxon in this Signature shares this one direction; split up- and down-taxa into two Signatures."
+      - "AGENT: 'increased' = enriched/more abundant in the case/exposed Group 1; 'decreased' = depleted in Group 1 (i.e. higher in control Group 0). Determine the reference orientation from group_0/group_1 before assigning."
+    examples:
+      - value: increased
+
+  # --- taxon ---
+  ncbi_id:
+    description: >-
+      NCBI Taxonomy identifier (integer) — the canonical key for a taxon. External
+      formatter: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=$1
+    range: integer
+    slot_uri: bugsigdb:NCBI
+    comments:
+      - "CURATOR: enter by taxon name via autocomplete (limited to names already in BugSigDB); if not found, look up the numeric NCBI Taxonomy ID at the NCBI Taxonomy Browser and enter it directly. Taxa lacking an ID land in 'Category:Pages with missing NCBI ID' for expert cleanup."
+      - "AGENT: resolve every reported taxon name to its NCBI Taxonomy ID (handle synonyms, misspellings, and outdated names). Record the ID as an integer without the 'NCBITaxon:' or 'txid' prefix."
+    examples:
+      - value: "820"
+  taxon_name:
+    description: Scientific name of the taxon (derived from the NCBI Taxonomy for ncbi_id).
+    comments:
+      - "AGENT: derived field — the wiki resolves it from ncbi_id via the taxonomy service. When curating, prefer supplying the ID and let the name follow."
+    examples:
+      - value: Bacteroides
+  taxonomic_rank:
+    description: >-
+      Taxonomic rank of the taxon (e.g. kingdom, phylum, class, order, family, genus,
+      species, strain), obtained from the NCBI Taxonomy.
+    comments:
+      - "AGENT: derived from NCBI Taxonomy (Taxon/Rank); need not be extracted independently."
+    examples:
+      - value: genus
+  lineage:
+    description: >-
+      Ordered NCBI taxonomic lineage from root down to this taxon, as returned by the NCBI
+      Taxonomy (semicolon-separated in the source).
+    multivalued: true
+    comments:
+      - "AGENT: derived from NCBI Taxonomy (Taxon/Lineage); populated automatically from ncbi_id. Used for parent-matching in taxon-level QC (contaminant/host-association/prevalence checks operate on the taxon or any ancestor)."
+
+  # --- curation provenance ---
+  curation_state:
+    description: >-
+      Form-completion state of the page. 'Incomplete' (default) keeps it in progress;
+      'Complete' submits the page to a reviewer. Form tooltip: "Mark as incomplete to
+      complete the form at a later time. Mark as complete to submit the page to a reviewer."
+    range: CurationStateEnum
+    ifabsent: string(Incomplete)
+    comments:
+      - "CURATOR: leave 'Incomplete' while still working (lets you save and resume). Set 'Complete' only when the page and its children are finished — this exposes the review controls. Stored via Template:FormFieldState as the 'State' property."
+      - "AGENT: emit 'Incomplete' for machine-extracted drafts pending human verification unless instructed to finalize."
+  curator:
+    description: Curator(s) who entered the data.
+    multivalued: true
+    comments:
+      - "AGENT: set by the wiki from the page creator (falls back to 'Page creator' when unset). Do not fabricate; leave to the platform/user identity."
+  curated_date:
+    description: Date the page was curated.
+    range: date
+    comments:
+      - "AGENT: set by the wiki (falls back to the page creation date). Not extracted from the paper."
+  revision_editor:
+    description: Editor(s) who most recently revised the page.
+    multivalued: true
+    comments:
+      - "AGENT: maintained by the wiki revision history; not extracted."
+  reviews:
+    description: Reviews attached to this page.
+    multivalued: true
+    range: Review
+    inlined_as_list: true
+
+  # --- review ---
+  reviewer:
+    description: Person (wiki user) who performed the review. Defaults to the current user on the Review form.
+    comments:
+      - "CURATOR/REVIEWER: auto-filled with the logged-in user; change only if reviewing on someone's behalf."
+  review_date:
+    description: Date the review was performed. Defaults to 'now' on the Review form.
+    range: date
+  review_state:
+    description: >-
+      Outcome of the review: 'Reviewed' (checked and correct) or 'Incorrect'. Mandatory on
+      the Review form; default 'Reviewed'.
+    range: ReviewStateEnum
+    required: true
+    ifabsent: string(Reviewed)
+    comments:
+      - "REVIEWER: mandatory single-select. Choose 'Incorrect' when the curated data does not faithfully represent the paper. QC tags (below) are independent of this state and flag issues with the study itself, not the data entry."
+  quality_control_tags:
+    description: >-
+      Flags indicating potential problems with the underlying study/results. Tooltip:
+      "Indicators of potential problems with the results." (Property:Quality control tag.)
+    multivalued: true
+    range: QualityControlTagEnum
+    comments:
+      - "REVIEWER/EDITOR: token input; multivalued (COMMA-delimited). Set manually by editors to flag study-level concerns (see Help:Quality_control); stored with the Study's Review. Explain the reason on the page's Discussion. Distinct from automatic TAXON-level alerts (potential contaminant / not host-associated / body-site-typical), which are computed, not curated here."
+  review_subject:
+    description: >-
+      The page (Study/Experiment/Signature) this review is about. Stored as Property:Subject
+      (a page link); the Review page shares the subject page's name.
+    comments:
+      - "AGENT: identifies the reviewed page. Range is a page reference in the wiki (Has type::Page)."
+
+# ---------------------------------------------------------------------------
+# ENUMS  (closed, bounded controlled vocabularies captured verbatim from the wiki)
+# ---------------------------------------------------------------------------
+enums:
+
+  CitationModeEnum:
+    description: >-
+      How a Study's citation metadata was populated: automatically from the PMID via PubMed,
+      or entered by hand. Mandatory radio button on the Study form; default Auto.
+    permissible_values:
+      Auto:
+        description: Bibliographic fields (title, authors, journal, year, keywords, abstract) are fetched automatically from PubMed using the page-name PMID.
+      Manual:
+        description: Curator enters the citation fields by hand. Used when the article has no PMID; reveals the manual citation fields on the form.
+
+  CurationStateEnum:
+    description: >-
+      Form-completion state of a curatable page (Template:FormFieldState / stored as the
+      'State' property). Governs whether a page is still being edited or has been submitted
+      for review.
+    permissible_values:
+      Complete:
+        description: The page (and its children) are finished and submitted to a reviewer; enables the review controls.
+      Incomplete:
+        description: Work in progress — the default; lets the curator save and resume later. Appears in the reviewers' 'Incomplete pages' worklist.
+
+  ReviewStateEnum:
+    description: Outcome recorded on a Review page (Property:Review state). Mandatory; default Reviewed.
+    permissible_values:
+      Reviewed:
+        description: A reviewer checked the page against the source and found the curated data correct.
+      Incorrect:
+        description: The curated data does not faithfully represent the paper and needs correction.
+
+  AbundanceDirectionEnum:
+    description: >-
+      Direction of differential abundance of a Signature's taxa in Group 1 relative to the
+      Group 0 reference (Property:Abundance in Group 1). Reference semantics: 'increased'
+      means higher in the case/exposed Group 1.
+    permissible_values:
+      increased:
+        description: Taxa are more abundant (enriched) in Group 1 (case/exposed) than in Group 0 (control/reference).
+      decreased:
+        description: Taxa are less abundant (depleted) in Group 1 (case/exposed) than in Group 0 (control/reference).
+
+  AlphaDiversityChangeEnum:
+    description: >-
+      Direction of change of a whole-community alpha-diversity metric in Group 1 relative to
+      Group 0. 'unchanged' means reported as not significantly different between groups.
+    permissible_values:
+      increased:
+        description: The metric is higher in Group 1 (case/exposed) than in Group 0 (control/reference).
+      decreased:
+        description: The metric is lower in Group 1 (case/exposed) than in Group 0 (control/reference).
+      unchanged:
+        description: No significant between-group difference in the metric was reported.
+
+  StudyDesignEnum:
+    description: >-
+      Design of the study (Property:Study design/Values). See Help:Study_Design for
+      definitions, discriminators, and worked examples.
+    permissible_values:
+      case-control:
+        description: Observational; subjects are selected BY whether they have the case status/exposure or are controls. A case-control nested within a cohort/cross-sectional study still counts here.
+      cross-sectional observational, not case-control:
+        description: Observational; different individuals compared at a single timepoint, NOT selected on the outcome (e.g. by exposure gradient or sociodemographic traits).
+      time series / longitudinal observational:
+        description: Observational; repeated observations OF THE SAME subjects over time (before/after an event or across timepoints).
+      laboratory experiment:
+        description: Experimental; the researcher controls the contrast of interest under laboratory conditions (often animal models).
+      randomized controlled trial:
+        description: Experimental; treatment/exposure assigned intentionally and randomly to participants by the researchers.
+      prospective cohort:
+        description: Observational; participants recruited on a shared characteristic and followed forward in time as outcomes develop.
+      meta-analysis:
+        description: Pools external/relevant literature or datasets to reach conclusions. Pooling only the authors' own two datasets does NOT qualify.
+
+  SequencingTypeEnum:
+    description: Experimental technique used to quantify microbial abundance (Property:Sequencing type/Values).
+    permissible_values:
+      16S:
+        description: 16S rRNA gene amplicon sequencing (bacteria/archaea). Selecting this reveals the 16S variable-region fields.
+      18S:
+        description: 18S rRNA gene amplicon sequencing (eukaryotes).
+      WMS:
+        description: Whole-metagenome shotgun sequencing.
+      ITS / ITS2:
+        description: Internal transcribed spacer amplicon sequencing (fungi/mycobiome).
+      PCR:
+        description: Targeted (q)PCR quantification of specific taxa.
+
+  SixteenSRegionEnum:
+    description: >-
+      16S rRNA hypervariable region number, 1-9 (displayed as V1..V9). Property tooltip:
+      "One or more hypervariable region(s) of the bacterial 16S gene." Applies only when
+      sequencing_type == '16S'.
+    permissible_values:
+      "1": {description: Hypervariable region V1.}
+      "2": {description: Hypervariable region V2.}
+      "3": {description: Hypervariable region V3.}
+      "4": {description: Hypervariable region V4.}
+      "5": {description: Hypervariable region V5.}
+      "6": {description: Hypervariable region V6.}
+      "7": {description: Hypervariable region V7.}
+      "8": {description: Hypervariable region V8.}
+      "9": {description: Hypervariable region V9.}
+
+  DataTransformationEnum:
+    description: >-
+      Transformation applied to microbial abundance measurements before differential-abundance
+      testing (Property:Data transformation/Values). See Help:Data_Transformations for typical
+      test pairings.
+    permissible_values:
+      raw counts:
+        description: Untransformed observed counts per taxon (e.g. for DESeq2, negative binomial/Poisson regression).
+      relative abundances:
+        description: Per-taxon proportion of the total community (e.g. for t-test, Mann-Whitney, linear regression). The most common baseline assumption.
+      centered log-ratio:
+        description: CLR — log of the relative abundance centered to mean 0 (e.g. for ANCOM, CORNCOB, some linear regression).
+      arcsine square-root:
+        description: Arcsine of the square root of the relative abundance/count (rare; occasionally in linear models).
+      log transformation:
+        description: Natural log to normalize the data (linear model, t-test, Mann-Whitney, etc.).
+      additive log-ratio:
+        description: ALR — log-ratio of each taxon to a chosen reference taxon.
+
+  SequencingPlatformEnum:
+    description: >-
+      Manufacturer/instrument platform used to quantify microbial abundance
+      (Property:Sequencing platform/Values). Multivalued in use; ~17 values.
+    comments:
+      - "AGENT: map the sequencer named in Methods to the nearest value (Illumina MiSeq/HiSeq/NovaSeq -> Illumina; Ion PGM/Proton -> Ion Torrent; 454 -> Roche454; Oxford Nanopore -> Nanopore; PacBio instruments -> the PacBio value)."
+    permissible_values:
+      DNA-DNA Hybridization:
+      Human Intestinal Tract Chip:
+      Illumina:
+      Ion Torrent:
+      Mass spectrometry:
+      Non-quantitative PCR:
+      PacBio Vega (VS)/Revio (RS)/Sequel II:
+      PhyloChip:
+      Roche454:
+      RT-qPCR:
+      Sanger:
+      Nanopore:
+      BGISEQ-500 Sequencing:
+      DNBSEQ-G400:
+      DNBSEQ-T7:
+      MGISEQ-2000:
+      HTF-Microbi.Array:
+      2b-RAD:
+
+  StatisticalTestEnum:
+    description: >-
+      Statistical test or computational tool used for differential-abundance testing
+      (Property:Statistical test/Values). Multivalued in use. This enum is a superset kept
+      from the first pass; the live snapshot (~49 values) is in
+      sources/values/Property_Statistical_test_Values.wiki.
+    comments:
+      - "AGENT: match tool/test names to the exact enum spelling (e.g. 'Wilcoxon rank-sum' -> 'Mann-Whitney (Wilcoxon)'; 'LEfSe' -> 'LEfSe'; 'ANCOM-BC' -> 'ANCOM-BC'). If a method is genuinely absent from the vocabulary, flag it for administrator addition rather than forcing a near-match."
+    permissible_values:
+      ANCOM:
+      ANCOM-BC:
+      ANCOM-BC2:
+      ANOSIM:
+      ANOVA:
+      Beta Binomial Regression:
+      Chi-Square:
+      Cox Proportional-Hazards Regression:
+      Decision Trees (xgBoost, gradient boosting):
+      distance-based redundancy analysis (db-RDA):
+      Dunn's test:
+      Dunnett's test:
+      DESeq2:
+      edgeR:
+      Fisher's Exact Test:
+      Fold-change cutoff:
+      G-test:
+      Jonckheere's trend test:
+      Kolmogorov-Smirnov Test:
+      Kruskall-Wallis:
+      LASSO Regression:
+      LEfSe:
+      Linear Discriminant Analysis:
+      Linear Regression:
+      Logistic Regression:
+      Mann-Whitney (Wilcoxon):
+      MaAsLin2:
+      MaAsLin3:
+      metagenomeSeq:
+      Meta-Analysis:
+      Metastats:
+      Mixed-Effects Regression:
+      Negative Binomial Regression:
+      NLMIXED:
+      Pearson Correlation:
+      PERMANOVA:
+      Permutation Test:
+      PLS-DA (Partial least square discriminant analysis):
+      Post-Hoc Pairwise:
+      Random Forest Analysis:
+      Songbird:
+      Sparse Correlations for Compositional data (SparCC):
+      Spearman Correlation:
+      Structural Equation Modeling (SEM):
+      T-Test:
+      treeDA:
+      Wald Test:
+      Welch's T-Test:
+      Zero-Inflated Beta Regression:
+      Zero-Inflated Negative Binomial Regression:
+
+  QualityControlTagEnum:
+    description: >-
+      Study-level indicators of potential problems with the results (Property:Quality control
+      tag/Values). Set manually by editors and stored with the Study's Review (Help:Quality_control).
+      These flag the underlying study, not the data entry, and are independent of Review state.
+    comments:
+      - "CURATOR: distinct from the automatic TAXON-level alerts (potential contaminant / not host-associated / body-site-typical), which are computed from site-wide lists, not chosen from this enum."
+    permissible_values:
+      Retracted paper:
+        description: The source publication has been retracted.
+      Contamination issues suspected:
+        description: The results may be affected by sample or reagent contamination.
+      Batch effect issues suspected:
+        description: The results may be confounded by technical batch effects.
+      Uncontrolled confounding suspected:
+        description: Important confounders appear not to have been controlled for.
+      Results are suspect (various reasons):
+        description: Editors examined the study and judged the results suspicious for reasons not covered by the other tags; the rationale should be given on the page's Discussion.
+
+  # ---------------------------------------------------------------------------
+  # ONTOLOGY-BACKED / LARGE VOCABULARY FIELDS (modelled as string slots, not closed enums)
+  # ---------------------------------------------------------------------------
+  # The following fields are intentionally NOT closed enums here; their vocabularies are large
+  # and/or governed by external ontologies. Bindings and lookup workflow are documented on the
+  # slots themselves (see body_site, condition, host_species, location_of_subjects, matched_on,
+  # confounders_controlled_for). Ranges were left as string to satisfy the "preserve structure"
+  # requirement of this enrichment pass — the ontology binding is expressed via slot comments
+  # and examples rather than by changing the slot range to a dynamic enum. Summary of bindings:
+  #   * body_site            -> UBERON (Uber-anatomy Ontology); curated as a Category:Body site
+  #                             Glossary label; ~61 terms; snapshot Property_Body_site_Values.wiki.
+  #                             OLS lookup: https://www.ebi.ac.uk/ols/ontologies/uberon
+  #   * condition            -> EFO (Experimental Factor Ontology); Category:Condition Glossary
+  #                             label; snapshot none dedicated (aliases in Property_Condition_alias).
+  #                             OLS lookup: https://www.ebi.ac.uk/ols/ontologies/efo
+  #   * host_species         -> NCBI Taxonomy (organismal); closed-ish list ~128 species + 'Not
+  #                             specified'; snapshot Property_Host_species_Values.wiki.
+  #   * location_of_subjects -> country names (~197), close to ISO-3166 English short names;
+  #                             no GAZ/ISO code stored; snapshot Property_Location_of_subjects_Values.wiki.
+  #   * matched_on /         -> shared open vocabulary (~289 values, many EFO-like disease/exposure
+  #     confounders_...         terms); snapshot Property_Matched_on_Values.wiki.
+  # A future revision may promote these to LinkML dynamic enums (reachable_from an ontology
+  # branch) if range changes become acceptable.

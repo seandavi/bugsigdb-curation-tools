@@ -1,0 +1,13 @@
+<noinclude>This stores and displays a title/value list item. It takes 3 unnamed parameters and one named parameter (<code>allow_repeated</code>). The first unnamed parameter is used for both the title and the SMW property. The second unnamed parameter is the value to be stored. The third one is an optional delimiter. If present, it will be used to divide the second parameter by that delimiter. By default, repeated parameter values in different experiments will be hidden on the parent Study page. To force the display of repeated values, add <code>|allow_repeated=1</code> to the template  call.</noinclude><includeonly>{{#ifeq:{{{2|}}}
+  |{{#var:{{{1|}}}}}
+  |<!-- then: do nothing -->
+  |
+<dl><dt>{{{1|}}} {{FieldTooltip|{{{1|}}}}}</dt>
+<dd>{{#ifeq:{{{allow_repeated|}}}|1||{{#vardefine:{{{1|}}}|{{{2|}}}}}<!-- -->{{#if:{{{2|}}}||''Not specified''}}}}<!--
+ 
+-->{{#if:{{{3|}}}
+     |<!-- then -->{{#arraymap:{{{2|}}}|{{{3}}}|x|{{#set:{{{1|}}}=x}}x}}
+     |<!-- else -->{{#set:{{{1|}}}={{{2|}}} }}{{{2|}}}
+   }}</dd>
+</dl>
+}}</includeonly>

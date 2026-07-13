@@ -1,0 +1,3 @@
+This is a property of type [[Has type::Boolean]].
+
+[[Has property description::Have statistical tests be corrected for multiple hypothesis testing (MHT)?@en]]

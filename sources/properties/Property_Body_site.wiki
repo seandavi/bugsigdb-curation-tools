@@ -1,0 +1,3 @@
+This is a property of type [[Has type::Text]].
+
+[[Has property description::Anatomical site where microbial samples were extracted from according to the Uber Anatomy Ontology@en]]

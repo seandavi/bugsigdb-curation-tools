@@ -1,0 +1,34 @@
+<includeonly>
+{| class="formtable"
+! Subject page title: {{FieldTooltip|Subject page title}}
+| [[Subject::{{PAGENAME}}]]
+|-
+! Reviewer: {{FieldTooltip|Reviewer}}
+| [[Reviewer::{{{Reviewer|}}}| ]] [[:User:{{{Reviewer|}}}|{{{Reviewer|}}}]]
+|-
+! Review date: {{FieldTooltip|Review date}}
+| [[Review date::{{{Review date|}}}]]
+|-
+! Review state: {{FieldTooltip|Review state}}
+| [[Review state::{{{Review state|}}}]]
+|-
+! Quality control tags: 
+| {{#arraymap: {{{Quality control tag|}}}|,|@@@|<div>@@@ {{#set: Quality control tag=@@@}}</div>|}}
+|}
+{{#if: {{#show: {{PAGENAME}}|?Categories}}|
+{{#arraymap:{{#ask: [[{{PAGENAME}}]] |?Categories= |mainlabel=- |link=none |format=array |manysep=; |sep=;}}|;|x|[[Subject categories::{{#replace:x|Category:|}}| ]]|}}
+}}
+[[Category:Reviews]]<!--
+-->{{#ifexist: {{PAGENAME}}
+      |[[Semantic Dependency::{{PAGENAME}}| ]]
+      |[[Category:Orphaned reviews]]
+   }}
+[[Semantic Dependency::Help:Needs_review/Missing_review| ]]
+[[Semantic Dependency::Help:Needs_review/Flagged_for_review| ]]
+[[Semantic Dependency::Help:Needs_review/Stale_reviews| ]]
+</includeonly><noinclude>
+
+The template renders a single Review page in a Review namespace
+[[Category:Document states]]
+
+</noinclude>

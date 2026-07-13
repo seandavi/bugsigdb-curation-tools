@@ -1,0 +1,29 @@
+<noinclude>
+This is the "Signature" form.
+To create a page with this form, enter the page name below;
+if a page with that name already exists, you will be sent to a form to edit that page.
+
+
+{{#forminput:form=Signature}}
+
+</noinclude><includeonly>{{{info|page name=<Signature[Base page]>/Signature <unique number;start=1>}}}
+<div id="wikiPreview" style="display: none; padding-bottom: 25px; margin-bottom: 25px; border-bottom: 1px solid #AAAAAA;"></div>
+{{{for template|Signature}}}{{{field|Base page|hidden}}}
+{| class="formtable"
+! Source: {{FieldTooltip|Source}}
+| {{{field|Source}}}
+|-
+! Description: {{FieldTooltip|Description}}
+| {{{field|Description|input type=textarea}}}
+|-
+! Abundance in Group 1: {{FieldTooltip|Abundance in Group 1}}
+| {{{field|Abundance in Group 1|property=Abundance in Group 1|input type=dropdown}}}
+|-
+! NCBI: <div class="text-warning">Autocomplete is only aware of names already in BugSigDB. If it does not find the name of the taxon, enter a numeric NCBI taxon identifier by searching <span class="target-blank">[https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi here]</span></div> 
+| {{{field|NCBI|input type=tokens|values from property=NCBI|mapping template=Get name from NCBI ID|list}}}
+|}
+{{Form:State fields}}
+{{{end template}}}
+
+{{{standard input|save}}}
+__NOTOC____NOEDITSECTION__</includeonly>

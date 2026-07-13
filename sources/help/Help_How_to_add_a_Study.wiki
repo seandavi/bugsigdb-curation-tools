@@ -1,0 +1,58 @@
+To submit a Study, click on the [[Form:Study|<span class="mw-ui-button"><i class="fas fa-plus"></i> Add a Study</span>]] button in the top navigation bar, and specify the Study '''PMID''' (a PubMed identifier for scientific articles) as a page name. '''A valid PMID containing only integers is expected. Please omit leading zeroes'''.
+
+In case a Study occasionally doesn't have a PMID, use the word ''Study_'' followed by the integer or another identifier.
+
+If a Study got a PMID after the page was created, you can add the PMID by moving the Study page and its subpages to the new title equal to the PMID. Use ''Move'' item in the page tools dropdown to initiate the renaming. Please make sure that the following checkboxes have ticks:
+* Move associated talk page
+* Leave a redirect behind
+* Move subpages (up to 100)
+Please, if associated Review pages are available, move them as well.
+
+== Common fields ==
+[[File:Study creation in auto mode.png|thumb|Use auto mode to retrieve the Study data from PubMed.]]
+Select a '''study design''' from the list:
+{{#arraymap: {{#show: Property:Study design |?Allows value | format=plainlist }}
+  |,
+  |@@@
+  |
+* @@@
+  |\n
+}}
+
+Consider including the Study '''DOI''' or providing a direct link ('''URI''') to the external page to give your readers a more comprehensive context.
+
+== Auto mode ==
+For PMID-based pages, it is possible to retrieve the Study details automatically, by choosing mode <span class="mw-ui-button"><i class="fas fa-dot-circle"></i> Auto</span>. Most of the Study information is automatically included based on the PMID. If you get the message "''must be unique''", this study already exists in BugSigDB and should not be added.
+
+== Manual mode ==
+Alternatively, you can add the Study details manually. Choose mode <span class="mw-ui-button"><i class="fas fa-dot-circle"></i> Manual</span> and enter the Study information:
+* '''Title''' (''meaningful title'')
+* '''Authors''' (''multiple values allowed'')
+* '''Journal''' (''select from the list or enter a new journal title'')
+* '''Year''' (''four digits of the journal publication year'')
+* '''Pages''' (''number of pages or page range'')
+* '''First page''' (''number of the Stady first page in the journal volume'')
+* '''Keywords''' (''multiple values allowed'')
+* '''Abstract''' (''a synopsis of the Study scope and results'')
+
+== Work in progress ==
+At the bottom of the form, you'll find the form data switcher. Set it to "Incomplete" to save the Study page and resume editing later. Upon saving, your input will be saved to BugSigBD, and a new study page will be generated with the name "''Study <next ordinal number>''".
+
+Once the Study page has been created, begin inputting Experiment data. You'll find the <span class="mw-ui-button">Add a new experiment</span> tab on the Study page, which directs you to the appropriate form for guided input. Each experiment will be shown as a separate block on the Study page, providing a set of controls for:
+[[File:Adding a new signature.png|thumb|Use this button to add a new Signature to the Incomplete Experiment]]
+* '''Adding a new signature'''
+* '''Duplicating an experiment''' (''if most of the experiment data will be re-used in the next experiment'')
+
+When the Study page and its subordinate pages (Experiments and Signatures) are complete, set the form data switcher to "Complete" and save your change to submit the Study to a reviewer.
+
+== Common controls ==
+The views of all linked data objects (Study, Experiment, Signature) are equipped with a set of controls allowing you:
+* to '''Edit''' the object in the current view
+* to see the '''History''' of changes of the object
+* to '''Delete''' the object
+* to '''Mark''' it for review or as reviewed
+
+== See also ==
+Here is a video that explains the details of adding Studies, Experiments, and Signatures.
+
+{{#evu:  https://www.youtube.com/watch?v=yfpnwxefLFc&list=PLIUETfW6tVu2OGgZcIxqI7DbUBReHVdIq&index=6}}

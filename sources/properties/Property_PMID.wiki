@@ -1,0 +1,4 @@
+This is a property of type [[Has type::External identifier]].
+[[Has property description::PubMed identifier for scientific articles.@en]]
+
+[[External formatter uri::https://pubmed.ncbi.nlm.nih.gov/$1/]].

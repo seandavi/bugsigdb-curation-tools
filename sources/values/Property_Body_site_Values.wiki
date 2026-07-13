@@ -1,0 +1,62 @@
+axilla
+blood
+breast
+bronchus
+buccal mucosa
+caecum
+cervicovaginal secretion
+colon
+colonic mucosa
+dental plaque
+dorsum
+ear
+elbow
+endocervix
+external naris
+feces
+gingiva
+mastoid lymph node
+head
+hypopharynx
+ileum
+internal naris
+lower lip
+lower part of vagina
+lung
+mesenteric lymph node
+meconium
+hard palate
+milk
+mouth
+mucosa
+mucosa of small intestine
+mucosa of stomach
+nasal cavity
+nasopharynx
+neck
+nose
+oral gland
+oropharynx
+pair of nares
+palatine tonsils
+placenta
+posterior fornix of vagina
+prostate gland secretion
+rectal
+retroauricular region
+saliva
+skin of body
+skin of cheek
+skin of forearm
+skin of sole of pes
+small intestine
+sputum
+stomach
+subgingival dental plaque
+throat
+tongue
+urine
+uterine cervix
+uterus
+vagina
+vagina orifice

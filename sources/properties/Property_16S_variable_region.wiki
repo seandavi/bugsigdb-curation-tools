@@ -1,0 +1,4 @@
+This is a property of type [[Has type::Number]].
+
+[[Has property description::One or more hypervariable region(s) of the bacterial 16S gene @en]]
+{{Set validation}}

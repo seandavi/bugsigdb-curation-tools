@@ -1,0 +1,19 @@
+{| class="wikitable"
+|+
+|-
+! Design !! Experimental or Observational !! Characteristics !! Example
+|-
+| Case-Control || Observational || Participants are selected for study based on whether they have (cases) or do not have (controls) the exposure or health outcome of interest. A subset of a larger prospective cohort study or cross-sectional observational study, where participants are selected based on an exposure or health outcome of interest, becomes a "nested" case-control study ([[Study 359|Cigarette smoking and the oral microbiome in a large study of American adults]]). || [[Study 727|A comparison of the oral microbiomes of heavy smokers to non-smokers]]
+|-
+| Cross-sectional observational, not case-control || Observational || Cross-sectional observational refers to comparison of different individuals at a point in time, based on observation of their exposure or health outcome of interest. Unlike a case-control, participants are not selected based on this exposure or health outcome - such as an analysis of pack-years of lifetime cigarette exposure that includes participants regardless of smoking history and current smoking status. Individuals can also be compared based on some socio-demographic characteristics (race, educational level, towns, hospitals, etc.) - such as a population-based New York study where the oral microbiomes of different individuals were compared based on various sociodemographic characteristics such as race/ethnicity, family income, education, sex.|| [[Study_635|Sociodemographic variation in the oral microbiome]]
+|-
+| Randomized Controlled Trial (RCT) || Experimental || An RCT is a study where participants are ''randomized'' to receive a treatment (generally a drug, therapy, diet, etc.) The defining characteristic is that the treatment or exposure is assigned ''intentionally and randomly'' to participants by the researchers, ''not'' that the study occurs in a clinic. || [[Study_247| Habitual dietary fibre intake influences gut microbiota response to an inulin-type fructan prebiotic: a randomised, double-blind, placebo-controlled, cross-over, human intervention study]]
+|-
+| Laboratory Experiment || Experimental || This type of study is often done using animal models, such as rats, pigs, mice, etc. The defining feature is that the researcher controls the contrast of interest, rather than just observing it, under controlled laboratory conditions. || [[Study 509|Effects of smoking on the lower respiratory tract microbiome in mice]]
+|-
+| Time series / longitudinal observational || Observational || The defining characteristic of this study design is an analysis comparing repeated observations ''of the same participant'' over time.  This can be before and after an event or at multiple times. This analysis could be performed within a prospective cohort study, but the analysis ''over time'' or ''before and after event'' attribute distinguishes this from the Prospective Cohort design. || [[Study_800|A comparison of the infant gut microbiome before versus after the start of the covid-19 pandemic]]
+|-
+| Prospective Cohort || Observational || In prospective cohort studies, participants are recruited based on a common characteristic (biomarkers, residence, clinical variables, etc.) and they're followed up over time. Over time, some participants in the cohort develop the condition of interest (cases) and some participants don't (controls).  || [[Study_715|Respiratory Tract Dysbiosis Is Associated with Worse Outcomes in Mechanically Ventilated Patients]]
+|-
+| Meta-analysis || Either || Meta-analysis attempts to pool information from all available, relevant literature or data to inform its conclusions. Pooling of e.g. two datasets or subsets collected by the authors doesn't count. || [[Study 471|Pooling of metagenomic studies of Colorectal Cancer to identify biomarkers]]
+|}

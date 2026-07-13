@@ -1,0 +1,7 @@
+case-control
+cross-sectional observational, not case-control
+time series / longitudinal observational
+laboratory experiment
+randomized controlled trial
+prospective cohort 
+meta-analysis

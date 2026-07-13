@@ -1,0 +1,1 @@
+This is a property of type [[Has type::URL]]. [[Has property description::Uniform resource identifier for web resources.@en]]

@@ -1,0 +1,67 @@
+<noinclude>
+This is the "Study" form.
+To create a page with this form, enter the PMID of the study publication; 
+if a page with that name already exists, you will be sent to a form to edit that page.
+
+{{#forminput:form=Study|placeholder=A valid PMID containing only integers is expected. Please omit leading zeroes.}}
+'''Note''': If the PMID does not apply to this particular study, start the page name with the prefix <code>Study_</code> followed by the other available identifier.
+</noinclude><includeonly>
+<div id="wikiPreview" style="display: none; padding-bottom: 25px; margin-bottom: 25px; border-bottom: 1px solid #AAAAAA;"></div>
+{{{for template|Study}}}
+Note: Most of the Study information is automatically included based on the PMID.
+{| class="formtable"
+! width="110" |study design: {{FieldTooltip|study design}}
+| {{{field|study design|list|input type=tokens|property=study design|delimiter=;}}}
+|}
+== Citation ==
+{|
+! width="110" |Mode:
+| {{{field|Mode|input type=radiobutton|values=Auto,Manual|mandatory|default=Auto|show on select=Manual=>cite_manual;}}}
+|}
+{| 
+|- 
+! width="110" |PMID: {{FieldTooltip|PMID}}
+| <b>{{#if: {{#pos:{{#titleparts:{{FULLPAGENAME}}||-1}}|Study}}
+       |N/A
+       |{{#titleparts:{{FULLPAGENAME}}||-1}}
+     }}</b>
+|}
+{|id="cite_manual"
+! width="110" |Title:
+| {{{field|Cite title|class=w-100}}}
+|-
+! Authors:
+| {{{field|Cite authors|input type=tokens|values from property=Authors|list|delimiter=,}}}
+|-
+! Journal:
+| {{{field|Cite journal|input type=tokens|values from property=Journal|max values=1}}}
+|-
+! Year
+| {{{field|Cite year|input type=year|size=4|placeholder={{CURRENTYEAR}} }}}
+|-
+! Pages:
+| {{{field|Cite pages|input type=year|size=4|placeholder=0}}}
+|-
+! First page:
+|{{{field|Cite first page|input type=year|size=4|placeholder=0}}}
+|-
+! Keywords:
+| {{{field|Cite keywords|input type=tokens|values from property=Keyword|list|delimiter=;}}}
+|-
+! Abstract:
+| {{{field|Cite abstract|input type=textarea|rows=4|autogrow}}}
+|}
+{|
+|-
+! width="110" |DOI: {{FieldTooltip|DOI}}
+| {{{field|DOI|size=60}}}
+|-
+! URI: {{FieldTooltip|URL}}
+| {{{field|URI|size=60}}}
+|-
+|}
+{{Form:State fields}}
+{{{end template}}}
+
+{{{standard input|save}}}
+__NOTOC____NOEDITSECTION__</includeonly>

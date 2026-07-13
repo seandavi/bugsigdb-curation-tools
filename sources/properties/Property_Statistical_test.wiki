@@ -1,0 +1,3 @@
+This is a property of type [[Has type::Text]]. [[Has property description::Statistical test or computational tool used for differential abundance testing@en]]
+
+{{Set validation}}

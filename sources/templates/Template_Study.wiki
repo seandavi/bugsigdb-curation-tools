@@ -1,0 +1,160 @@
+<noinclude>
+This is the "Study" template.
+It should be called in the following format:  
+<pre>
+{{Study
+|study design=
+|PMID=
+|DOI=
+|URI=
+}}
+</pre>
+Edit the page to see the template text. 
+</noinclude><includeonly><div class="d-none" hidden>{{#set:
+  |Original page name={{FULLPAGENAME}}
+  |Page sort number={{#replace:{{PAGENAME}}|Study}}
+  |State={{{State|Incomplete}}}
+}}<!--
+
+-->{{#if: {{#pos: {{PAGENAME}}|Study}}||{{#pmid:{{PAGENAME}}}}}}<!--
+
+-->{{DISPLAYTITLE:{{#if:{{#var:title}}|{{#var:title}}|{{{Cite title|}}}}} }}<!--
+
+-->{{#set:Title={{#if:{{#var:title}}|{{#var:title}}|{{{Cite title|}}}}}}}
+</div>
+<div>
+  <div class="float-right font-weight-bold">Study information</div>
+  <div class="bg-light btn-group study-btn study-btn-group"><!--
+
+-->{{#formlink:form=Study|link text=Edit|target={{FULLPAGENAMEE}}|reload|returnto={{FULLPAGENAMEE}} }}<!--
+-->{{HistoryButton}}<!--
+-->{{DeleteButton}}<!--
+-->{{#ifeq:{{{State|}}}
+     |Complete
+     |{{ReviewButton}}<!--
+   -->{{#set: Has stale review={{#if:{{#show:Review:{{PAGENAME}}|?Modification date#-F[Ymd]}}
+        |{{#ifexpr: 0{{#show:Review:{{PAGENAME}}|?Modification date#-F[Ymd]}} < {{#time:Ymd|{{REVISIONTIMESTAMP}}}}
+           |true
+           |false
+         }}
+       }}
+     }}
+   }}<!--
+-->{{#formlink:form=Experiment|query string=Experiment[Base page]={{FULLPAGENAMEE}}|link text=Add a new Experiment|reload|returnto={{FULLPAGENAMEE}} }}
+  </div>
+</div>
+<div class="mb-2 p-3 alert alert-info study">
+  <div class="float-right">{{#ifeq:{{{State|}}}|Complete|{{:Project:Dropdown}}}}
+{{Display state|{{{State|}}}}}</div>
+  <div class="d-block d-md-table">
+    <div class="d-block d-md-table-row">
+      <div class="d-block d-md-table-cell font-weight-bold text-nowrap">study design {{FieldTooltip|study design}}</div>
+      <div class="d-block d-md-table-cell px-3 text-break">{{#arraymap:{{{study design|}}}|;|@@@|{{#queryformlink: form=Quick filter
+         |link text=@@@
+         |Quick filter[category]=Studies
+         |Quick filter[property]=Study design
+         |Quick filter[value]=@@@
+         |_run=1
+       }}|<br />}}{{#set:study design={{{study design|}}}|+sep=;}}</div>
+    </div>
+    <div class="d-block d-md-table-row">
+      <div class="d-block d-md-table-cell font-weight-bold h3 py-3">Citation</div>
+      <div class="d-block d-md-table-cell px-3"></div>
+    </div>
+    <div class="d-block d-md-table-row">
+      <div class="d-block d-md-table-cell font-weight-bold">PMID {{FieldTooltip|PMID}}</div>
+      <div class="d-block d-md-table-cell px-3 text-break">{{#if: {{#pos: {{PAGENAME}}|Study}}|N/A|[[PMID::{{PAGENAME}}]]}}</div>
+    </div>
+    <div class="d-block d-md-table-row">
+      <div class="d-block d-md-table-cell font-weight-bold">DOI {{FieldTooltip|DOI}}</div>
+      <div class="d-block d-md-table-cell px-3 text-break">{{#if:{{{DOI|{{#var:doi}}}}}|[[DOI::{{{DOI|{{#var:doi}}}}}]]}}</div>
+    </div>
+    <div class="d-block d-md-table-row">
+      <div class="d-block d-md-table-cell font-weight-bold">URI {{FieldTooltip|URI}}</div>
+      <div class="d-block d-md-table-cell px-3 text-break">{{{URI|}}}{{#set: URI={{{URI|}}}}}</div>
+    </div>
+    <div class="d-block d-md-table-row">
+      <div class="d-block d-md-table-cell font-weight-bold">Authors {{FieldTooltip|Authors}}</div>
+      <div class="d-block d-md-table-cell px-3 text-break">{{#switch: {{{Mode|}}}
+         |Manual={{#arraymap:{{{Cite authors|}}}|,|x|x|,\s}}{{#set:Authors={{{Cite authors|}}}|+sep=,}}{{#set:Authors list={{{Cite authors|}}}}}
+         |#default={{#arraymap:{{#var:allAuthorsI}}|,|x|x|,\s}}{{#set:Authors={{#var:allAuthorsI}}|+sep=,}}{{#set:Authors list={{#var:allAuthorsI}}}}
+       }}</div>
+    </div>
+    <div class="d-block d-md-table-row">
+      <div class="d-block d-md-table-cell font-weight-bold">Journal {{FieldTooltip|Journal}}</div>
+      <div class="d-block d-md-table-cell px-3 text-break">{{#switch: {{{Mode|}}}
+         |Manual= {{{Cite journal|}}}{{#set:Journal={{{Cite journal|}}}}}
+         |#default= {{#var:journal}}{{#set:Journal={{#var:journal}}}}
+       }}</div>
+    </div>
+    <div class="d-block d-md-table-row">
+      <div class="d-block d-md-table-cell font-weight-bold">Year {{FieldTooltip|Year}}</div>
+      <div class="d-block d-md-table-cell px-3 text-break">{{#switch: {{{Mode|}}}
+         |Manual={{{Cite year|}}}{{#set:Year={{{Cite year|}}}}}
+         |#default={{#var:year}}{{#set:Year={{#var:year}}}}
+       }}</div>
+    </div><!--
+
+-->{{#switch: {{{Mode|}}}
+         |Manual=
+    <div class="d-block d-md-table-row">
+      <div class="d-block d-md-table-cell font-weight-bold">Pages:</div>
+      <div class="d-block d-md-table-cell px-3 text-break">{{{Cite pages|}}}{{#set: Pages={{{Cite pages|}}}}}</div>
+    </div>
+    <div class="d-block d-md-table-row">
+      <div class="d-block d-md-table-cell font-weight-bold">First page:</div>
+      <div class="d-block d-md-table-cell px-3 text-break">{{{Cite first page|}}}{{#set: First page={{{Cite first page|}}}}}</div>
+    </div>
+    <div class="d-block d-md-table-row">
+      <div class="d-block d-md-table-cell font-weight-bold">Keywords:</div>
+      <div class="d-block d-md-table-cell px-3 text-break">{{#arraymap:{{{Cite keywords|}}}|;|@|@|,\s}}<!--
+         -->{{#set:Keyword={{{Cite keywords|}}}|+sep=;}}<!--
+         -->{{#set: Keyword list={{#arraymap:{{{Cite keywords|}}}|;|@|@|,\s}}}}</div>
+    </div>
+         |#default={{#if: {{#var:keywords}}
+            |{{#arraydefine: keys|{{#var:keywords}}|,|unique}}<!-- we pass it to array to unify elements delimiter formatting (a comma with a space after) -->{{#set: Keyword list={{#arrayprint: keys|,&#32;}}}}
+    <div class="d-block d-md-table-row">
+      <div class="d-block d-md-table-cell font-weight-bold">Keywords:</div>
+      <div class="d-block d-md-table-cell px-3 text-break">{{#arrayprint: keys|,&#32;}}<!--
+         -->{{#set:Keyword={{#var:keywords}}|+sep=,}}</div>
+    </div>
+     }}
+   }}
+  </div>
+</div>
+</div>
+<div class="experiments-embed">{{#switch: {{{Mode|}}}
+         |Manual={{#set:Abstract={{{Cite abstract|}}}}}<!-- -->{{{Cite abstract|}}}
+         |#default={{#set:Abstract={{#var:abstract}}}}<!-- -->{{#var:abstract}}
+       }}<!--
+
+### SEO
+
+-->{{#seo:
+|title={{#if:{{#var:title}}|{{#var:title}}|{{{Cite title|}}}}} - {{SITENAME}}
+|description={{cutdesc|{{#switch: {{{Mode|}}}
+   |Manual={{{Cite abstract|}}}
+   |#default={{#var:abstract}}
+ }}|300}}
+|keywords={{#if:{{#var:keywords}}|{{#var:keywords}}, }}{{#switch: {{{Mode|}}}
+   |Manual={{#arraymap:{{{Cite authors|}}}|,|x|x|,\s}}
+   |#default={{#arraymap:{{#var:allAuthorsI}}|,|x|x|,\s}}
+ }}
+}}
+{{#vardefine:inside_embed_loop|yes}}
+{{#arraymap:{{#ask:
+[[Base page::{{FULLPAGENAME}}]]
+[[Category:Experiments]]
+|format=array
+|link=none
+|sort=Page sort number
+|order=asc
+|sep=;
+}}|;|@@@|
+=={{SUBPAGENAME:@@@}}==
+{{Set page name|@@@}}
+{{#ask:[[@@@]][[Modification date::+]]|format=embedded|embedonly=yes}}
+|\n}}</div>
+{{#vardefine:inside_embed_loop|no}}
+{{sliding-toc}}
+[[Category:Studies|{{#var:title|{{#explode:{{PAGENAME}}| |-1}}}}]]__NOEDITSECTION__</includeonly>

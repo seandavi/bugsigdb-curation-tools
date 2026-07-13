@@ -1,0 +1,130 @@
+Not specified
+Acrocephalus sechellensis
+Acropora cervicornis
+Aedes aegypti
+Ailuropoda melanoleuca
+Ailurus fulgens
+Allenopithecus nigroviridis
+Amolops chunganensis
+Anas acuta
+Anas platyrhynchos
+Anas poecilorhyncha
+Anas querquedula
+Anas strepera
+Anolis carolinensis
+Anopheles coluzzii
+Anopheles funestus
+Anopheles gambiae
+Anser indicus
+Apis mellifera
+Apodemus speciosus
+Apodemus argenteus
+Arabidopsis thaliana
+Argyrosomus regius
+Aves
+Aythya ferina
+Bison bison bison
+Bos grunniens
+Bos taurus
+Branta canadensis
+Buxus sempervirens
+Caenorhabditis elegans
+Calonectris borealis
+Canis latrans
+Canis lupus
+Canis lupus familiaris
+Capra hircus
+Cebus capucinus
+Cercopithecus neglectus
+Cervus nippon kopschi
+Chlorocebus pygerythrus
+Circus aeruginosus
+Colobus angolensis
+Coturnix japonica
+Danio rerio
+Desmodus rotundus
+Drosophila melanogaster
+Duttaphrynus melanostictus
+Elephas maximus
+Eptesicus fuscus
+Equus caballus
+Equus hemionus hemionus
+Eulemur flavifrons
+Felis catus
+Fukomys damarensis
+Fulmarus glacialis
+Gallus gallus
+Gallus gallus domesticus
+Glossina palpalis palpalis
+Glossophaga soricina
+Grus grus
+Halcyon smyrnensis
+Hapalemur griseus
+Hirundo rustica
+Hoolock tianxing
+Homo sapiens
+Ixodes ricinus
+Lasioglossum malachurum
+Lemur catta
+Leptobrachella liui
+Macaca assamensis
+Macaca fascicularis
+Macaca mulatta
+Mauremys reevesii
+Mesocricetus auratus
+Mirza coquereli
+Molossus molossus 
+Monodelphis domestica
+Moschus berezovskii
+Motacilla citreola
+Mus musculus
+Myodes rufocanus
+Myotis
+Myotis chinensis
+Myotis lucifugus
+Netta rufina
+Nomascus hainanus
+Nomascus concolor
+Ornithorhynchus anatinus
+Oryctolagus cuniculus
+Ovis aries
+Pan troglodytes
+Pelophylax nigromaculatus
+Perimyotis subflavus
+Phacochoerus africanus
+Phascolarctos cinereus
+Phoenicopterus roseus
+Pipistrellus
+Pipistrellus pipistrellus
+Pithecia pithecia
+Potamochoerus porcus
+Premnas biaculeatus
+Ptychadena mascareniensis
+Rana pipiens
+Rattus norvegicus
+Rhacophorus minimus
+Rhinolophus
+Rhinolophus ferrumequinum
+Rodentia
+Salmo salar
+Saxicola torquatus
+Schistura fasciolata
+Strongylocentrotus purpuratus
+Sturnira lilium 
+Sus scrofa domesticus
+Symphalangus syndactylus
+Theloderma rhododiscus
+Theobroma cacao
+Theropithecus gelada
+Trachypithecus obscurus
+Tringa ochropus
+Tscherskia triton
+Ursus arctos
+Ursus maritimus
+Ursus thibetanus
+Vanellus malabaricus
+Varecia rubra
+Vulpes corsac
+Vulpes vulpes
+Xenopus laevis
+Xenopus tropicalis

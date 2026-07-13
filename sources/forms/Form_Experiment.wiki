@@ -1,0 +1,113 @@
+<noinclude>
+This is the "Experiment" form.
+To create a page with this form, enter the page name below;
+if a page with that name already exists, you will be sent to a form to edit that page.
+
+{{#forminput:form=Experiment}}
+
+</noinclude><includeonly>{{{info|page name=<Experiment[Base page]>/Experiment <unique number;start=1>}}}
+<div id="wikiPreview" style="display: none; padding-bottom: 25px; margin-bottom: 25px; border-bottom: 1px solid #AAAAAA;"></div>
+{{{for template|Experiment}}}{{{field|Base page|hidden}}}
+{| class="formtable"
+! Location of subjects: {{FieldTooltip|Location of subjects}}
+| {{{field|Location of subjects|list|input type=tokens|existing values only|values={{#show:Property:Location of subjects|?Allows value}} }}}
+|- {{#arraydefine: notspecified|Not specified}}<!--
+   -->{{#arraydefine:hostspecies|{{#show:Property:Host species|?Allows value}}}}<!--
+   -->{{#arraydiff: values|hostspecies|notspecified}}
+! Host species: {{FieldTooltip|Host species}}
+| {{{field|Host species|values={{#show:Property:Host species|?Allows value}}|mandatory|placeholder=Select|default=Not specified|input type=dropdown|values=Not specified,{{#arrayprint:values}} }}}
+|-
+! class="newtab"|Body site: {{#info: Anatomical site where microbial samples were extracted from according to the [https://www.ebi.ac.uk/ols/ontologies/uberon Uber Anatomy Ontology]}}<br><span class="small font-weight-normal">[https://www.ebi.ac.uk/ols/ontologies/uberon Find a term]</span>
+| {{{field|Body site|input type=tokens|existing values only|list|delimiter=;|semantic_query=((Category:Body site)) ((Glossary-Term::~*@*)) }}}
+<div class="small">Use a semicolon as the multiple values delimiter.</div>
+|-
+!  class="newtab"|Condition: {{#info: The experimental condition / phenotype studied according to the [https://www.ebi.ac.uk/ols/ontologies/efo Experimental Factor Ontology]}}<br><span class="small font-weight-normal">[https://www.ebi.ac.uk/ols/ontologies/efo Find a term]</span>
+| {{{field|Condition|input type=tokens|existing values only|list|delimiter=;|semantic_query=((Category:Condition)) ((Glossary-Term::~*@*)) }}}
+<div class="small">Use a semicolon as the multiple values delimiter.</div>
+|-
+! Group 0 name: {{FieldTooltip|Group 0 name}}
+| {{{field|Group 0 name|property=Group 0 name}}}
+|-
+! Group 1 name: {{FieldTooltip|Group 1 name}}
+| {{{field|Group 1 name|property=Group 1 name}}}
+|-
+! Group 1 definition: {{FieldTooltip|Group 1 definition}}
+| {{{field|Group 1 definition|input type=textarea|property=Group 1 definition}}}
+|-
+! Group 0 sample size: {{FieldTooltip|Group 0 sample size}}
+| {{{field|Group 0 sample size|property=Group 0 sample size}}}
+|-
+! Group 1 sample size: {{FieldTooltip|Group 1 sample size}}
+| {{{field|Group 1 sample size|property=Group 1 sample size}}}
+|-
+! Antibiotics exclusion: {{FieldTooltip|Antibiotics exclusion}}
+| {{{field|Antibiotics exclusion|input type=textarea|property=Antibiotics exclusion}}}
+|}
+
+== Lab analysis ==
+{|
+! Sequencing type: {{FieldTooltip|Sequencing type}}
+| {{{field|Sequencing type|show on select=16S=>16S_regions|input type=dropdown|values={{#show:Property:Sequencing type|?Allows value}} }}}
+{| id="16S_regions"
+! 16S variable region (lower bound): {{FieldTooltip|16S variable region (lower bound)}}
+| V {{{field|16S variable region (lower bound)|input type=dropdown|values={{#show:Property:16S variable region|?Allows value}} }}}
+|-
+! 16S variable region (upper bound - only set if needed): {{FieldTooltip|16S variable region (upper bound)}}
+| V {{{field|16S variable region (upper bound)|input type=dropdown|values={{#show:Property:16S variable region|?Allows value}} }}}
+|}
+|-
+! Sequencing platform: {{FieldTooltip|Sequencing platform}}
+| {{{field|Sequencing platform|values={{#show:Property:Sequencing platform|?Allows value}}|existing values only|list|input type=tokens}}}
+|}
+
+== Statistical Analysis  ==
+{|
+! Data transformation: {{FieldTooltip|Data transformation}}
+| {{{field|Data transformation|values={{#show:Property:Data transformation|?Allows value}}|input type=dropdown}}}
+|-
+! Statistical test: {{FieldTooltip|Statistical test}}
+| {{{field|Statistical test|values={{#show:Property:Statistical test|?Allows value}}|existing values only|list|input type=tokens}}}
+|-
+! Significance threshold: {{FieldTooltip|Significance threshold}}
+| {{{field|Significance threshold|property=Significance threshold}}}
+|-
+! MHT correction: {{FieldTooltip|MHT correction}}
+| {{{field|MHT correction|property=MHT correction|input type=dropdown|}}}
+|-
+! LDA Score above: {{FieldTooltip|LDA Score above}}
+| {{{field|LDA Score above|property=LDA Score above}}}
+|-
+! Matched on: {{FieldTooltip|Matched on}}
+| {{{field|Matched on|list|input type=tokens|values={{#show:Property:Matched on|?Allows value|limit=1000|searchlabel=}} }}}
+|-
+! Confounders controlled for: {{FieldTooltip|Confounders controlled for}}
+| {{{field|Confounders controlled for|list|input type=tokens|values={{#show:Property:Confounders controlled for|?Allows value|limit=1000|searchlabel=}} }}}
+|}
+== Alpha Diversity ==
+{|
+! Pielou: {{FieldTooltip|Pielou}}
+| {{{field|Pielou|input type=dropdown|values={{#show:Property:Pielou|?Allows value}} }}}
+|-
+! Shannon: {{FieldTooltip|Shannon}}
+| {{{field|Shannon|input type=dropdown|values={{#show:Property:Shannon|?Allows value}} }}}
+|-
+! Chao1: {{FieldTooltip|Chao1}}
+| {{{field|Chao1|input type=dropdown|values={{#show:Property:Chao1|?Allows value}} }}}
+|-
+! Simpson: {{FieldTooltip|Simpson}}
+| {{{field|Simpson|input type=dropdown|values={{#show:Property:Simpson|?Allows value}} }}}
+|-
+! Inverse Simpson: {{FieldTooltip|Inverse Simpson}}
+| {{{field|Inverse Simpson|input type=dropdown|values={{#show:Property:Inverse Simpson|?Allows value}} }}}
+|-
+! Richness: {{FieldTooltip|Richness}}
+| {{{field|Richness|input type=dropdown|values={{#show:Property:Richness|?Allows value}} }}}
+|-
+! Faith: {{FieldTooltip|Faith}}
+| {{{field|Faith|input type=dropdown|values={{#show:Property:Faith|?Allows value}} }}}
+|}
+{{Form:State fields}}
+{{{end template}}}
+
+{{{standard input|save}}}
+__NOTOC____NOEDITSECTION__</includeonly>
