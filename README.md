@@ -1,5 +1,7 @@
 # BugSigDB Curation Schema (LinkML)
 
+[![CI](https://github.com/seandavi/bugsigdb-curation-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/seandavi/bugsigdb-curation-tools/actions/workflows/ci.yml)
+
 A [LinkML](https://linkml.io) representation of the [BugSigDB](https://bugsigdb.org)
 curation data model, reverse-engineered from the Semantic MediaWiki + Page Forms
 application that curators use. This is the foundation for an automated curation agent
