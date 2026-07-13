@@ -17,6 +17,7 @@ from bugsigdb_curation.loader import (
     is_blank,
     load_studies,
     normalize_enum,
+    parse_curated_date,
     parse_taxa,
     parse_variable_region,
     read_rows,
@@ -34,7 +35,7 @@ FIXTURE = Path(__file__).parent / "data" / "full_dump_sample.csv"
 
 def test_read_rows_skips_banner_and_parses_header():
     rows = list(read_rows(FIXTURE))
-    assert len(rows) == 6
+    assert len(rows) == 7
     assert rows[0]["BSDB ID"] == "bsdb:100001/1/1"
     assert set(rows[0].keys()) >= {"Study", "PMID", "Experiment", "Signature page name"}
 
@@ -70,6 +71,19 @@ def test_coerce_int_unparseable_returns_none():
 )
 def test_coerce_bool(value, expected):
     assert coerce_bool(value) is expected
+
+
+def test_parse_curated_date_converts_to_iso():
+    assert parse_curated_date("10 January 2021") == "2021-01-10"
+
+
+def test_parse_curated_date_blank_returns_none():
+    assert parse_curated_date("NA") is None
+    assert parse_curated_date("") is None
+
+
+def test_parse_curated_date_unparseable_keeps_raw_string():
+    assert parse_curated_date("not a date") == "not a date"
 
 
 def test_normalize_enum_passes_known_value():
@@ -134,11 +148,13 @@ def test_split_authors_blank():
 
 
 def test_parse_variable_region_range():
-    assert parse_variable_region("34") == (3, 4)
+    # Returned as strings: SixteenSRegionEnum's permissible values are "1".."9",
+    # not integers.
+    assert parse_variable_region("34") == ("3", "4")
 
 
 def test_parse_variable_region_single():
-    assert parse_variable_region("4") == (4, None)
+    assert parse_variable_region("4") == ("4", None)
 
 
 def test_parse_variable_region_blank():
@@ -189,6 +205,16 @@ def test_load_studies_counts(studies):
     assert n_signatures == 6
 
 
+def test_load_studies_citation_mode_inferred_from_pmid(studies):
+    # citation_mode is `required: true` on the schema with no direct column in
+    # full_dump.csv; infer Auto/Manual from whether a PMID applies.
+    study_a = next(s for s in studies if s.get("pmid") == 100001)
+    assert study_a["citation_mode"] == "Auto"
+
+    study_b = next(s for s in studies if s.get("title") is None and s.get("doi") is None)
+    assert study_b["citation_mode"] == "Manual"
+
+
 def test_load_studies_pmid_keyed_study(studies):
     study_a = next(s for s in studies if s.get("pmid") == 100001)
     assert study_a["doi"] == "10.1000/xyz1"
@@ -221,8 +247,8 @@ def test_load_studies_multivalue_taxa_and_location(studies):
     exp1 = next(e for e in study_a["experiments"] if e["group_0_name"] == "Controls")
     assert exp1["location_of_subjects"] == ["Korea, Republic of", "Japan"]
     assert exp1["body_site"] == ["Feces", "Oral cavity"]
-    assert exp1["variable_region_lower_bound"] == 3
-    assert exp1["variable_region_upper_bound"] == 4
+    assert exp1["variable_region_lower_bound"] == "3"
+    assert exp1["variable_region_upper_bound"] == "4"
 
     sig1 = next(s for s in exp1["signatures"] if s["abundance_in_group_1"] == "increased")
     assert len(sig1["taxa"]) == 2
@@ -263,3 +289,40 @@ def test_load_studies_alpha_diversity_enum_preserved(studies):
     exp_b = study_b["experiments"][0]
     assert exp_b["pielou"] == "unchanged"
     assert exp_b["shannon"] == "increased"
+
+
+def test_load_studies_no_signature_yet_row_skipped(studies):
+    # ~2.9% of real rows are "Experiment has no Signature yet" (Signature page
+    # name == "NA"). The fixture's third row for Experiment 1 of study 100001
+    # (bsdb:100001/1/NA) is exactly such a row: it must still count toward the
+    # Experiment (already true via the other two rows) but must NOT produce a
+    # phantom empty Signature dict, and the experiment's signature count must
+    # reflect only the two real signatures.
+    study_a = next(s for s in studies if s.get("pmid") == 100001)
+    exp1 = next(e for e in study_a["experiments"] if e["group_0_name"] == "Controls")
+    assert len(exp1["signatures"]) == 2
+    assert {} not in exp1["signatures"]
+    assert all(sig for sig in exp1["signatures"])
+
+
+def test_load_studies_curated_date_is_iso(studies):
+    study_a = next(s for s in studies if s.get("pmid") == 100001)
+    exp1 = next(e for e in study_a["experiments"] if e["group_0_name"] == "Controls")
+    for sig in exp1["signatures"]:
+        assert sig["curated_date"] == "2021-01-10"
+
+
+def test_load_studies_experiment_enum_fields_normalized(studies):
+    study_a = next(s for s in studies if s.get("pmid") == 100001)
+    exp1 = next(e for e in study_a["experiments"] if e["group_0_name"] == "Controls")
+    assert exp1["sequencing_type"] == "16S"
+    assert exp1["data_transformation"] == "relative abundances"
+    assert exp1["sequencing_platform"] == ["Illumina"]
+    assert exp1["statistical_test"] == ["LEfSe", "Mann-Whitney (Wilcoxon)"]
+
+    study_b = next(s for s in studies if s.get("title") is None and s.get("doi") is None)
+    exp_b = study_b["experiments"][0]
+    assert exp_b["sequencing_type"] == "WMS"
+    assert exp_b["data_transformation"] == "raw counts"
+    assert exp_b["sequencing_platform"] == ["Illumina"]
+    assert exp_b["statistical_test"] == ["DESeq2"]

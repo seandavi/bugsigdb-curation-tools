@@ -28,6 +28,7 @@ from __future__ import annotations
 import csv
 import itertools
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, Iterator, TextIO
 
@@ -74,6 +75,26 @@ def coerce_bool(value: str | None) -> bool | None:
     if v in ("false", "no"):
         return False
     return None
+
+
+def parse_curated_date(value: str | None) -> str | None:
+    """Parse a "Curated date" cell (e.g. "10 January 2021") into ISO `YYYY-MM-DD`.
+
+    The schema's `curated_date` slot has `range: date`, so this must be ISO for
+    `bugsigdb validate` to accept it. Real dump values are consistently
+    "%d %B %Y" (1,082 distinct values observed, none already ISO); if a value
+    doesn't match that format, the raw string is returned as-is rather than
+    raising, since a wiki-provenance field being unparseable shouldn't crash
+    the loader — it will simply fail schema validation downstream, which is
+    the appropriate place to flag it.
+    """
+    if is_blank(value):
+        return None
+    raw = value.strip()
+    try:
+        return datetime.strptime(raw, "%d %B %Y").date().isoformat()
+    except ValueError:
+        return raw
 
 
 def normalize_enum(value: str | None, allowed: Iterable[str]) -> str | None:
@@ -171,15 +192,20 @@ def split_authors(value: str | None) -> list[str]:
 # so we take the first and last digit of the cell.
 
 
-def parse_variable_region(value: str | None) -> tuple[int | None, int | None]:
-    """Split a "16S variable region" cell into (lower_bound, upper_bound)."""
+def parse_variable_region(value: str | None) -> tuple[str | None, str | None]:
+    """Split a "16S variable region" cell into (lower_bound, upper_bound).
+
+    Returned as strings, not ints: the schema's `SixteenSRegionEnum` permissible
+    values are the string tokens "1".."9" (not integers), so emitting ints
+    would fail strict schema validation.
+    """
     if is_blank(value):
         return None, None
     digits = value.strip()
     if not digits.isdigit():
         return None, None
-    lower = int(digits[0])
-    upper = int(digits[-1]) if len(digits) > 1 else None
+    lower = digits[0]
+    upper = digits[-1] if len(digits) > 1 else None
     return lower, upper
 
 
@@ -300,6 +326,93 @@ STUDY_DESIGN_VALUES = frozenset(
         "meta-analysis",
     }
 )
+SEQUENCING_TYPE_VALUES = frozenset({"16S", "18S", "WMS", "ITS / ITS2", "PCR"})
+DATA_TRANSFORMATION_VALUES = frozenset(
+    {
+        "raw counts",
+        "relative abundances",
+        "centered log-ratio",
+        "arcsine square-root",
+        "log transformation",
+        "additive log-ratio",
+    }
+)
+SEQUENCING_PLATFORM_VALUES = frozenset(
+    {
+        "DNA-DNA Hybridization",
+        "Human Intestinal Tract Chip",
+        "Illumina",
+        "Ion Torrent",
+        "Mass spectrometry",
+        "Non-quantitative PCR",
+        "PacBio Vega (VS)/Revio (RS)/Sequel II",
+        "PhyloChip",
+        "Roche454",
+        "RT-qPCR",
+        "Sanger",
+        "Nanopore",
+        "BGISEQ-500 Sequencing",
+        "DNBSEQ-G400",
+        "DNBSEQ-T7",
+        "MGISEQ-2000",
+        "HTF-Microbi.Array",
+        "2b-RAD",
+    }
+)
+STATISTICAL_TEST_VALUES = frozenset(
+    {
+        "ANCOM",
+        "ANCOM-BC",
+        "ANCOM-BC2",
+        "ANOSIM",
+        "ANOVA",
+        "Beta Binomial Regression",
+        "Chi-Square",
+        "Cox Proportional-Hazards Regression",
+        "Decision Trees (xgBoost, gradient boosting)",
+        "distance-based redundancy analysis (db-RDA)",
+        "Dunn's test",
+        "Dunnett's test",
+        "DESeq2",
+        "edgeR",
+        "Fisher's Exact Test",
+        "Fold-change cutoff",
+        "G-test",
+        "Jonckheere's trend test",
+        "Kolmogorov-Smirnov Test",
+        "Kruskall-Wallis",
+        "LASSO Regression",
+        "LEfSe",
+        "Linear Discriminant Analysis",
+        "Linear Regression",
+        "Logistic Regression",
+        "Mann-Whitney (Wilcoxon)",
+        "MaAsLin2",
+        "MaAsLin3",
+        "metagenomeSeq",
+        "Meta-Analysis",
+        "Metastats",
+        "Mixed-Effects Regression",
+        "Negative Binomial Regression",
+        "NLMIXED",
+        "Pearson Correlation",
+        "PERMANOVA",
+        "Permutation Test",
+        "PLS-DA (Partial least square discriminant analysis)",
+        "Post-Hoc Pairwise",
+        "Random Forest Analysis",
+        "Songbird",
+        "Sparse Correlations for Compositional data (SparCC)",
+        "Spearman Correlation",
+        "Structural Equation Modeling (SEM)",
+        "T-Test",
+        "treeDA",
+        "Wald Test",
+        "Welch's T-Test",
+        "Zero-Inflated Beta Regression",
+        "Zero-Inflated Negative Binomial Regression",
+    }
+)
 
 _ALPHA_DIVERSITY_COLUMNS = ("Pielou", "Shannon", "Chao1", "Simpson", "Inverse Simpson", "Richness")
 _ALPHA_DIVERSITY_SLOTS = ("pielou", "shannon", "chao1", "simpson", "inverse_simpson", "richness")
@@ -308,6 +421,11 @@ _ALPHA_DIVERSITY_SLOTS = ("pielou", "shannon", "chao1", "simpson", "inverse_simp
 # ---------------------------------------------------------------------------
 # per-level field extraction
 # ---------------------------------------------------------------------------
+
+
+def _normalize_enum_list(values: Iterable[str], allowed: Iterable[str]) -> list[str]:
+    """Apply `normalize_enum` to each item of a multivalued cell, dropping unrecognized ones."""
+    return [v for v in (normalize_enum(x, allowed) for x in values) if v]
 
 
 def _set(d: dict[str, Any], key: str, value: Any) -> None:
@@ -330,6 +448,11 @@ def _study_key(row: dict[str, str]) -> str:
 def _extract_study(row: dict[str, str]) -> dict[str, Any]:
     d: dict[str, Any] = {}
     _set(d, "pmid", coerce_int(row.get("PMID")))
+    # citation_mode is `required: true` on the schema (a mandatory radio button
+    # on the Study form; default Auto) with no way to observe it directly in
+    # full_dump.csv, so it's inferred per the schema's own AGENT comment: Auto
+    # when a PMID applies, Manual otherwise (matches _study_key's fallback).
+    _set(d, "citation_mode", "Auto" if not is_blank(row.get("PMID")) else "Manual")
     _set(d, "doi", None if is_blank(row.get("DOI")) else row["DOI"].strip())
     _set(d, "uri", None if is_blank(row.get("URL")) else row["URL"].strip())
     _set(d, "authors", split_authors(row.get("Authors list")))
@@ -366,21 +489,21 @@ def _extract_experiment(row: dict[str, str]) -> dict[str, Any]:
         "antibiotics_exclusion",
         None if is_blank(row.get("Antibiotics exclusion")) else row["Antibiotics exclusion"].strip(),
     )
-    _set(
-        d,
-        "sequencing_type",
-        None if is_blank(row.get("Sequencing type")) else row["Sequencing type"].strip(),
-    )
+    _set(d, "sequencing_type", normalize_enum(row.get("Sequencing type"), SEQUENCING_TYPE_VALUES))
     lower, upper = parse_variable_region(row.get("16S variable region"))
     _set(d, "variable_region_lower_bound", lower)
     _set(d, "variable_region_upper_bound", upper)
-    _set(d, "sequencing_platform", split_comma_strict(row.get("Sequencing platform")))
     _set(
         d,
-        "data_transformation",
-        None if is_blank(row.get("Data transformation")) else row["Data transformation"].strip(),
+        "sequencing_platform",
+        _normalize_enum_list(split_comma_strict(row.get("Sequencing platform")), SEQUENCING_PLATFORM_VALUES),
     )
-    _set(d, "statistical_test", split_comma_strict(row.get("Statistical test")))
+    _set(d, "data_transformation", normalize_enum(row.get("Data transformation"), DATA_TRANSFORMATION_VALUES))
+    _set(
+        d,
+        "statistical_test",
+        _normalize_enum_list(split_comma_strict(row.get("Statistical test")), STATISTICAL_TEST_VALUES),
+    )
     _set(d, "significance_threshold", coerce_float(row.get("Significance threshold")))
     _set(d, "mht_correction", coerce_bool(row.get("MHT correction")))
     _set(d, "lda_score_above", coerce_float(row.get("LDA Score above")))
@@ -400,7 +523,7 @@ def _extract_signature(row: dict[str, str]) -> dict[str, Any]:
     # Curation provenance (CurationProvenance mixin), scoped to the Signature
     # page per this row-block (see header ordering: Curated date/Curator/
     # Revision editor/... /State all sit adjacent to Description/Abundance/taxa).
-    _set(d, "curated_date", None if is_blank(row.get("Curated date")) else row["Curated date"].strip())
+    _set(d, "curated_date", parse_curated_date(row.get("Curated date")))
     _set(d, "curator", split_comma_strict(row.get("Curator")))
     _set(d, "revision_editor", split_comma_strict(row.get("Revision editor")))
     _set(d, "curation_state", normalize_enum(row.get("State"), {"Complete", "Incomplete"}))
@@ -425,9 +548,13 @@ def load_studies(source: Path | Iterable[dict[str, str]], *, limit: int | None =
 
     `limit`, if given, stops reading once that many *distinct* studies have
     been started — handy for sampling a prefix of the real 30 MB file without
-    parsing all of it. This assumes rows for a given study are not
-    interleaved with rows of studies seen after it, which holds for the real
-    export (rows are grouped by study).
+    parsing all of it. This assumes rows for a given study are mostly
+    contiguous, which holds for the vast majority of the real export (rows
+    are grouped by study); a `limit`-based sample can still miss a few rows
+    of an in-progress study if that study's rows happen to be mildly
+    interleaved with a later study's (observed for 3 of ~2,300 real study
+    keys, in the last ~10 rows of the file) — grouping itself is dict-keyed
+    and unaffected either way, so no signature is ever mis-attributed.
     """
     rows: Iterable[dict[str, str]] = read_rows(source) if isinstance(source, (str, Path)) else source
 
@@ -453,7 +580,12 @@ def load_studies(source: Path | Iterable[dict[str, str]], *, limit: int | None =
             experiments[ekey] = experiment
         experiment = experiments[ekey]
 
-        experiment["signatures"].append(_extract_signature(row))
+        # ~2.9% of real rows (404/14151) represent "Experiment has no Signature
+        # yet": identifiable by a blank `Signature page name` (its BSDB ID
+        # typically ends `/NA`). Such a row still contributes its Experiment
+        # (and Study) but must not inflate signature counts with an empty {}.
+        if not is_blank(row.get("Signature page name")):
+            experiment["signatures"].append(_extract_signature(row))
 
     result: list[dict[str, Any]] = []
     for study in studies.values():

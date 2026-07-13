@@ -187,7 +187,7 @@ def load_command(
     csv_path: Path = typer.Argument(
         ..., help="Path to a BugSigDB full_dump.csv export (or a sample of it)."
     ),
-    output: Path = typer.Option(
+    output: Path | None = typer.Option(
         None,
         "--output",
         "-o",
@@ -196,7 +196,7 @@ def load_command(
     format: LoadFormat = typer.Option(
         LoadFormat.yaml, "--format", help="Output serialization format."
     ),
-    limit: int = typer.Option(
+    limit: int | None = typer.Option(
         None,
         "--limit",
         "-n",
