@@ -213,6 +213,36 @@ def test_extract_signatures_dedupes_repeated_taxon_within_a_direction(httpx_mock
     assert signatures[0].taxa[0].ncbi_id == 817  # id-carrying occurrence preserved
 
 
+def test_extract_signatures_dedupes_taxa_differing_only_by_internal_whitespace(httpx_mock):
+    """Dedup keys on the normalized taxon name, which must collapse
+    internal-whitespace variation ("Bacteroides  fragilis" with a doubled
+    space vs "Bacteroides fragilis") as well as case/leading/trailing
+    whitespace -- otherwise the same taxon (e.g. from an OCR'd table with an
+    extra space) survives twice."""
+    model = MockModel(
+        responses={
+            "signature_extract": {
+                "taxa": [
+                    {"name": "Bacteroides  fragilis", "direction": "increased", "proposed_ncbi_id": None},
+                    {"name": "Bacteroides fragilis", "direction": "increased", "proposed_ncbi_id": 817},
+                ]
+            }
+        }
+    )
+    resolver = NcbiTaxonomyResolver(cache={"bacteroides fragilis": 817}, cache_path=None)
+    artifact = LocatedArtifact(kind="table", table=_TABLE)
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await extract_signatures(artifact, model=model, resolver=resolver, client=client)
+
+    signatures = _run(run())
+
+    assert len(signatures) == 1
+    assert len(signatures[0].taxa) == 1
+    assert signatures[0].taxa[0].ncbi_id == 817  # id-carrying occurrence preserved
+
+
 def test_extract_signatures_uses_multimodal_message_for_figure_artifact():
     model = MockModel(responses={"signature_extract": {"taxa": []}})
     resolver = NcbiTaxonomyResolver(cache_path=None)

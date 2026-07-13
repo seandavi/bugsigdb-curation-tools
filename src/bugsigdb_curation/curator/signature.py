@@ -16,6 +16,7 @@ verified this way is still kept (by name), just with `ncbi_id=None` --
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Literal
 
@@ -47,6 +48,8 @@ class ExtractedSignature:
     taxa: tuple[ExtractedTaxon, ...]
 
 
+_INTERNAL_WHITESPACE = re.compile(r"\s+")
+
 _PROMPT_TEMPLATE = (
     "You are extracting a differential-abundance microbial signature from a microbiome "
     "research paper's {artifact_kind}, for BugSigDB curation.\n\n"
@@ -71,7 +74,7 @@ def _dedup_taxa(taxa: list[ExtractedTaxon]) -> list[ExtractedTaxon]:
     """
     kept: dict[str, ExtractedTaxon] = {}
     for taxon in taxa:
-        key = taxon.taxon_name.strip().lower()
+        key = _INTERNAL_WHITESPACE.sub(" ", taxon.taxon_name.strip().lower())
         if key not in kept:
             kept[key] = taxon
         elif kept[key].ncbi_id is None and taxon.ncbi_id is not None:
