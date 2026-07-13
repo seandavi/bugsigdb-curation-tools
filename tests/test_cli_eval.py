@@ -274,7 +274,10 @@ def test_eval_score_missing_relational_dir_errors(tmp_path):
         ["eval", "score", "--pred", str(tmp_path), "--relational", str(tmp_path / "nope"), "--out", str(tmp_path / "out")],
     )
     assert result.exit_code == 1
-    assert "does not exist" in result.output
+    # Normalize whitespace: rich word-wraps the (possibly long) path in the error
+    # message at the console width, which can split "does not exist" across a newline
+    # on CI runners with long tmp paths. The intent is only that the path is reported missing.
+    assert "does not exist" in " ".join(result.output.split())
 
 
 def test_eval_score_missing_pred_path_errors(tmp_path):
@@ -290,7 +293,10 @@ def test_eval_score_missing_pred_path_errors(tmp_path):
         ],
     )
     assert result.exit_code == 1
-    assert "does not exist" in result.output
+    # Normalize whitespace: rich word-wraps the (possibly long) path in the error
+    # message at the console width, which can split "does not exist" across a newline
+    # on CI runners with long tmp paths. The intent is only that the path is reported missing.
+    assert "does not exist" in " ".join(result.output.split())
 
 
 def test_eval_score_writes_unresolved_taxa_diagnostic_file(tmp_path):
@@ -365,7 +371,10 @@ def test_eval_gold_dumps_nested_shape(tmp_path):
 def test_eval_gold_missing_relational_dir_errors(tmp_path):
     result = runner.invoke(app, ["eval", "gold", "--relational", str(tmp_path / "nope")])
     assert result.exit_code == 1
-    assert "does not exist" in result.output
+    # Normalize whitespace: rich word-wraps the (possibly long) path in the error
+    # message at the console width, which can split "does not exist" across a newline
+    # on CI runners with long tmp paths. The intent is only that the path is reported missing.
+    assert "does not exist" in " ".join(result.output.split())
 
 
 def test_eval_score_prediction_matched_by_filename_stem_when_no_id_key(tmp_path):

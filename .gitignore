@@ -12,3 +12,7 @@ venv/
 # Generated / downloaded data artifacts (exports, split CSVs, loaded YAML, …)
 /data/*
 !/data/.gitkeep
+# Secrets — never commit API keys. Local env files only.
+.env
+.env.*
+!.env.example
