@@ -322,11 +322,15 @@ def test_name_to_id_subscore_wrong_mapping_not_counted_correct():
     assert result.name_to_id_correct == 0
 
 
-# --- known-bad-gold discount (curation_state == "Incomplete") --------------------------------
+# --- known-bad-gold discount (blank curation_state -- the real corpus never emits the literal
+# "Incomplete" string; 406/14,156 gold signatures have a blank `State` cell instead, all with zero
+# gold taxa. See score.py's module docstring / `_is_known_bad_gold`.) ---------------------------
 
 
-def test_incomplete_gold_signature_discounts_false_positives():
-    exp = _experiment(signatures=(_signature("s1", taxa=frozenset({1}), curation_state="Incomplete"),))
+def test_blank_curation_state_gold_signature_discounts_false_positives():
+    # curation_state=None is the REAL "not complete" signal in the export
+    # (a blank `State` cell), not the literal string "Incomplete".
+    exp = _experiment(signatures=(_signature("s1", taxa=frozenset({1}), curation_state=None),))
     gold = _study([exp])
     # Predicted taxon 1 (correct) plus an extra taxon 2 not in the (possibly
     # incomplete) gold set -- with discounting, taxon 2 should not count as FP.
@@ -342,6 +346,19 @@ def test_incomplete_gold_signature_discounts_false_positives():
     assert undiscounted.micro_taxa.precision == 0.5
 
 
+def test_schema_documented_incomplete_string_still_discounts():
+    # The literal string never occurs in the real export, but the schema
+    # documents it as a valid `State` value -- kept as an alternate spelling
+    # in case a future export starts emitting it (see `_is_known_bad_gold`).
+    exp = _experiment(signatures=(_signature("s1", taxa=frozenset({1}), curation_state="Incomplete"),))
+    gold = _study([exp])
+    pred = {"experiments": [_pred_exp(signatures=[_pred_sig(taxa=[1, 2])])]}
+    resolver = TaxonomyResolver()
+
+    result = score_study(gold, pred, resolver, discount_incomplete=True)
+    assert result.micro_taxa.fp == 0
+
+
 def test_complete_gold_signature_not_discounted():
     exp = _experiment(signatures=(_signature("s1", taxa=frozenset({1}), curation_state="Complete"),))
     gold = _study([exp])
@@ -350,6 +367,41 @@ def test_complete_gold_signature_not_discounted():
 
     result = score_study(gold, pred, resolver, discount_incomplete=True)
     assert result.micro_taxa.fp == 1
+
+
+# --- blank gold direction (~3% of gold signatures) excluded from direction_total, not an
+# automatic miss -----------------------------------------------------------------------------
+
+
+def test_blank_gold_direction_excluded_from_direction_total():
+    exp = _experiment(
+        signatures=(
+            _signature("s1", direction=None, taxa=frozenset({1, 2})),
+            _signature("s2", direction="decreased", taxa=frozenset({3, 4})),
+        )
+    )
+    gold = _study([exp])
+    pred = {
+        "experiments": [
+            _pred_exp(
+                signatures=[
+                    _pred_sig(direction="increased", taxa=[1, 2]),
+                    _pred_sig(direction="decreased", taxa=[3, 4]),
+                ]
+            )
+        ]
+    }
+    resolver = TaxonomyResolver()
+
+    result = score_study(gold, pred, resolver)
+
+    # s1's taxa still score normally (matched, perfect taxa overlap) -- only
+    # the direction comparison is skipped because gold's direction is blank.
+    assert result.micro_taxa.f1 == 1.0
+    # Only s2 (non-blank gold direction) counts toward direction_total; s1's
+    # blank direction contributes neither a hit nor a miss.
+    assert result.direction_total == 1
+    assert result.direction_correct == 1
 
 
 # --- aggregate_scores: source-type / experiment-count stratification -------------------------

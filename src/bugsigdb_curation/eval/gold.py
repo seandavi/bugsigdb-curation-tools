@@ -77,12 +77,16 @@ class GoldSignature:
     source_type: SourceType
     direction: Literal["increased", "decreased"] | None
     taxa: frozenset[int]
-    #: "Complete" / "Incomplete" (or None if blank). Used as the best-available
-    #: proxy for the plan's "known-bad gold" discount (§4d): the relational
-    #: export carries no per-taxon "missing ncbi_id" flag (rows without a
-    #: resolvable ncbi_id simply have no `signatures_taxa.csv` row at all), so
-    #: an Incomplete signature is the closest available signal that its gold
-    #: taxon set may itself be short -- see `score.py`'s `discount_incomplete`.
+    #: "Complete" / "Incomplete", or `None` if the `State` cell is blank --
+    #: which is how "not complete" is actually represented in the real
+    #: export (the literal string "Incomplete" never occurs; see
+    #: `score.py`'s module docstring for the corpus counts). Used as the
+    #: best-available proxy for the plan's "known-bad gold" discount (§4d):
+    #: the relational export carries no per-taxon "missing ncbi_id" flag
+    #: (rows without a resolvable ncbi_id simply have no
+    #: `signatures_taxa.csv` row at all), so a blank/Incomplete signature is
+    #: the closest available signal that its gold taxon set may itself be
+    #: short -- see `score.py`'s `_is_known_bad_gold` / `discount_incomplete`.
     curation_state: str | None
 
 

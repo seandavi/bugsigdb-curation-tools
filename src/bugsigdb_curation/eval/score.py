@@ -19,15 +19,22 @@ Two deliberate design choices worth flagging to a reviewer:
   there are normally <=2 signatures/experiment) lets a flip surface cleanly
   as low `direction_correct` while the taxa P/R/F1 stays high -- which is
   the whole point of reporting the two separately (§4d).
-* **The "known-bad gold" discount (§4d) uses `curation_state == "Incomplete"`
-  as its signal**, not a per-taxon "missing ncbi_id" flag. The relational
-  export has no such flag: `signatures_taxa.csv` rows without a resolvable
-  `ncbi_id` simply don't exist, so there's nothing at the taxon level to key
-  off of. An Incomplete signature is the closest available proxy for "this
-  gold set may itself be short" -- when discounting, a predicted taxon that
-  doesn't match an Incomplete signature's gold set is excluded from that
-  signature's false-positive count (not penalized), while true positives and
-  recall are scored normally.
+* **The "known-bad gold" discount (§4d) uses a blank `curation_state` as its
+  signal**, not a per-taxon "missing ncbi_id" flag. The relational export has
+  no such flag: `signatures_taxa.csv` rows without a resolvable `ncbi_id`
+  simply don't exist, so there's nothing at the taxon level to key off of.
+  The schema documents `curation_state` as `"Complete"` / `"Incomplete"`, but
+  the real export **never emits the literal string `"Incomplete"`** -- "not
+  complete" is represented by leaving the `State` cell blank, which
+  `bugsigdb_curation.eval.gold` parses as `curation_state is None` (in the
+  corpus: 13,750 `"Complete"` rows vs. 406 blank/`None` rows, all of which
+  have zero gold taxa -- exactly the stub case this discount is meant to
+  exempt). A gold signature counts as "known-bad" when `curation_state is
+  None` **or** the schema-documented `"Incomplete"` string (kept in case a
+  future export starts emitting it) -- see `_is_known_bad_gold`. When
+  discounting, a predicted taxon that doesn't match a known-bad signature's
+  gold set is excluded from that signature's false-positive count (not
+  penalized), while true positives and recall are scored normally.
 """
 
 from __future__ import annotations
@@ -195,6 +202,21 @@ def _mean(values: list[float]) -> float:
 
 def _micro(items: list[PRF1]) -> PRF1:
     return prf1(sum(p.tp for p in items), sum(p.fp for p in items), sum(p.fn for p in items))
+
+
+def _is_known_bad_gold(gold_sig: GoldSignature | None) -> bool:
+    """True when a gold signature is the "known-bad" stub the §4d discount is
+    meant to exempt.
+
+    The real relational export represents "not complete" as a **blank**
+    `State` cell, which `eval.gold` parses as `curation_state is None` --
+    the schema-documented literal string `"Incomplete"` never actually
+    occurs in the corpus (see this module's docstring), but is still
+    recognized here in case a future export starts emitting it.
+    """
+    if gold_sig is None:
+        return False
+    return gold_sig.curation_state is None or gold_sig.curation_state == "Incomplete"
 
 
 # ---------------------------------------------------------------------------
@@ -457,7 +479,7 @@ def score_experiment_signatures(
         tp = len(gold_ids & pred_ids)
         fp = len(pred_ids - gold_ids)
         fn = len(gold_ids - pred_ids)
-        if discount_incomplete and gold_sig is not None and gold_sig.curation_state == "Incomplete":
+        if discount_incomplete and _is_known_bad_gold(gold_sig):
             fp = 0
         taxa_score = prf1(tp, fp, fn)
 
@@ -466,17 +488,22 @@ def score_experiment_signatures(
         g_tp = len(gold_genus & pred_genus)
         g_fp = len(pred_genus - gold_genus)
         g_fn = len(gold_genus - pred_genus)
-        if discount_incomplete and gold_sig is not None and gold_sig.curation_state == "Incomplete":
+        if discount_incomplete and _is_known_bad_gold(gold_sig):
             g_fp = 0
         genus_score = prf1(g_tp, g_fp, g_fn)
 
         pairs.append((gold_sig.source_type if gold_sig is not None else None, taxa_score, genus_score))
 
         if gold_sig is not None and pred_sig is not None:
-            direction_total += 1
-            pred_direction = pred_sig.get("abundance_in_group_1")
-            if gold_sig.direction is not None and pred_direction == gold_sig.direction:
-                direction_correct += 1
+            # A blank gold direction (~3% of gold signatures, `direction is
+            # None`) carries no signal to check a prediction against --
+            # excluded from the denominator entirely rather than counted as
+            # an automatic miss (see this module's docstring / §4d).
+            if gold_sig.direction is not None:
+                direction_total += 1
+                pred_direction = pred_sig.get("abundance_in_group_1")
+                if pred_direction == gold_sig.direction:
+                    direction_correct += 1
 
             gold_name_to_id = {resolver.id_to_name[t]: t for t in gold_ids if t in resolver.id_to_name}
             for taxon in pred_taxa_list:
