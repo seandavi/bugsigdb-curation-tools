@@ -29,6 +29,13 @@ from rich.progress import (
 )
 from rich.table import Table
 
+from bugsigdb_curation.curator.model import DEFAULT_MODEL as CURATE_DEFAULT_MODEL
+from bugsigdb_curation.curator.model import LiteLLMModel, Model, MockModel
+from bugsigdb_curation.curator.pipeline import CurationResult, curate_async
+from bugsigdb_curation.curator.pipeline import DEFAULT_CONFIG as CURATE_DEFAULT_CONFIG
+from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL as CURATE_DEFAULT_EMAIL
+from bugsigdb_curation.curator.smoke import smoke_study_ids
+from bugsigdb_curation.curator.taxonomy import DEFAULT_CACHE_PATH as CURATE_DEFAULT_TAXONOMY_CACHE
 from bugsigdb_curation.eval.gold import load_gold, to_nested_dict
 from bugsigdb_curation.eval.report import ScoringError, write_reports
 from bugsigdb_curation.eval.score import StudyScore, aggregate_scores, score_study
@@ -467,6 +474,155 @@ def load_command(
         sys.stdout.write(text)
 
     error_console.print(f"{n_studies} studies, {n_experiments} experiments, {n_signatures} signatures")
+
+
+# ---------------------------------------------------------------------------
+# curate: the de-novo curator (Design-1, Fused-Lean, linear single-worker)
+# ---------------------------------------------------------------------------
+
+
+def _build_model(mock: bool, model_name: str) -> Model:
+    return MockModel() if mock else LiteLLMModel(model=model_name)
+
+
+def _report_result(result: CurationResult, error_console: Console) -> None:
+    status = "[green]valid[/green]" if result.valid else "[yellow]INVALID[/yellow]"
+    channel = "has_pmc" if result.has_pmc else "abstract-only"
+    n_experiments = len(result.record.get("experiments", []) or [])
+    error_console.print(f"PMID {result.pmid}: {status} ({channel}), {n_experiments} experiment(s)")
+    for problem in result.problems:
+        error_console.print(f"  [yellow]{problem.severity}[/yellow]: {escape(problem.message)}")
+
+
+@app.command("curate")
+def curate_command(
+    pmid: str | None = typer.Option(
+        None, "--pmid", help="PMID to curate into a prediction record. Mutually exclusive with --smoke."
+    ),
+    model_name: str = typer.Option(
+        CURATE_DEFAULT_MODEL, "--model", help="LiteLLM model id for the real backend (ignored with --mock)."
+    ),
+    config: str = typer.Option(
+        CURATE_DEFAULT_CONFIG, "--config", help="Source-config label recorded informationally; not yet switchable."
+    ),
+    mock: bool = typer.Option(
+        False, "--mock", help="Use MockModel: deterministic, fully offline, no API key required."
+    ),
+    out: Path | None = typer.Option(
+        None,
+        "--out",
+        "-o",
+        help="Output path: a file for a single --pmid (default: stdout), or a directory for --smoke (required).",
+    ),
+    smoke: bool = typer.Option(
+        False, "--smoke", help="Batch mode: curate every study in the curator's own smoke-set ID list."
+    ),
+    output_format: LoadFormat = typer.Option(
+        LoadFormat.json, "--format", help="Serialization format (single --pmid mode only; --smoke always writes JSON)."
+    ),
+    email: str = typer.Option(
+        CURATE_DEFAULT_EMAIL, "--email", help="Contact email sent to NCBI APIs (idconv, E-utilities)."
+    ),
+    taxonomy_cache: Path = typer.Option(
+        CURATE_DEFAULT_TAXONOMY_CACHE,
+        "--taxonomy-cache",
+        help="The curator's own NCBI-taxonomy resolver cache (distinct from the eval harness's cache).",
+    ),
+) -> None:
+    """Curate a PMID into a schema-checked de-novo prediction record (Design-1, Fused-Lean).
+
+    Takes only a PMID (+ model/config) -- no gold path of any kind (see the
+    workflow plan §6e's data firewall). Writes the nested prediction record
+    in exactly the shape `bugsigdb eval score` consumes.
+    """
+    console = Console()
+    error_console = Console(stderr=True)
+
+    if bool(pmid) == bool(smoke):
+        error_console.print("[red]Error:[/red] pass exactly one of --pmid or --smoke.")
+        raise typer.Exit(code=2)
+
+    model = _build_model(mock, model_name)
+
+    if smoke:
+        if out is None:
+            error_console.print("[red]Error:[/red] --smoke requires --out (a directory).")
+            raise typer.Exit(code=2)
+        asyncio.run(_run_curate_smoke(model, config, email, taxonomy_cache, out, console, error_console))
+        return
+
+    assert pmid is not None  # guaranteed by the exactly-one-of check above
+    asyncio.run(_run_curate_one(pmid, model, config, email, taxonomy_cache, out, output_format, console, error_console))
+
+
+async def _run_curate_one(
+    pmid: str,
+    model: Model,
+    config: str,
+    email: str,
+    taxonomy_cache: Path,
+    out: Path | None,
+    output_format: LoadFormat,
+    console: Console,
+    error_console: Console,
+) -> None:
+    try:
+        result = await curate_async(pmid, model=model, config=config, email=email, taxonomy_cache_path=taxonomy_cache)
+    except Exception as exc:  # noqa: BLE001 -- surface any stage failure as a clean CLI error, not a traceback
+        error_console.print(f"[red]Error curating PMID {pmid}:[/red] {escape(str(exc))}")
+        raise typer.Exit(code=1) from None
+
+    if output_format is LoadFormat.json:
+        text = json.dumps(result.record, indent=2, ensure_ascii=False) + "\n"
+    else:
+        text = yaml.safe_dump(result.record, sort_keys=False, allow_unicode=True)
+
+    if out is not None:
+        out.write_text(text, encoding="utf-8")
+    else:
+        sys.stdout.write(text)
+
+    _report_result(result, error_console)
+    if not result.valid:
+        raise typer.Exit(code=1)
+
+
+async def _run_curate_smoke(
+    model: Model,
+    config: str,
+    email: str,
+    taxonomy_cache: Path,
+    out_dir: Path,
+    console: Console,
+    error_console: Console,
+) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ids = smoke_study_ids()
+
+    n_valid = 0
+    n_errors = 0
+    for study_id in ids:
+        try:
+            result = await curate_async(
+                study_id, model=model, config=config, email=email, taxonomy_cache_path=taxonomy_cache
+            )
+        except Exception as exc:  # noqa: BLE001 -- one bad study must not abort the whole batch
+            n_errors += 1
+            error_console.print(f"  [red]{study_id}: error:[/red] {escape(str(exc))}")
+            continue
+
+        (out_dir / f"{study_id}.json").write_text(
+            json.dumps(result.record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+        status = "[green]valid[/green]" if result.valid else "[yellow]INVALID[/yellow]"
+        channel = "has_pmc" if result.has_pmc else "abstract-only"
+        console.print(f"  {study_id}: {status} ({channel})")
+        if result.valid:
+            n_valid += 1
+
+    console.print(
+        f"[green]Curated {len(ids)} studies -> {out_dir}[/green] ({n_valid} valid, {n_errors} error(s))"
+    )
 
 
 # ---------------------------------------------------------------------------
