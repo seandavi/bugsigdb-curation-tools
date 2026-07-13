@@ -85,7 +85,7 @@ class NcbiTaxonomyResolver:
 
         response = await client.get(
             NCBI_ESEARCH_URL,
-            params={"db": "taxonomy", "term": name, "retmode": "json"},
+            params={"db": "taxonomy", "term": norm, "retmode": "json"},
         )
         response.raise_for_status()
         data = response.json()

@@ -28,9 +28,11 @@ def test_normalize_taxon_name_strips_rank_prefix_and_underscores():
 
 
 def test_resolve_name_hits_live_esearch_and_caches(httpx_mock: HTTPXMock):
+    # The esearch query uses the *normalized* (lowercased) name, matching
+    # the cache key -- see test_resolve_name_uses_normalized_query below.
     httpx_mock.add_response(
         url=httpx.URL(NCBI_ESEARCH_URL).copy_merge_params(
-            {"db": "taxonomy", "term": "Faecalibacterium prausnitzii", "retmode": "json"}
+            {"db": "taxonomy", "term": "faecalibacterium prausnitzii", "retmode": "json"}
         ),
         json={"esearchresult": {"idlist": ["853"]}},
     )
@@ -44,6 +46,32 @@ def test_resolve_name_hits_live_esearch_and_caches(httpx_mock: HTTPXMock):
     assert result == 853
     assert resolver.cache["faecalibacterium prausnitzii"] == 853
     assert "faecalibacterium prausnitzii" not in resolver.unresolved
+
+
+def test_resolve_name_uses_normalized_query_not_raw_rank_prefixed_name(httpx_mock: HTTPXMock):
+    """Regression test: `resolve_name` must send the *normalized* name
+    (rank-prefix stripped, underscores -> spaces, lowercased -- same as the
+    cache key) to esearch, not the raw name. Pre-fix, a rank-prefixed input
+    like "g__Faecalibacterium" (the exact form this module's docstring and
+    MetaPhlAn/LEfSe cite) was sent to esearch verbatim, including the
+    "g__" prefix, and so failed to resolve even when NCBI has the taxon."""
+    httpx_mock.add_response(
+        url=httpx.URL(NCBI_ESEARCH_URL).copy_merge_params(
+            {"db": "taxonomy", "term": "faecalibacterium", "retmode": "json"}
+        ),
+        json={"esearchresult": {"idlist": ["853"]}},
+    )
+    resolver = NcbiTaxonomyResolver(cache_path=None)
+
+    async def run() -> int | None:
+        async with httpx.AsyncClient() as client:
+            return await resolver.resolve_name("g__Faecalibacterium", client=client)
+
+    result = asyncio.run(run())
+    assert result == 853
+    # The mocked response only matches a query term of "faecalibacterium"
+    # (normalized) -- if the raw "g__Faecalibacterium" had been sent, no
+    # registered mock would match and pytest_httpx would raise instead.
 
 
 def test_resolve_name_returns_none_and_marks_unresolved_when_no_hit(httpx_mock: HTTPXMock):

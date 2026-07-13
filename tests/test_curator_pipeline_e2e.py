@@ -84,15 +84,17 @@ def _mock_fulltext(httpx_mock: HTTPXMock) -> None:
 
 
 def _mock_taxonomy(httpx_mock: HTTPXMock) -> None:
+    # esearch is queried with the *normalized* (lowercased) name -- see
+    # taxonomy.py's resolve_name / normalize_taxon_name.
     httpx_mock.add_response(
         url=httpx.URL(NCBI_ESEARCH_URL).copy_merge_params(
-            {"db": "taxonomy", "term": "Faecalibacterium prausnitzii", "retmode": "json"}
+            {"db": "taxonomy", "term": "faecalibacterium prausnitzii", "retmode": "json"}
         ),
         json={"esearchresult": {"idlist": ["853"]}},
     )
     httpx_mock.add_response(
         url=httpx.URL(NCBI_ESEARCH_URL).copy_merge_params(
-            {"db": "taxonomy", "term": "Escherichia coli", "retmode": "json"}
+            {"db": "taxonomy", "term": "escherichia coli", "retmode": "json"}
         ),
         json={"esearchresult": {"idlist": ["562"]}},
     )
