@@ -13,6 +13,14 @@ boundaries — anchor each to its commit hash.
 > + walking skeleton (§6d step 1 = Design 1 over text+tables+figures at a fixed cheap model on the
 > ~20-study smoke set) via the **worktree pipeline**. The narrative below is kept for context.
 >
+> **UPDATE 2 (2026-07-13):** the **eval-harness core is built, reviewed, fixed, and merged**
+> (`main` @ `d40c91a`; ledger L014–L015; 291 tests pass). That is §6d step-1's *measurable
+> foundation* — gold join + synonym-resolved taxid-set scorer + md/HTML reports + `bugsigdb eval`
+> CLI. **Next action is now worktree 2:** the **Design-1 (Fused-Lean) curator pipeline** behind a
+> mockable/LiteLLM-ready Model seam, emitting the nested-dict prediction contract the harness
+> consumes, over text+tables+figures on the smoke set — under the L013 firewall (curator takes no
+> gold path; never imports `eval.gold`; S6 taxonomy uses a general NCBI authority, not `taxa.csv`).
+>
 > **DATA FIREWALL (non-negotiable, added 2026-07-13):** the curated gold
 > (`data/exports/relational/*.csv`, `data/eval/pmid_pmcid_map.csv`) is **held out for scoring only**.
 > The curator/pipeline gets **only a PMID + source artifacts it fetches itself** — never any gold field

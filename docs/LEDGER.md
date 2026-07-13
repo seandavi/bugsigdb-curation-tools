@@ -222,3 +222,27 @@ with taxa-recall intact, rather than masquerading as total taxa-recall failure. 
 **Firewall check:** review confirmed no gold committed (only `data/.gitkeep` tracked),
 loaders confined to `eval/`. A closing entry will record the merge and the post-fix test
 count.
+
+## L015 — Eval-harness core: fixes applied + merged — 2026-07-13 — closes L014
+**Fix commits:** `b4d71c0` (known-bad-gold discount → blank `curation_state`; blank-direction
+gold excluded from the direction denominator), `3306d3c` (score every gold study, missing
+predictions = full miss in their own bucket; per-study error isolation; corpus-level
+segmentation totals; `unresolved_taxa.txt` diagnostic), `52c6dd5` (`SIGNATURE_MATCH_THRESHOLD
+= 0.1` floor on signature alignment; sub-floor pairs excluded from matching + direction),
+`30c8918` (both-blank field pairs excluded from field-accuracy denominators).
+**Merge:** `d40c91a` (`git merge --no-ff`); worktree removed, `feature/eval-harness` deleted.
+**Verification.** Every fix implemented against the real corpus and confirmed the review's
+counts exactly (13,750 `"Complete"` / 406 blank `curation_state`, 0 literal `"Incomplete"`;
+all 406 blank-state rows zero-taxa; 429/14,156 blank direction). Each fix commit passes the
+full suite in isolation (bisect-safe). **Post-merge on `main`: 291 passed, 6 deselected
+(network), 0 failed** (93 tests added over the pre-harness 198). Firewall re-verified at merge
+(only `data/.gitkeep` tracked). One fixture (`test_name_to_id_subscore_wrong_mapping_...`) was
+adjusted so its single-taxon pair clears the new signature floor while preserving its original
+right-name/wrong-ID intent (assertions unchanged) — a fixture bug exposed by the floor, not a
+behavior change.
+**Net:** the measurable foundation of §6d step 1 is in place — gold join + synonym-resolved
+taxid-set scorer + reports + CLI, all offline-verifiable. **Next (worktree 2):** the Design-1
+(Fused-Lean) curator pipeline behind a mockable/LiteLLM-ready Model seam, emitting the
+nested-dict prediction contract this harness consumes, run over text+tables+figures on the
+smoke set — subject to the L013 data firewall (curator takes no gold path; no `eval.gold`
+import).
