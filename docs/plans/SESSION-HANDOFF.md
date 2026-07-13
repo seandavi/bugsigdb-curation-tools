@@ -1,6 +1,9 @@
 # Session handoff — BugSigDB automated curation
 
 **Purpose:** resume cleanly after a context clear. Read this first, then the plan docs it points to.
+**Ledger:** [`docs/LEDGER.md`](../LEDGER.md) is the append-only methods/process log (for the paper's
+Methods section). Keep it current by **appending** new entries (never editing past ones) at milestone
+boundaries — anchor each to its commit hash.
 **As of:** 2026-07-13. `main` @ `0c39fa2`, working tree clean, no open branches/worktrees.
 
 > **UPDATE 2026-07-13:** the open thread below is **resolved**. Sean answered both questions —
