@@ -1,0 +1,18 @@
+{
+  "id": "PMC12955483",
+  "figure": "Fig 3",
+  "panel_used": "Panel A, genus-level rows of the LEfSe LDA bar chart (bottom block, labeled 'Genus' on the y-axis). Panels A's higher-rank rows (Phylum/Class/Order/Family) are the same LEfSe result at coarser taxonomic levels and were not double-counted. Panel B is the cladogram (same LEfSe result, less legible as a taxon list) and Panel C is boxplots of relative abundance for genera -- used only to corroborate: it explicitly shows the 'top 17 differentially enriched genera', which matches the 17 genus-level bars counted in Panel A (9 orange/Stage I + 8 green/HC), confirming the panel A genus list is complete and correctly split by group.",
+  "color_map": "Legend: green = HC (group_0), orange = Stage I (group_1). Bars extend in the LDA-score direction of whichever group they are colored for. Orange bars (positive/Stage I side) = enriched in Stage I silicosis patients (group_1) = 'increased'. Green bars (negative/HC side) = enriched in HC (group_0) = 'decreased' (i.e. lower in Stage I/group_1).",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": ["g__Clostridium", "g__Pantoea", "g__Chloroplast", "g__Rhodococcus", "g__Kluyvera", "g__Pasteurellaceae_unclassified", "g__Vibrio", "g__Intestinibacillus", "g__Vagococcus"]
+    },
+    {
+      "direction": "decreased",
+      "taxa": ["g__Peptoniphilus", "g__Phocea", "g__Fournierella", "g__Turicibacter", "g__Olsenella", "g__Eubacterium_eligens", "g__Lactobacillus", "g__Bifidobacterium"]
+    }
+  ],
+  "legible": true,
+  "notes": "Zoomed crop of panel A made every genus-level label and bar color unambiguous. Counted exactly 17 genus-level bars (9 orange, 8 green), matching panel C's legend text of 'top 17 differentially enriched genera between HCs and stage I silicosis patients', which gives confidence the genus list is complete and not missing any bars cut off at image edges."
+}

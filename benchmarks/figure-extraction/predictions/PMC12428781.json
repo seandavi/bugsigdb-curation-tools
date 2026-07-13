@@ -1,0 +1,18 @@
+{
+  "id": "PMC12428781",
+  "figure": "Figure 2",
+  "panel_used": "Two-column heatmap (MASLD vs Severe MASLD) with log2FC color scale; direction read per-row by comparing the Severe MASLD column color against the neutral point of the log2FC color bar (warm/red-orange = positive log2FC, cool/blue = negative log2FC). The MASLD column is a uniform reference color (not an independent heat value).",
+  "color_map": "Color bar: dark blue = log2FC -10, white/cream (neutral, ~x pixel where blue-to-orange crossover occurs) = log2FC 0, dark red = log2FC +5. Because the heatmap encodes fold-change of Severe MASLD relative to MASLD, warm (red/orange) cells in the Severe MASLD column = increased in group_1 (Severe MASLD); cool (blue/cyan) cells = decreased in group_1.",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": ["Ruminococcus gnavus group", "Negativibacillus", "Bacteroides", "Eubacterium eligens group", "Anaerostipes", "Holdemanella", "Subdoligranulum", "Eubacterium hallii group", "Butyricicoccus", "Unc. Prevotellaceae", "Senegalimassilia", "Prevotella_7", "Phascolarctobacterium", "Alloprevotella", "Desulfovibrio", "Prevotella_9", "Prevotella"]
+    },
+    {
+      "direction": "decreased",
+      "taxa": ["Slackia", "Eubacterium ruminantium group", "Dialister", "Unc. Ruminococcaceae", "Catenibacterium", "Kandleria", "Family XIII AD3011 group", "Unc. Succinivibrionaceae", "Asaccharospora", "Christensenellaceae R-7 group", "Clostridium", "Olsenella", "Oscillospiraceae_UCG-005", "NK4A214 group", "Unc. Bifidobacteriaceae", "Libanicoccus", "Romboutsia", "Unc. Peptostreptococcaceae", "Lutaonella", "Eubacterium siraeum group", "Megasphaera"]
+    }
+  ],
+  "legible": true,
+  "notes": "All 38 rows legible from the dendrogram-ordered heatmap. Direction was verified by pixel-sampling the RGB color of each row's Severe-MASLD cell and comparing R vs B channel against the color bar's blue-to-red gradient crossover (~log2FC=0); the color gradient runs smoothly from strongly warm (row 1, Ruminococcus gnavus group) to strongly cool (row 38, Megasphaera) with the sign flip occurring between 'Prevotella' (row 17, marginally warm) and 'Slackia' (row 18, marginally cool) — these two borderline taxa have the least confident direction call. 'Unc.' prefix taxa are abbreviations for 'Unclassified' as given in the figure legend."
+}

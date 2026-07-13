@@ -1,0 +1,18 @@
+{
+  "id": "PMC6337822",
+  "figure": "Fig. 3",
+  "panel_used": "Panel a only (STAMP-style extended error-bar plot: 'Means in groups' bar chart + 'Difference between groups' 95% CI dot plot for Control vs NBNC-HCC), matching group_0=healthy controls / group_1=non-HBV non-HCV related HCC (NBNC-HCC). Panels b (Control vs B-HCC) and c (NBNC-HCC vs B-HCC) compare different group pairs and were ignored.",
+  "color_map": "Orange = Control (group_0); blue = NBNC-HCC (group_1). The CI dot in the right-hand plot is colored to match whichever group has the higher mean (confirmed against the 'Means in groups' bar heights for each taxon).",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": ["Anaerotruncus"]
+    },
+    {
+      "direction": "decreased",
+      "taxa": ["Megamonas", "Lachnospira", "Eubacterium ventriosum group", "Lachnospiraceae UCG 001"]
+    }
+  ],
+  "legible": true,
+  "notes": "All 5 taxa in panel a are legible from bar heights and CI-dot color. Megamonas, Lachnospira, Eubacterium ventriosum group, and Lachnospiraceae UCG 001 all show taller orange (Control) bars and orange-colored CI dots (positive difference), i.e. lower in NBNC-HCC. Anaerotruncus is the sole exception: pixel-level zoom confirmed the blue (NBNC-HCC) bar is taller than the orange bar, and its CI dot is blue and sits left of zero, i.e. higher in NBNC-HCC."
+}

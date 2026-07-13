@@ -1,0 +1,18 @@
+{
+  "id": "PMC8888571",
+  "figure": "Figure 3",
+  "panel_used": "Panel b, heatmap of DESeq2 log2FoldChange per taxon across three subgroups; only the middle column '(ii) low-SES helminth-uninfected (n=29)' corresponds to the assigned group_0/group_1 comparison (before vs after albendazole treatment in that subgroup). Panel a (Shannon alpha-diversity paired dot plot) was ignored per instructions to skip alpha-diversity panels; columns (i) and (iii) of panel b belong to other subgroups and were not used.",
+  "color_map": "Cell colour = log2FoldChange after vs before treatment (red = increased after treatment = increased in group_1; blue = decreased after treatment = decreased in group_1), per the figure's log2FoldChange colour bar and legend text.",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": ["Bifidobacterium", "Bifidobacteriaceae", "Subdoligranulum", "Clostridiales (Family XIII AD3011 group)", "Streptococcus", "Lactobacillus"]
+    },
+    {
+      "direction": "decreased",
+      "taxa": ["Prevotella_2", "Prevotella_9", "Rikenellaceae RC9 gut group", "Faecalibacterium", "Dialister", "Ruminococcaceae_UCG-002", "Succinivibrio"]
+    }
+  ],
+  "legible": true,
+  "notes": "All numeric log2FoldChange values in the '(ii) low-SES helminth-uninfected (n=29)' column are printed directly on the heatmap cells and were read exactly: Bifidobacterium 1.702913, Bifidobacteriaceae 2.430186, Prevotella_2 -2.290710, Prevotella_9 -1.682530, Rikenellaceae RC9 gut group -1.656280, Faecalibacterium -1.729930, Dialister -1.588170, Ruminococcaceae_UCG-002 -0.954700, Subdoligranulum 0.563611, Clostridiales(Family XIII AD3011 group) 1.301720, Streptococcus 1.751046, Lactobacillus 2.691175, Succinivibrio -8.210210. Column (i) low-SES helminth-infected is explicitly annotated 'no alteration of any gut microbial taxon after albendazole treatment' (no cells), and column (iii) high-SES belongs to a different subgroup not matching group_0/group_1, so neither was included."
+}

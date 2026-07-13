@@ -1,0 +1,167 @@
+[
+ {
+  "pmcid": "PMC6750128",
+  "figure_type": "stacked_bar_composition",
+  "n_gold": 5,
+  "n_pred": 5,
+  "tp_strict": 5,
+  "tp_genus": 4,
+  "dir_matched": 5,
+  "dir_correct": 5,
+  "dir_unknown": 0
+ },
+ {
+  "pmcid": "PMC7473061",
+  "figure_type": "stacked_bar_composition",
+  "n_gold": 6,
+  "n_pred": 6,
+  "tp_strict": 5,
+  "tp_genus": 6,
+  "dir_matched": 2,
+  "dir_correct": 2,
+  "dir_unknown": 3
+ },
+ {
+  "pmcid": "PMC6559755",
+  "figure_type": "box_or_violin_with_stats",
+  "n_gold": 5,
+  "n_pred": 5,
+  "tp_strict": 5,
+  "tp_genus": 5,
+  "dir_matched": 4,
+  "dir_correct": 4,
+  "dir_unknown": 1
+ },
+ {
+  "pmcid": "PMC7653996",
+  "figure_type": "box_or_violin_with_stats",
+  "n_gold": 9,
+  "n_pred": 10,
+  "tp_strict": 3,
+  "tp_genus": 5,
+  "dir_matched": 3,
+  "dir_correct": 3,
+  "dir_unknown": 0
+ },
+ {
+  "pmcid": "PMC8180047",
+  "figure_type": "box_or_violin_with_stats",
+  "n_gold": 8,
+  "n_pred": 8,
+  "tp_strict": 6,
+  "tp_genus": 6,
+  "dir_matched": 4,
+  "dir_correct": 4,
+  "dir_unknown": 2
+ },
+ {
+  "pmcid": "PMC3816614",
+  "figure_type": "lefse_bar_LDA",
+  "n_gold": 11,
+  "n_pred": 19,
+  "tp_strict": 7,
+  "tp_genus": 8,
+  "dir_matched": 7,
+  "dir_correct": 7,
+  "dir_unknown": 0
+ },
+ {
+  "pmcid": "PMC7342497",
+  "figure_type": "lefse_bar_LDA",
+  "n_gold": 15,
+  "n_pred": 15,
+  "tp_strict": 15,
+  "tp_genus": 15,
+  "dir_matched": 15,
+  "dir_correct": 0,
+  "dir_unknown": 0
+ },
+ {
+  "pmcid": "PMC11383188",
+  "figure_type": "lefse_bar_LDA",
+  "n_gold": 14,
+  "n_pred": 14,
+  "tp_strict": 11,
+  "tp_genus": 12,
+  "dir_matched": 11,
+  "dir_correct": 11,
+  "dir_unknown": 0
+ },
+ {
+  "pmcid": "PMC5818670",
+  "figure_type": "cladogram",
+  "n_gold": 38,
+  "n_pred": 51,
+  "tp_strict": 28,
+  "tp_genus": 24,
+  "dir_matched": 28,
+  "dir_correct": 28,
+  "dir_unknown": 0
+ },
+ {
+  "pmcid": "PMC8003781",
+  "figure_type": "cladogram",
+  "n_gold": 15,
+  "n_pred": 12,
+  "tp_strict": 9,
+  "tp_genus": 10,
+  "dir_matched": 9,
+  "dir_correct": 7,
+  "dir_unknown": 0
+ },
+ {
+  "pmcid": "PMC12955483",
+  "figure_type": "cladogram",
+  "n_gold": 33,
+  "n_pred": 17,
+  "tp_strict": 12,
+  "tp_genus": 13,
+  "dir_matched": 12,
+  "dir_correct": 11,
+  "dir_unknown": 0
+ },
+ {
+  "pmcid": "PMC8888571",
+  "figure_type": "heatmap",
+  "n_gold": 8,
+  "n_pred": 13,
+  "tp_strict": 8,
+  "tp_genus": 8,
+  "dir_matched": 8,
+  "dir_correct": 8,
+  "dir_unknown": 0
+ },
+ {
+  "pmcid": "PMC9664112",
+  "figure_type": "heatmap",
+  "n_gold": 20,
+  "n_pred": 20,
+  "tp_strict": 14,
+  "tp_genus": 12,
+  "dir_matched": 14,
+  "dir_correct": 14,
+  "dir_unknown": 0
+ },
+ {
+  "pmcid": "PMC12428781",
+  "figure_type": "heatmap",
+  "n_gold": 27,
+  "n_pred": 38,
+  "tp_strict": 21,
+  "tp_genus": 22,
+  "dir_matched": 21,
+  "dir_correct": 16,
+  "dir_unknown": 0
+ },
+ {
+  "pmcid": "PMC6337822",
+  "figure_type": "other",
+  "n_gold": 9,
+  "n_pred": 5,
+  "tp_strict": 3,
+  "tp_genus": 5,
+  "dir_matched": 3,
+  "dir_correct": 3,
+  "dir_unknown": 0
+ }
+]

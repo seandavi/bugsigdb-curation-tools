@@ -1,0 +1,18 @@
+{
+  "id": "PMC8003781",
+  "figure": "Figure 5",
+  "panel_used": "Top-left quadrant: 'young mice' cladogram, 'After 10 days of Abx treatment' row (legend: red = young before Abx, green = young after Abx), matching group_0/group_1 for this entry. The other three quadrants (older mice, and both 6-month-recovery panels) were ignored as they compare different group pairs.",
+  "color_map": "Red = young before Abx (group_0); green = young after Abx (group_1), per the panel legend and letter-key coloring (each lettered taxon label a-l is itself printed in red or green matching its enriched group).",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": ["Enterococcus", "Enterococcaceae", "Lactobacillales"]
+    },
+    {
+      "direction": "decreased",
+      "taxa": ["Family_XIII_UCG_001", "Family_XIII", "Romboutsia", "Peptostreptococcaceae", "Clostridiales", "Candidatus_Stoquefichus", "Faecalibaculum", "Erysipelotrichaceae", "Erysipelotrichales"]
+    }
+  ],
+  "legible": true,
+  "notes": "The letter-key legend (a-l) is color-coded per taxon (green fill = enriched after Abx/group_1, red fill = enriched before Abx/group_0), directly readable without needing to trace cladogram wedge positions. 'Candidatus_Stoquefichus' text is truncated at the image right edge (reads 'Candidatus_Stoquefichu...') but unambiguously resolves to this genus name."
+}

@@ -1,0 +1,18 @@
+{
+  "id": "PMC7653996",
+  "figure": "Fig. 1",
+  "panel_used": "Single-panel grid of 10 boxplots (log10 normalized counts) for the top 10 differentially abundant taxa between non-smokers and smokers; direction read from relative median position of each species' two boxes.",
+  "color_map": "Red/salmon = non-smoker (group_0), teal/cyan = smoker (group_1), per the in-figure legend at the bottom of the panel (this matches the axis tick labels 'non-smoker'/'smoker' under each box, though the legend text in the caption describes blue/red which does not match the actual rendered colors).",
+  "predicted": [
+    {
+      "direction": "increased",
+      "taxa": ["Leptotrichia sp000469385", "Prevotella pleuritidis", "Veillonella dispar"]
+    },
+    {
+      "direction": "decreased",
+      "taxa": ["Gemella cuniculi", "Gemella haemolysans_B", "Neisseria perflava", "Neisseria subflava_B", "Streptococcus mitis_AT", "Streptococcus oralis_BA", "Haemophilus_A"]
+    }
+  ],
+  "legible": true,
+  "notes": "All 10 panels are clearly legible boxplots with visible median lines for both groups; direction determined by comparing median (center line of box) of smoker (teal) vs non-smoker (red) boxes on the log10 y-axis. Taxa labels include numeric prefixes (likely internal feature/OTU IDs) which were kept as shown in the panel titles."
+}
