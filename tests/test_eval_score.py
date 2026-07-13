@@ -184,6 +184,19 @@ def test_align_experiments_field_accuracy_only_over_matched_pairs():
     assert alignment.field_accuracy["sequencing_type"] == 0.0
 
 
+def test_matched_field_accuracy_excludes_both_blank_pairs_from_denominator():
+    # Neither gold nor the prediction sets mht_correction (~8.4% of gold is
+    # blank there) -- under the old behavior `None == None` counted as a
+    # "correct" match, inflating accuracy for a field the pipeline never
+    # even attempted. It must now be excluded from the denominator entirely
+    # rather than credited as free-and-perfect.
+    gold = [_experiment("1/Experiment 1", mht_correction=None)]
+    pred = [_pred_exp()]  # no "mht_correction" key at all -> p.get(...) is None
+    alignment = align_experiments(gold, pred)
+    assert alignment.matched == [(0, 0)]
+    assert alignment.field_accuracy["mht_correction"] == 0.0
+
+
 # --- align_signatures: taxa-content based, not direction-label based -----------------------
 
 

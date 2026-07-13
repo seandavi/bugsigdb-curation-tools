@@ -312,31 +312,59 @@ def _matched_field_accuracy(
     pred_experiments: list[dict[str, Any]],
     matched: list[tuple[int, int]],
 ) -> dict[str, float]:
-    """Per-field accuracy over MATCHED experiment pairs only (§1b fields)."""
+    """Per-field accuracy over MATCHED experiment pairs only (§1b fields).
+
+    A pair where BOTH sides are blank for a given field is excluded from
+    that field's denominator (neutral: no signal), not counted as a free
+    correct match -- mirrors `_experiment_field_overlap`'s neutral-exclusion
+    via `_jaccard_or_none`. Without this, a field a pipeline never even
+    attempts (e.g. `mht_correction`, blank in ~8% of gold) gets inflated
+    "accuracy" purely from both sides agreeing on absence.
+    """
     if not matched:
         return dict.fromkeys(_MATCHED_FIELD_NAMES, 0.0)
 
     correct = dict.fromkeys(_MATCHED_FIELD_NAMES, 0)
+    total = dict.fromkeys(_MATCHED_FIELD_NAMES, 0)
     for pred_idx, gold_idx in matched:
         g = gold_experiments[gold_idx]
         p = pred_experiments[pred_idx]
-        if _norm_set(g.body_site) == _norm_set(_pred_str_list(p, "body_site")):
-            correct["body_site"] += 1
-        if _norm_set(g.condition) == _norm_set(_pred_str_list(p, "condition")):
-            correct["condition"] += 1
-        if (g.sequencing_type or None) == (p.get("sequencing_type") or None):
-            correct["sequencing_type"] += 1
-        if _norm_set(g.statistical_test) == _norm_set(_pred_str_list(p, "statistical_test")):
-            correct["statistical_test"] += 1
-        if g.mht_correction == p.get("mht_correction"):
-            correct["mht_correction"] += 1
+
+        for name, gold_set, pred_set in (
+            ("body_site", _norm_set(g.body_site), _norm_set(_pred_str_list(p, "body_site"))),
+            ("condition", _norm_set(g.condition), _norm_set(_pred_str_list(p, "condition"))),
+            ("statistical_test", _norm_set(g.statistical_test), _norm_set(_pred_str_list(p, "statistical_test"))),
+        ):
+            if _jaccard_or_none(gold_set, pred_set) is not None:
+                total[name] += 1
+                if gold_set == pred_set:
+                    correct[name] += 1
+
+        gold_seq = g.sequencing_type or None
+        pred_seq = p.get("sequencing_type") or None
+        if gold_seq is not None or pred_seq is not None:
+            total["sequencing_type"] += 1
+            if gold_seq == pred_seq:
+                correct["sequencing_type"] += 1
+
+        gold_mht = g.mht_correction
+        pred_mht = p.get("mht_correction")
+        if gold_mht is not None or pred_mht is not None:
+            total["mht_correction"] += 1
+            if gold_mht == pred_mht:
+                correct["mht_correction"] += 1
+
         gold_orientation = (_norm_str(g.group_0_name), _norm_str(g.group_1_name))
         pred_orientation = (_norm_str(p.get("group_0_name")), _norm_str(p.get("group_1_name")))
-        if gold_orientation == pred_orientation:
-            correct["group_orientation"] += 1
+        if gold_orientation != ("", "") or pred_orientation != ("", ""):
+            total["group_orientation"] += 1
+            if gold_orientation == pred_orientation:
+                correct["group_orientation"] += 1
 
-    n = len(matched)
-    return {field_name: correct[field_name] / n for field_name in _MATCHED_FIELD_NAMES}
+    return {
+        field_name: (correct[field_name] / total[field_name]) if total[field_name] else 0.0
+        for field_name in _MATCHED_FIELD_NAMES
+    }
 
 
 def align_experiments(
