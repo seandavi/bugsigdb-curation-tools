@@ -51,6 +51,25 @@ uvx --from linkml gen-owl         schema/bugsigdb.yaml   # -> OWL
 uvx --from linkml gen-pydantic    schema/bugsigdb.yaml   # -> Pydantic models
 ```
 
+## CLI
+
+`bugsigdb export` downloads the generated export artifacts (merged CSV dump
+and/or GMT signature sets) from the [`waldronlab/bugsigdbexports`](https://github.com/waldronlab/bugsigdbexports)
+repo:
+
+```bash
+uv run bugsigdb export --list              # see what's available, no download
+uv run bugsigdb export                     # full_dump.csv + file_size.csv -> data/exports/
+uv run bugsigdb export --select gmt        # GMT signature sets instead
+uv run bugsigdb export --select all        # everything
+uv run bugsigdb export --ref v1.2.3        # a specific tag/branch instead of devel
+uv run bugsigdb export --force             # re-download even if a same-size file exists
+```
+
+Existing files are skipped when their size already matches the remote (use
+`--force` to override). Downloads stream to disk with bounded concurrency and
+a `rich` progress bar; run `uv run bugsigdb export --help` for all options.
+
 ## License
 
 Schema released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
