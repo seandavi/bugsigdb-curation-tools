@@ -234,6 +234,7 @@ DEFAULT_MOCK_RESPONSES: dict[str, dict[str, Any]] = {
         ]
     },
     "experiment_metadata": {
+        "host_species": "Homo sapiens",
         "body_site": ["Feces"],
         "condition": ["Disease"],
         "group_0_name": "Control",
