@@ -1,0 +1,1588 @@
+[
+  {
+    "study_id": "30854760",
+    "pmid": "30854760",
+    "pmcid": "PMC6750128",
+    "license": "CC BY",
+    "study_title": "Prospective observational study of vaginal microbiota pre- and post-rescue cervical cerclage",
+    "figure_type": "stacked_bar_composition",
+    "figure_label_source": "Figure 2",
+    "figure_label_matched": "Figure 2",
+    "figure_filename": "BJO-126-916-g002.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/d1dd/6750128/8f65081db177/BJO-126-916-g002.jpg",
+    "image_path": "data/figbench/images/PMC6750128_F2.jpg",
+    "legend": "(A) Vaginal microbial community structure prior to rescue cerclage in women with and without symptoms. Relative abundance of bacterial genera and Lactobacillus spp. (shades of green) within the vaginal microbiome, inverse Simpson index (diversity), and classification by Lactobacillus spp. dominance; dominant (blue) >75%, intermediate (pink) 50–75%, and deplete (red) <50%. There were no significant differences in vaginal community structure between asymptomatic women and those presenting with symptoms. A difference at bacterial genera level within these communities was apparent with an overrepresentation of Lactobacillus crispatus (dark green) and Bifidobacterium (blue) in the asymptomatic cohort and Gardnerella vaginalis (red) in the symptomatic group. (B) Gardnerella vaginalis and L. crispatus are differentially expressed between women with and without symptoms prior to emergency cerclage. Cladogram describing differentially abundant vaginal microbial clades and nodes observed between asymptomatic women and those with symptoms as identified using LEfSe analysis. The effect size for each differentially abundant species was estimated using LDA. Vaginal microbiome of symptomatic women was enriched with Gardnerella vaginalis, Prevotella disiens, and Streptococcus pseudopneumoniae, whereas those without symptoms were comparatively enriched with Lactobacillus crispatus.",
+    "group_0_name": "Vaginal microbiome of asymptomatic women prior to cerclage",
+    "group_1_name": "Vaginal microbiome of symptomatic women prior ro cerclage",
+    "gold": [
+      {
+        "signature_id": "bsdb:30854760/1/1",
+        "direction": "increased",
+        "group_0_name": "Vaginal microbiome of asymptomatic women prior to cerclage",
+        "group_1_name": "Vaginal microbiome of symptomatic women prior ro cerclage",
+        "taxa": [
+          {
+            "ncbi_id": "257758",
+            "name": "s__Streptococcus pseudopneumoniae"
+          },
+          {
+            "ncbi_id": "28130",
+            "name": "s__Prevotella disiens"
+          },
+          {
+            "ncbi_id": "2702",
+            "name": "s__Gardnerella vaginalis"
+          },
+          {
+            "ncbi_id": "2701",
+            "name": "g__Gardnerella"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:30854760/1/2",
+        "direction": "decreased",
+        "group_0_name": "Vaginal microbiome of asymptomatic women prior to cerclage",
+        "group_1_name": "Vaginal microbiome of symptomatic women prior ro cerclage",
+        "taxa": [
+          {
+            "ncbi_id": "47770",
+            "name": "s__Lactobacillus crispatus"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "study_id": "32552447",
+    "pmid": "32552447",
+    "pmcid": "PMC7473061",
+    "license": "CC BY",
+    "study_title": "Metagenomic analysis of the lung microbiome in pulmonary tuberculosis - a pilot study",
+    "figure_type": "stacked_bar_composition",
+    "figure_label_source": "Figure 2",
+    "figure_label_matched": "Figure 2.",
+    "figure_filename": "TEMI_A_1783188_F0002_OC.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/51db/7473061/2e7764d6f56d/TEMI_A_1783188_F0002_OC.jpg",
+    "image_path": "data/figbench/images/PMC7473061_F2.jpg",
+    "legend": "Average relative taxon abundance comparisons between the MTB+ and MTB- groups at the genus level. P-values were determined using the Mann-Whitney U test, and the Benjamini-Hochberg procedure (false discovery rate correction method) was applied to obtain adjusted p values for multiple comparisons between groups. Boxes indicate 5th to 95th percentiles, with median relative abundances marked as lines and whiskers indicating the range (minimum/maximum) multiplied by the interquartile range (5th to 95th percentiles) from the boxes. Bacterial taxa are ranked by average relative abundances of the of overall lung microbiome in MTB- patients.",
+    "group_0_name": "Mycobacterium tuberculosis (MTB−)",
+    "group_1_name": "Mycobacterium tuberculosis (MTB+)",
+    "gold": [
+      {
+        "signature_id": "bsdb:32552447/1/1",
+        "direction": "increased",
+        "group_0_name": "Mycobacterium tuberculosis (MTB−)",
+        "group_1_name": "Mycobacterium tuberculosis (MTB+)",
+        "taxa": [
+          {
+            "ncbi_id": "1773",
+            "name": "s__Mycobacterium tuberculosis"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:32552447/1/2",
+        "direction": "decreased",
+        "group_0_name": "Mycobacterium tuberculosis (MTB−)",
+        "group_1_name": "Mycobacterium tuberculosis (MTB+)",
+        "taxa": [
+          {
+            "ncbi_id": "1301",
+            "name": "g__Streptococcus"
+          },
+          {
+            "ncbi_id": "838",
+            "name": "g__Prevotella"
+          },
+          {
+            "ncbi_id": "482",
+            "name": "g__Neisseria"
+          },
+          {
+            "ncbi_id": "970",
+            "name": "g__Selenomonas"
+          },
+          {
+            "ncbi_id": "1678",
+            "name": "g__Bifidobacterium"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "study_id": "31215600",
+    "pmid": "31215600",
+    "pmcid": "PMC6559755",
+    "license": "CC BY",
+    "study_title": "Relationship between acetaldehyde concentration in mouth air and characteristics of microbiota of tongue dorsum in Japanese healthy adults: a cross-sectional study",
+    "figure_type": "box_or_violin_with_stats",
+    "figure_label_source": "Figure 4",
+    "figure_label_matched": "Figure 4",
+    "figure_filename": "1678-7757-jaos-27-e20180635-gf04.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/afd8/6559755/1e759f2fe2fe/1678-7757-jaos-27-e20180635-gf04.jpg",
+    "image_path": "data/figbench/images/PMC6559755_F4.jpg",
+    "legend": "Difference in relative abundance of tongue microbiome between HG and LG. Data were presented as median with error bars representing the 25th and 75th percentiles (n=6/group). These were significant differences in relative abundance of some species between HG (blue bar) and LG (red bar)",
+    "group_0_name": "low acetaldehyde concentration group",
+    "group_1_name": "high acetaldehyde concentration group",
+    "gold": [
+      {
+        "signature_id": "bsdb:31215600/1/1",
+        "direction": "increased",
+        "group_0_name": "low acetaldehyde concentration group",
+        "group_1_name": "high acetaldehyde concentration group",
+        "taxa": [
+          {
+            "ncbi_id": "84135",
+            "name": "s__Gemella sanguinis"
+          },
+          {
+            "ncbi_id": "29466",
+            "name": "s__Veillonella parvula"
+          },
+          {
+            "ncbi_id": "484",
+            "name": "s__Neisseria flavescens"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:31215600/1/2",
+        "direction": "decreased",
+        "group_0_name": "low acetaldehyde concentration group",
+        "group_1_name": "high acetaldehyde concentration group",
+        "taxa": [
+          {
+            "ncbi_id": "1318",
+            "name": "s__Streptococcus parasanguinis"
+          },
+          {
+            "ncbi_id": "470565",
+            "name": "s__Prevotella histicola"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "study_id": "33167991",
+    "pmid": "33167991",
+    "pmcid": "PMC7653996",
+    "license": "CC BY",
+    "study_title": "Revealing oral microbiota composition and functionality associated with heavy cigarette smoking",
+    "figure_type": "box_or_violin_with_stats",
+    "figure_label_source": "Figure 1",
+    "figure_label_matched": "Fig. 1",
+    "figure_filename": "12967_2020_2579_Fig1_HTML.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/1321/7653996/f97f4044741a/12967_2020_2579_Fig1_HTML.jpg",
+    "image_path": "data/figbench/images/PMC7653996_F1.jpg",
+    "legend": "Differentially abundant taxa between smokers and non-smokers group. Panel shows relative abundance of normalized counts for the top 10 taxa. Results were calculated by negative binomial models (DESEq2 R package) of the form ∼group for differential abundance testing of taxonomic and subsystem level 3 features. P values were calculated with Likelihood Ratio Tests method. All of the above comparison are significant. Smoker and non-smoker corresponding abundance are colored in blue and red, respectively",
+    "group_0_name": "Non-smokers",
+    "group_1_name": "Smokers",
+    "gold": [
+      {
+        "signature_id": "bsdb:33167991/1/1",
+        "direction": "increased",
+        "group_0_name": "Non-smokers",
+        "group_1_name": "Smokers",
+        "taxa": [
+          {
+            "ncbi_id": "39778",
+            "name": "s__Veillonella dispar"
+          },
+          {
+            "ncbi_id": "407975",
+            "name": "s__Hoylesella pleuritidis"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:33167991/1/2",
+        "direction": "decreased",
+        "group_0_name": "Non-smokers",
+        "group_1_name": "Smokers",
+        "taxa": [
+          {
+            "ncbi_id": "150240",
+            "name": "s__Gemella cuniculi"
+          },
+          {
+            "ncbi_id": "33053",
+            "name": "s__Neisseria perflava"
+          },
+          {
+            "ncbi_id": "724",
+            "name": "g__Haemophilus"
+          },
+          {
+            "ncbi_id": "28449",
+            "name": "s__Neisseria subflava"
+          },
+          {
+            "ncbi_id": "1379",
+            "name": "s__Gemella haemolysans"
+          },
+          {
+            "ncbi_id": "1303",
+            "name": "s__Streptococcus oralis"
+          },
+          {
+            "ncbi_id": "28037",
+            "name": "s__Streptococcus mitis"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "study_id": "34090383",
+    "pmid": "34090383",
+    "pmcid": "PMC8180047",
+    "license": "CC BY",
+    "study_title": "Association between premature ovarian insufficiency and gut microbiota",
+    "figure_type": "box_or_violin_with_stats",
+    "figure_label_source": "Figure 2C",
+    "figure_label_matched": "Fig. 2",
+    "figure_filename": "12884_2021_3855_Fig2_HTML.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/15c7/8180047/20eee81101ac/12884_2021_3855_Fig2_HTML.jpg",
+    "image_path": "data/figbench/images/PMC8180047_F2.jpg",
+    "legend": "Microbial community profiles of gut microbiota between POI and control group. POI represented women with premature ovarian insufficiency, NG represented healthy control women. a Relative abundances of the dominant phylum. b Relative abundances of the top 10 genera according to the relative abundance. c Significant different and important microbes between POI and control group",
+    "group_0_name": "Healthy controls",
+    "group_1_name": "Primary ovarian insufficiency (POI)",
+    "gold": [
+      {
+        "signature_id": "bsdb:34090383/1/1",
+        "direction": "increased",
+        "group_0_name": "Healthy controls",
+        "group_1_name": "Primary ovarian insufficiency (POI)",
+        "taxa": [
+          {
+            "ncbi_id": "976",
+            "name": "p__Bacteroidota"
+          },
+          {
+            "ncbi_id": "574697",
+            "name": "g__Butyricimonas"
+          },
+          {
+            "ncbi_id": "189330",
+            "name": "g__Dorea"
+          },
+          {
+            "ncbi_id": "140625",
+            "name": "g__Lachnobacterium"
+          },
+          {
+            "ncbi_id": "40544",
+            "name": "g__Sutterella"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:34090383/1/2",
+        "direction": "decreased",
+        "group_0_name": "Healthy controls",
+        "group_1_name": "Primary ovarian insufficiency (POI)",
+        "taxa": [
+          {
+            "ncbi_id": "1239",
+            "name": "p__Bacillota"
+          },
+          {
+            "ncbi_id": "118747",
+            "name": "g__Bulleidia"
+          },
+          {
+            "ncbi_id": "216851",
+            "name": "g__Faecalibacterium"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "study_id": "24192039",
+    "pmid": "24192039",
+    "pmcid": "PMC3816614",
+    "license": "CC BY",
+    "study_title": "Expansion of intestinal Prevotella copri correlates with enhanced susceptibility to arthritis",
+    "figure_type": "lefse_bar_LDA",
+    "figure_label_source": "Figure 1",
+    "figure_label_matched": "Figure 1.",
+    "figure_filename": "elife01202f001.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/09c7/3816614/657ed215200b/elife01202f001.jpg",
+    "image_path": "data/figbench/images/PMC3816614_F1.jpg",
+    "legend": "Differences in the relative abundance of Prevotella and Bacteroides in 114 subjects with and without arthritis, determined by 16S sequencing (regions V1–V2, 454 platform).(A) LEfSe (Segata et al., 2011) was used to compare the abundances of all detected clades among all groups, producing an effect size for each comparison (‘Materials and methods’). All results shown are highly significant (q<0.01) by Kruskal-Wallis test adjusted with the Benjamini-Hochberg procedure for multiple testing, except that indicated with an asterisk, which is significant at q<0.05. Negative values (left) correspond to effect sizes representative of NORA groups, while positive values (right) correspond to effect sizes in HLT subjects. Prevotella was found to be over-represented in NORA patients, while Bacteroides was over-represented in all other groups. (B) The Bray-Curtis distance between all subjects was calculated and used to generate a principal coordinates plot in MOTHUR (Schloss et al., 2009). The first two components are shown. Subjects with an abundance of Prevotella greater than 10% were colored red. Other subjects were colored according to their Bacteroides abundance as shown. NORA subjects (stars) primarily cluster together according to their Prevotella abundance, and the x-axis is representative of differences in the relative abundance of Prevotella and Bacteroides. (C) The abundances of Prevotella (red) and Bacteroides (blue) are shown for all subjects, sorted in order of decreasing Prevotella abundance (>5%) and increasing Bacteroides abundance.DOI: http://dx.doi.org/10.7554/eLife.01202.00410.7554/eLife.01202.005Figure 1—source data 1.Intermediate data and analysis tools for Figure 1.DOI: http://dx.doi.org/10.7554/eLife.01202.00510.7554/eLife.01202.006Figure 1—source data 2.Intermediate data and analysis tools for Figure 1—figure supplement 1.DOI: http://dx.doi.org/10.7554/eLife.01202.006",
+    "group_0_name": "Healthy controls",
+    "group_1_name": "New-onset rheumatoid arthritis - NORA",
+    "gold": [
+      {
+        "signature_id": "bsdb:24192039/1/1",
+        "direction": "increased",
+        "group_0_name": "Healthy controls",
+        "group_1_name": "New-onset rheumatoid arthritis - NORA",
+        "taxa": [
+          {
+            "ncbi_id": "135858",
+            "name": "g__Catenibacterium"
+          },
+          {
+            "ncbi_id": "838",
+            "name": "g__Prevotella"
+          },
+          {
+            "ncbi_id": "171552",
+            "name": "f__Prevotellaceae"
+          },
+          {
+            "ncbi_id": "29465",
+            "name": "g__Veillonella"
+          },
+          {
+            "ncbi_id": "1926307",
+            "name": "s__Veillonella sp."
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:24192039/1/2",
+        "direction": "decreased",
+        "group_0_name": "Healthy controls",
+        "group_1_name": "New-onset rheumatoid arthritis - NORA",
+        "taxa": [
+          {
+            "ncbi_id": "815",
+            "name": "f__Bacteroidaceae"
+          },
+          {
+            "ncbi_id": "816",
+            "name": "g__Bacteroides"
+          },
+          {
+            "ncbi_id": "572511",
+            "name": "g__Blautia"
+          },
+          {
+            "ncbi_id": "186801",
+            "name": "c__Clostridia"
+          },
+          {
+            "ncbi_id": "186803",
+            "name": "f__Lachnospiraceae"
+          },
+          {
+            "ncbi_id": "33024",
+            "name": "g__Phascolarctobacterium"
+          },
+          {
+            "ncbi_id": "186803",
+            "name": "f__Lachnospiraceae"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "study_id": "32753953",
+    "pmid": "32753953",
+    "pmcid": "PMC7342497",
+    "license": "CC BY-NC",
+    "study_title": "Signatures of Mucosal Microbiome in Oral Squamous Cell Carcinoma Identified Using a Random Forest Model",
+    "figure_type": "lefse_bar_LDA",
+    "figure_label_source": "Figure 2A",
+    "figure_label_matched": "Figure 2",
+    "figure_filename": "CMAR-12-5353-g0002.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/3514/7342497/ab4d16ec55a3/CMAR-12-5353-g0002.jpg",
+    "image_path": "data/figbench/images/PMC7342497_F2.jpg",
+    "legend": "LEfSe analyses of microbiome composition between paracancerous and cancerous tissues. Bacteria genera enriched in cancerous tissues had a positive LDA score, while those depleted had a negative score. Bacteria with LDA scores >3 are shown (A). Relative abundance of genera enriched in cancerous tissues (B). Relative abundance of genera enriched in paracancerous tissues (C). *P < 0.05; **P < 0.01; ***P < 0.001. All FDR-adjusted P values were <0.05.",
+    "group_0_name": "paracancerous tissues",
+    "group_1_name": "cancerous  lesions",
+    "gold": [
+      {
+        "signature_id": "bsdb:32753953/1/1",
+        "direction": "increased",
+        "group_0_name": "paracancerous tissues",
+        "group_1_name": "cancerous  lesions",
+        "taxa": [
+          {
+            "ncbi_id": "2747",
+            "name": "g__Carnobacterium"
+          },
+          {
+            "ncbi_id": "44259",
+            "name": "g__Filifactor"
+          },
+          {
+            "ncbi_id": "848",
+            "name": "g__Fusobacterium"
+          },
+          {
+            "ncbi_id": "543311",
+            "name": "g__Parvimonas"
+          },
+          {
+            "ncbi_id": "1257",
+            "name": "g__Peptostreptococcus"
+          },
+          {
+            "ncbi_id": "1301",
+            "name": "g__Streptococcus"
+          },
+          {
+            "ncbi_id": "195950",
+            "name": "g__Tannerella"
+          },
+          {
+            "ncbi_id": "157",
+            "name": "g__Treponema"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:32753953/1/2",
+        "direction": "decreased",
+        "group_0_name": "paracancerous tissues",
+        "group_1_name": "cancerous  lesions",
+        "taxa": [
+          {
+            "ncbi_id": "1663",
+            "name": "g__Arthrobacter"
+          },
+          {
+            "ncbi_id": "41275",
+            "name": "g__Brevundimonas"
+          },
+          {
+            "ncbi_id": "872",
+            "name": "g__Desulfovibrio"
+          },
+          {
+            "ncbi_id": "33882",
+            "name": "g__Microbacterium"
+          },
+          {
+            "ncbi_id": "248038",
+            "name": "g__Mucispirillum"
+          },
+          {
+            "ncbi_id": "44249",
+            "name": "g__Paenibacillus"
+          },
+          {
+            "ncbi_id": "35493",
+            "name": "p__Streptophyta"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "study_id": "38387693",
+    "pmid": "38387693",
+    "pmcid": "PMC11383188",
+    "license": "CC BY",
+    "study_title": "Effects of alcohol on the composition and metabolism of the intestinal microbiota among people with HIV: a cross-sectional study",
+    "figure_type": "lefse_bar_LDA",
+    "figure_label_source": "Figure 4C",
+    "figure_label_matched": "Fig. 4",
+    "figure_filename": "gr4.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/86a3/11383188/e5f5b7d673ee/gr4.jpg",
+    "image_path": "data/figbench/images/PMC11383188_F4.jpg",
+    "legend": "Fecal bacterial composition of the low-to-moderate drinking and non-drinking groups in HIV-infected patients. a) The relative abundance of gut microbiota at the family level. b) The relative abundance of gut microbiota at the genera level. c) Differentially enriched bacterial taxa were quantified as linear discriminant analysis effect sizes (LEfSe), showing taxa with linear discriminant analysis (LDA) scores greater than 2.0. d) Cladogram of LDA effect size. Species that were not annotated at this taxonomic level and whose abundance was less than 0.5% in the sample were combined into others. Red: low-to-moderate drinking HIV-infected group; Blue: non-drinking HIV-infected group. (For interpretation of the references to color in this figure legend, the reader is referred to the Web version of this article).",
+    "group_0_name": "Non Drinking",
+    "group_1_name": "Low to Moderate drinking",
+    "gold": [
+      {
+        "signature_id": "bsdb:38387693/1/1",
+        "direction": "increased",
+        "group_0_name": "Non Drinking",
+        "group_1_name": "Low to Moderate drinking",
+        "taxa": [
+          {
+            "ncbi_id": "100883",
+            "name": "g__Coprobacillus"
+          },
+          {
+            "ncbi_id": "46205",
+            "name": "g__Pseudobutyrivibrio"
+          },
+          {
+            "ncbi_id": "180162",
+            "name": "g__Cetobacterium"
+          },
+          {
+            "ncbi_id": "31979",
+            "name": "f__Clostridiaceae"
+          },
+          {
+            "ncbi_id": "1485",
+            "name": "g__Clostridium"
+          },
+          {
+            "ncbi_id": "1501226",
+            "name": "g__Romboutsia"
+          },
+          {
+            "ncbi_id": "186804",
+            "name": "f__Peptostreptococcaceae"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:38387693/1/2",
+        "direction": "decreased",
+        "group_0_name": "Non Drinking",
+        "group_1_name": "Low to Moderate drinking",
+        "taxa": [
+          {
+            "ncbi_id": "32033",
+            "name": "f__Lysobacteraceae"
+          },
+          {
+            "ncbi_id": "40323",
+            "name": "g__Stenotrophomonas"
+          },
+          {
+            "ncbi_id": "712",
+            "name": "f__Pasteurellaceae"
+          },
+          {
+            "ncbi_id": "135625",
+            "name": "o__Pasteurellales"
+          },
+          {
+            "ncbi_id": "135614",
+            "name": "o__Lysobacterales"
+          },
+          {
+            "ncbi_id": "724",
+            "name": "g__Haemophilus"
+          },
+          {
+            "ncbi_id": "72763",
+            "name": "g__Tessaracoccus"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "study_id": "29459704",
+    "pmid": "29459704",
+    "pmcid": "PMC5818670",
+    "license": "CC BY",
+    "study_title": "Initial meconium microbiome in Chinese neonates delivered naturally or by cesarean section",
+    "figure_type": "cladogram",
+    "figure_label_source": "Figure 1",
+    "figure_label_matched": "Figure 1",
+    "figure_filename": "41598_2018_21657_Fig1_HTML.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/2946/5818670/453cacbd46b1/41598_2018_21657_Fig1_HTML.jpg",
+    "image_path": "data/figbench/images/PMC5818670_F1.jpg",
+    "legend": "Comparison of the microbiomes of vaginally delivered and C-section-delivered newborns. (A) Principal-component analysis (PCA) plot based on the relative taxa abundance in the fecal microbiomes of neonates with mode of delivery, gestation age, pregnancy weight or gender groups. Sample are marked by the group type. The number is the grouping boundaries. (B) LEfSe comparison of microbiomes from meconium samples from vaginally delivered and C-section-delivered neonates. Enriched taxa in samples from vaginally delivered infants with different level classifications with a positive linear discriminant analysis (LDA) score are shown in green; C-section samples with a negative LDA score are shown in red (>3.5 in both cases). (C) Cladogram derived from LEfSe analysis of metagenomic sequences from C-section delivered newborn and vaginally delivered neonate meconium samples. Green shaded areas indicate microbe orders that more consistently describe the fecal microbiome from vaginally delivered infants; red shaded areas indicate microbe orders that more consistently describe the meconium microbiome from C-section-delivered infants. The prefixes “p”, “c”, “o”, “f”, “g”, “s”, and “t” represent the annotated level of phylum, class, order, family, genus, species and strain.",
+    "group_0_name": "vaginal delivery",
+    "group_1_name": "C-section",
+    "gold": [
+      {
+        "signature_id": "bsdb:29459704/1/1",
+        "direction": "increased",
+        "group_0_name": "vaginal delivery",
+        "group_1_name": "C-section",
+        "taxa": [
+          {
+            "ncbi_id": "654",
+            "name": "s__Aeromonas veronii"
+          },
+          {
+            "ncbi_id": "28211",
+            "name": "c__Alphaproteobacteria"
+          },
+          {
+            "ncbi_id": "186817",
+            "name": "f__Bacillaceae"
+          },
+          {
+            "ncbi_id": "1385",
+            "name": "o__Bacillales"
+          },
+          {
+            "ncbi_id": "91061",
+            "name": "c__Bacilli"
+          },
+          {
+            "ncbi_id": "1386",
+            "name": "g__Bacillus"
+          },
+          {
+            "ncbi_id": "1390",
+            "name": "s__Bacillus amyloliquefaciens"
+          },
+          {
+            "ncbi_id": "1402",
+            "name": "s__Bacillus licheniformis"
+          },
+          {
+            "ncbi_id": "183710",
+            "name": "f__Deinococcaceae"
+          },
+          {
+            "ncbi_id": "118964",
+            "name": "o__Deinococcales"
+          },
+          {
+            "ncbi_id": "188787",
+            "name": "c__Deinococci"
+          },
+          {
+            "ncbi_id": "1298",
+            "name": "g__Deinococcus"
+          },
+          {
+            "ncbi_id": "1297",
+            "name": "p__Deinococcota"
+          },
+          {
+            "ncbi_id": "186806",
+            "name": "f__Eubacteriaceae"
+          },
+          {
+            "ncbi_id": "1730",
+            "name": "g__Eubacterium"
+          },
+          {
+            "ncbi_id": "216851",
+            "name": "g__Faecalibacterium"
+          },
+          {
+            "ncbi_id": "853",
+            "name": "s__Faecalibacterium prausnitzii"
+          },
+          {
+            "ncbi_id": "1239",
+            "name": "p__Bacillota"
+          },
+          {
+            "ncbi_id": "821",
+            "name": "s__Phocaeicola vulgatus"
+          },
+          {
+            "ncbi_id": "40323",
+            "name": "g__Stenotrophomonas"
+          },
+          {
+            "ncbi_id": "32033",
+            "name": "f__Lysobacteraceae"
+          },
+          {
+            "ncbi_id": "135614",
+            "name": "o__Lysobacterales"
+          },
+          {
+            "ncbi_id": "39491",
+            "name": "s__Agathobacter rectalis"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:29459704/1/2",
+        "direction": "decreased",
+        "group_0_name": "vaginal delivery",
+        "group_1_name": "C-section",
+        "taxa": [
+          {
+            "ncbi_id": "1760",
+            "name": "c__Actinomycetes"
+          },
+          {
+            "ncbi_id": "201174",
+            "name": "p__Actinomycetota"
+          },
+          {
+            "ncbi_id": "2037",
+            "name": "o__Actinomycetales"
+          },
+          {
+            "ncbi_id": "31957",
+            "name": "f__Propionibacteriaceae"
+          },
+          {
+            "ncbi_id": "1236",
+            "name": "c__Gammaproteobacteria"
+          },
+          {
+            "ncbi_id": "1747",
+            "name": "s__Cutibacterium acnes"
+          },
+          {
+            "ncbi_id": "1743",
+            "name": "g__Propionibacterium"
+          },
+          {
+            "ncbi_id": "72274",
+            "name": "o__Pseudomonadales"
+          },
+          {
+            "ncbi_id": "2070",
+            "name": "f__Pseudonocardiaceae"
+          },
+          {
+            "ncbi_id": "80840",
+            "name": "o__Burkholderiales"
+          },
+          {
+            "ncbi_id": "28216",
+            "name": "c__Betaproteobacteria"
+          },
+          {
+            "ncbi_id": "283",
+            "name": "g__Comamonas"
+          },
+          {
+            "ncbi_id": "80864",
+            "name": "f__Comamonadaceae"
+          },
+          {
+            "ncbi_id": "285",
+            "name": "s__Comamonas testosteroni"
+          },
+          {
+            "ncbi_id": "286",
+            "name": "g__Pseudomonas"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "study_id": "33804656",
+    "pmid": "33804656",
+    "pmcid": "PMC8003781",
+    "license": "CC BY",
+    "study_title": "Dynamics of Gut Microbiota Recovery after Antibiotic Exposure in Young and Old Mice (A Pilot Study)",
+    "figure_type": "cladogram",
+    "figure_label_source": "Figure 5",
+    "figure_label_matched": "Figure 5",
+    "figure_filename": "microorganisms-09-00647-g005.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/f69d/8003781/9ad3e3167aa5/microorganisms-09-00647-g005.jpg",
+    "image_path": "data/figbench/images/PMC8003781_F5.jpg",
+    "legend": "Linear discriminant analysis (LDA) effect size (LEfSe) of differentially abundant bacterial taxa between young (left panels) and older mice (right panels) after 10 days of Abx treatment (upper panels) or after 6 months of recovery (lower panels). Cladograms represent phylogenetic branches of taxa significantly more abundant in the two analyzed groups.",
+    "group_0_name": "7 week old (young) mice before antibiotic treatment",
+    "group_1_name": "7 week old (young) mice 10 days after antibiotic treatments",
+    "gold": [
+      {
+        "signature_id": "bsdb:33804656/1/1",
+        "direction": "increased",
+        "group_0_name": "7 week old (young) mice before antibiotic treatment",
+        "group_1_name": "7 week old (young) mice 10 days after antibiotic treatments",
+        "taxa": [
+          {
+            "ncbi_id": "81852",
+            "name": "f__Enterococcaceae"
+          },
+          {
+            "ncbi_id": "186826",
+            "name": "o__Lactobacillales"
+          },
+          {
+            "ncbi_id": "1350",
+            "name": "g__Enterococcus"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:33804656/1/2",
+        "direction": "decreased",
+        "group_0_name": "7 week old (young) mice before antibiotic treatment",
+        "group_1_name": "7 week old (young) mice 10 days after antibiotic treatments",
+        "taxa": [
+          {
+            "ncbi_id": "1470349",
+            "name": "g__Candidatus Stoquefichus"
+          },
+          {
+            "ncbi_id": "2137877",
+            "name": "s__Eubacteriales Family XIII. Incertae Sedis bacterium"
+          },
+          {
+            "ncbi_id": "128827",
+            "name": "f__Erysipelotrichaceae"
+          },
+          {
+            "ncbi_id": "526525",
+            "name": "o__Erysipelotrichales"
+          },
+          {
+            "ncbi_id": "1729679",
+            "name": "g__Faecalibaculum"
+          },
+          {
+            "ncbi_id": "186804",
+            "name": "f__Peptostreptococcaceae"
+          },
+          {
+            "ncbi_id": "1501226",
+            "name": "g__Romboutsia"
+          },
+          {
+            "ncbi_id": "1898207",
+            "name": "s__Clostridiales bacterium"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:33804656/2/1",
+        "direction": "increased",
+        "group_0_name": "7 week old (young) mice before antibiotic treatment",
+        "group_1_name": "7 week old (young) mice 6 months after antibiotic treatments",
+        "taxa": [
+          {
+            "ncbi_id": "1501226",
+            "name": "g__Romboutsia"
+          },
+          {
+            "ncbi_id": "186804",
+            "name": "f__Peptostreptococcaceae"
+          },
+          {
+            "ncbi_id": "1937008",
+            "name": "g__Dubosiella"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:33804656/2/2",
+        "direction": "decreased",
+        "group_0_name": "7 week old (young) mice before antibiotic treatment",
+        "group_1_name": "7 week old (young) mice 6 months after antibiotic treatments",
+        "taxa": [
+          {
+            "ncbi_id": "2137877",
+            "name": "s__Eubacteriales Family XIII. Incertae Sedis bacterium"
+          },
+          {
+            "ncbi_id": "1470349",
+            "name": "g__Candidatus Stoquefichus"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:33804656/3/1",
+        "direction": "increased",
+        "group_0_name": "40 week old (old) mice before antibiotic treatment",
+        "group_1_name": "40 week old (old) mice 10 days after antibiotic treatments",
+        "taxa": [
+          {
+            "ncbi_id": "171549",
+            "name": "o__Bacteroidales"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:33804656/3/2",
+        "direction": "decreased",
+        "group_0_name": "40 week old (old) mice before antibiotic treatment",
+        "group_1_name": "40 week old (old) mice 10 days after antibiotic treatments",
+        "taxa": [
+          {
+            "ncbi_id": "1501226",
+            "name": "g__Romboutsia"
+          },
+          {
+            "ncbi_id": "186804",
+            "name": "f__Peptostreptococcaceae"
+          },
+          {
+            "ncbi_id": "1729679",
+            "name": "g__Faecalibaculum"
+          },
+          {
+            "ncbi_id": "128827",
+            "name": "f__Erysipelotrichaceae"
+          },
+          {
+            "ncbi_id": "526525",
+            "name": "o__Erysipelotrichales"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:33804656/4/1",
+        "direction": "decreased",
+        "group_0_name": "40 week old (old) mice before antibiotic treatment",
+        "group_1_name": "40 week old (old) mice 6 months after antibiotic treatments",
+        "taxa": [
+          {
+            "ncbi_id": "171549",
+            "name": "o__Bacteroidales"
+          },
+          {
+            "ncbi_id": "1729679",
+            "name": "g__Faecalibaculum"
+          },
+          {
+            "ncbi_id": "2005473",
+            "name": "f__Muribaculaceae"
+          },
+          {
+            "ncbi_id": "1918540",
+            "name": "g__Muribaculum"
+          },
+          {
+            "ncbi_id": "186804",
+            "name": "f__Peptostreptococcaceae"
+          },
+          {
+            "ncbi_id": "1501226",
+            "name": "g__Romboutsia"
+          },
+          {
+            "ncbi_id": "1898207",
+            "name": "s__Clostridiales bacterium"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:33804656/4/2",
+        "direction": "increased",
+        "group_0_name": "40 week old (old) mice before antibiotic treatment",
+        "group_1_name": "40 week old (old) mice 6 months after antibiotic treatments",
+        "taxa": [
+          {
+            "ncbi_id": "1937008",
+            "name": "g__Dubosiella"
+          },
+          {
+            "ncbi_id": "128827",
+            "name": "f__Erysipelotrichaceae"
+          },
+          {
+            "ncbi_id": "526525",
+            "name": "o__Erysipelotrichales"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "study_id": "41670382",
+    "pmid": "41670382",
+    "pmcid": "PMC12955483",
+    "license": "CC BY",
+    "study_title": "Integrated analysis of gut microbiome and fecal metabolome reveals potential non-invasive biomarkers for early-stage silicosis",
+    "figure_type": "cladogram",
+    "figure_label_source": "Figure 3",
+    "figure_label_matched": "Fig 3",
+    "figure_filename": "spectrum.02977-25.f003.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/fee0/12955483/8fd088156b76/spectrum.02977-25.f003.jpg",
+    "image_path": "data/figbench/images/PMC12955483_F3.jpg",
+    "legend": "Linear discriminant effect analysis of gut microbiota alterations associated with stage I silicosis patients. (A) Cladogram generated from LEfSe analysis, indicating differential abundant bacterial taxa from the phylum to genus levels between HCs and stage I silicosis patients (Wilcoxon test, P < 0.05, LDA score > 2). (B) Taxonomic cladogram from LEfSe analysis illustrating the distribution of differential gut microbiota identified between HCs and stage I silicosis patients. (C) Relative abundance of the top 17 differentially enriched genera between HCs and stage I silicosis patients (Wilcoxon test, P < 0.05, LDA score > 2).",
+    "group_0_name": "Healthy controls (HC)",
+    "group_1_name": "Stage 1 silicosis patients",
+    "gold": [
+      {
+        "signature_id": "bsdb:41670382/1/1",
+        "direction": "increased",
+        "group_0_name": "Healthy controls (HC)",
+        "group_1_name": "Stage 1 silicosis patients",
+        "taxa": [
+          {
+            "ncbi_id": "1117",
+            "name": "p__Cyanobacteriota"
+          },
+          {
+            "ncbi_id": "1485",
+            "name": "g__Clostridium"
+          },
+          {
+            "ncbi_id": "1827",
+            "name": "g__Rhodococcus"
+          },
+          {
+            "ncbi_id": "85025",
+            "name": "f__Nocardiaceae"
+          },
+          {
+            "ncbi_id": "85007",
+            "name": "o__Mycobacteriales"
+          },
+          {
+            "ncbi_id": "3028117",
+            "name": "c__Cyanophyceae"
+          },
+          {
+            "ncbi_id": "2737",
+            "name": "g__Vagococcus"
+          },
+          {
+            "ncbi_id": "1928820",
+            "name": "g__Intestinibacillus"
+          },
+          {
+            "ncbi_id": "162289",
+            "name": "g__Peptoniphilus"
+          },
+          {
+            "ncbi_id": "356",
+            "name": "o__Hyphomicrobiales"
+          },
+          {
+            "ncbi_id": "579",
+            "name": "g__Kluyvera"
+          },
+          {
+            "ncbi_id": "53335",
+            "name": "g__Pantoea"
+          },
+          {
+            "ncbi_id": "1903409",
+            "name": "f__Erwiniaceae"
+          },
+          {
+            "ncbi_id": "1903414",
+            "name": "f__Morganellaceae"
+          },
+          {
+            "ncbi_id": "712",
+            "name": "f__Pasteurellaceae"
+          },
+          {
+            "ncbi_id": "662",
+            "name": "g__Vibrio"
+          },
+          {
+            "ncbi_id": "641",
+            "name": "f__Vibrionaceae"
+          },
+          {
+            "ncbi_id": "712",
+            "name": "f__Pasteurellaceae"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:41670382/1/2",
+        "direction": "decreased",
+        "group_0_name": "Healthy controls (HC)",
+        "group_1_name": "Stage 1 silicosis patients",
+        "taxa": [
+          {
+            "ncbi_id": "1678",
+            "name": "g__Bifidobacterium"
+          },
+          {
+            "ncbi_id": "31953",
+            "name": "f__Bifidobacteriaceae"
+          },
+          {
+            "ncbi_id": "85004",
+            "name": "o__Bifidobacteriales"
+          },
+          {
+            "ncbi_id": "201174",
+            "name": "p__Actinomycetota"
+          },
+          {
+            "ncbi_id": "133925",
+            "name": "g__Olsenella"
+          },
+          {
+            "ncbi_id": "1643824",
+            "name": "f__Atopobiaceae"
+          },
+          {
+            "ncbi_id": "84998",
+            "name": "c__Coriobacteriia"
+          },
+          {
+            "ncbi_id": "191303",
+            "name": "g__Turicibacter"
+          },
+          {
+            "ncbi_id": "128827",
+            "name": "f__Erysipelotrichaceae"
+          },
+          {
+            "ncbi_id": "1578",
+            "name": "g__Lactobacillus"
+          },
+          {
+            "ncbi_id": "33958",
+            "name": "f__Lactobacillaceae"
+          },
+          {
+            "ncbi_id": "39485",
+            "name": "s__Lachnospira eligens"
+          },
+          {
+            "ncbi_id": "186806",
+            "name": "f__Eubacteriaceae"
+          },
+          {
+            "ncbi_id": "1940255",
+            "name": "g__Allofournierella"
+          },
+          {
+            "ncbi_id": "3028852",
+            "name": "g__Merdimmobilis"
+          },
+          {
+            "ncbi_id": "909932",
+            "name": "c__Negativicutes"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "study_id": "35233023",
+    "pmid": "35233023",
+    "pmcid": "PMC8888571",
+    "license": "CC BY",
+    "study_title": "Intestinal permeability before and after albendazole treatment in low and high socioeconomic status schoolchildren in Makassar, Indonesia",
+    "figure_type": "heatmap",
+    "figure_label_source": "Figure 3B",
+    "figure_label_matched": "Figure 3",
+    "figure_filename": "41598_2022_7086_Fig3_HTML.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/a5dc/8888571/f26a26953594/41598_2022_7086_Fig3_HTML.jpg",
+    "image_path": "data/figbench/images/PMC8888571_F3.jpg",
+    "legend": "Effect of triple-dose albendazole treatment on (a) gut microbiota diversity; and b) gut microbiota composition in (i) low-SES helminth-infected, (ii) low-SE helminth-uninfected, and (iii) high-SES children. (a) Shannon diversity index measurements at both timepoints were compared using Wilcoxon signed rank test. Black closed-dots: before treatment; red open-dots: after treatment. (b) Data plotted as log2 fold change derived from differential abundance analysis by DESeq2. Cell colours indicate taxa changes after albendazole treatment: red colour indicate increased relative abundance after treatment and blue colour indicate decreased relative abundance after treatment. Only taxa detected to have significant difference in abundance (adjusted p value < 0.05) are displayed; adjusted p value were determined using Benjamini–Hochberg method. Row annotation showed specific taxa that were assigned under 4 different phylum. SES = Socioeconomic status.",
+    "group_0_name": "Low-SES helminth-uninfected group (before treatment)",
+    "group_1_name": "Low-SES helminth-uninfected group (after treatment)",
+    "gold": [
+      {
+        "signature_id": "bsdb:35233023/1/1",
+        "direction": "increased",
+        "group_0_name": "Low-SES helminth-uninfected group (before treatment)",
+        "group_1_name": "Low-SES helminth-uninfected group (after treatment)",
+        "taxa": [
+          {
+            "ncbi_id": "31953",
+            "name": "f__Bifidobacteriaceae"
+          },
+          {
+            "ncbi_id": "1678",
+            "name": "g__Bifidobacterium"
+          },
+          {
+            "ncbi_id": "1578",
+            "name": "g__Lactobacillus"
+          },
+          {
+            "ncbi_id": "1301",
+            "name": "g__Streptococcus"
+          },
+          {
+            "ncbi_id": "292632",
+            "name": "g__Subdoligranulum"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:35233023/1/2",
+        "direction": "decreased",
+        "group_0_name": "Low-SES helminth-uninfected group (before treatment)",
+        "group_1_name": "Low-SES helminth-uninfected group (after treatment)",
+        "taxa": [
+          {
+            "ncbi_id": "39948",
+            "name": "g__Dialister"
+          },
+          {
+            "ncbi_id": "216851",
+            "name": "g__Faecalibacterium"
+          },
+          {
+            "ncbi_id": "83770",
+            "name": "g__Succinivibrio"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:35233023/2/1",
+        "direction": "increased",
+        "group_0_name": "High-SES group (before treatment)",
+        "group_1_name": "High-SES group (after treatment)",
+        "taxa": [
+          {
+            "ncbi_id": "1301",
+            "name": "g__Streptococcus"
+          },
+          {
+            "ncbi_id": "1578",
+            "name": "g__Lactobacillus"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:35233023/2/2",
+        "direction": "decreased",
+        "group_0_name": "High-SES group (before treatment)",
+        "group_1_name": "High-SES group (after treatment)",
+        "taxa": [
+          {
+            "ncbi_id": "216851",
+            "name": "g__Faecalibacterium"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "study_id": "35387878",
+    "pmid": "35387878",
+    "pmcid": "PMC9664112",
+    "license": "CC BY-NC",
+    "study_title": "Cigarette smoke promotes colorectal cancer through modulation of gut microbiota and related metabolites",
+    "figure_type": "heatmap",
+    "figure_label_source": "Figure 2c",
+    "figure_label_matched": "Figure 2",
+    "figure_filename": "gutjnl-2021-325021f02.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/d5de/9664112/f84f6c35761c/gutjnl-2021-325021f02.jpg",
+    "image_path": "data/figbench/images/PMC9664112_F2.jpg",
+    "legend": "Cigarette smoke modulates the gut microbiota of mice. (A) Fisher statistic (alpha diversity) and (B) PCoA analysis (beta diversity) in AOM+Smoking and AOM group. Significance of alpha and beta diversity were accessed by two-tailed Mann-Whitney U test and PERMANOVA, respectively. (C) Differentially bacteria between AOM+Smoking and AOM group. Differences in abundance were detected by using a multivariate statistical model (p<0.05 (FDR corrected), FC >1.5, MaAsLin2). (D) The abundance of species Eggerthella lenta between AOM+Smoking and AOM group was validated by quantitative PCR. (E) Ecological network among differentially bacteria in AOM+Smoking group and in AOM group. Correlations were measured by SparCC method. Correlations with difference in correlation strengths between AOM+Smoking and AOM group >0.6 were selected for visualisation. AOM, azoxymethane; FC, fold change; PCoA, principal coordinates analysis; PERMANOVA, permutational multivariate analyses of variance.",
+    "group_0_name": "Smoke-free control group intraperitoneally injected with carcinogen azoxymethane (AOM) (10 mg/kg)",
+    "group_1_name": "Smoke-exposed group intraperitoneally injected with carcinogen, AOM (AOM + Smoking)",
+    "gold": [
+      {
+        "signature_id": "bsdb:35387878/2/1",
+        "direction": "increased",
+        "group_0_name": "Smoke-free control group intraperitoneally injected with carcinogen azoxymethane (AOM) (10 mg/kg)",
+        "group_1_name": "Smoke-exposed group intraperitoneally injected with carcinogen, AOM (AOM + Smoking)",
+        "taxa": [
+          {
+            "ncbi_id": "1428",
+            "name": "s__Bacillus thuringiensis"
+          },
+          {
+            "ncbi_id": "492670",
+            "name": "s__Bacillus velezensis"
+          },
+          {
+            "ncbi_id": "35760",
+            "name": "s__Bifidobacterium choerinum"
+          },
+          {
+            "ncbi_id": "84112",
+            "name": "s__Eggerthella lenta"
+          },
+          {
+            "ncbi_id": "562",
+            "name": "s__Escherichia coli"
+          },
+          {
+            "ncbi_id": "1841863",
+            "name": "s__Gordonibacter massiliensis (ex Traore et al. 2017)"
+          },
+          {
+            "ncbi_id": "471189",
+            "name": "s__Gordonibacter pamelaeae"
+          },
+          {
+            "ncbi_id": "1335613",
+            "name": "s__Gordonibacter urolithinfaciens"
+          },
+          {
+            "ncbi_id": "2530390",
+            "name": "s__Muribaculum gordoncarteri"
+          },
+          {
+            "ncbi_id": "1871022",
+            "name": "s__Parolsenella massiliensis"
+          },
+          {
+            "ncbi_id": "29388",
+            "name": "s__Staphylococcus capitis"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:35387878/2/2",
+        "direction": "decreased",
+        "group_0_name": "Smoke-free control group intraperitoneally injected with carcinogen azoxymethane (AOM) (10 mg/kg)",
+        "group_1_name": "Smoke-exposed group intraperitoneally injected with carcinogen, AOM (AOM + Smoking)",
+        "taxa": [
+          {
+            "ncbi_id": "246787",
+            "name": "s__Bacteroides cellulosilyticus"
+          },
+          {
+            "ncbi_id": "2109688",
+            "name": "s__Clostridiales bacterium CCNA10"
+          },
+          {
+            "ncbi_id": "2109692",
+            "name": "s__Erysipelotrichaceae bacterium GAM147"
+          },
+          {
+            "ncbi_id": "1598",
+            "name": "s__Limosilactobacillus reuteri"
+          },
+          {
+            "ncbi_id": "823",
+            "name": "s__Parabacteroides distasonis"
+          },
+          {
+            "ncbi_id": "2025876",
+            "name": "s__Parabacteroides sp. CT06"
+          },
+          {
+            "ncbi_id": "357276",
+            "name": "s__Phocaeicola dorei"
+          },
+          {
+            "ncbi_id": "821",
+            "name": "s__Phocaeicola vulgatus"
+          },
+          {
+            "ncbi_id": "1307",
+            "name": "s__Streptococcus suis"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "study_id": "40943094",
+    "pmid": "40943094",
+    "pmcid": "PMC12428781",
+    "license": "CC BY",
+    "study_title": "Distinct Gut Microbiota Signatures Are Associated with Severity of Metabolic Dysfunction-Associated Steatotic Liver Disease in People with HIV",
+    "figure_type": "heatmap",
+    "figure_label_source": "Figure 2",
+    "figure_label_matched": "Figure 2",
+    "figure_filename": "ijms-26-08165-g002.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/32c9/12428781/454306e040db/ijms-26-08165-g002.jpg",
+    "image_path": "data/figbench/images/PMC12428781_F2.jpg",
+    "legend": "Heatmap illustration showing microbiome signature with significant differences between MASLD and severe MASLD groups, divided for study participants. Legend: MASLD, metabolic dysfunction-associated steatotic liver disease; sMASLD, severe metabolic dysfunction-associated steatotic liver disease; UCG, unclassified clostridia group; Unc, unclassified. * p < 0.05; ** p < 0.01; *** p < 0.001. p-values were not corrected for multiple testing.",
+    "group_0_name": "Metabolic dysfunction-associated steatotic liver disease (MASLD)",
+    "group_1_name": "Severe metabolic dysfunction-associated steatotic liver disease (sMASLD)",
+    "gold": [
+      {
+        "signature_id": "bsdb:40943094/1/1",
+        "direction": "increased",
+        "group_0_name": "Metabolic dysfunction-associated steatotic liver disease (MASLD)",
+        "group_1_name": "Severe metabolic dysfunction-associated steatotic liver disease (sMASLD)",
+        "taxa": [
+          {
+            "ncbi_id": "207244",
+            "name": "g__Anaerostipes"
+          },
+          {
+            "ncbi_id": "816",
+            "name": "g__Bacteroides"
+          },
+          {
+            "ncbi_id": "580596",
+            "name": "g__Butyricicoccus"
+          },
+          {
+            "ncbi_id": "1573535",
+            "name": "g__Holdemanella"
+          },
+          {
+            "ncbi_id": "1980693",
+            "name": "g__Negativibacillus"
+          },
+          {
+            "ncbi_id": "292632",
+            "name": "g__Subdoligranulum"
+          },
+          {
+            "ncbi_id": "171552",
+            "name": "f__Prevotellaceae"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:40943094/1/2",
+        "direction": "decreased",
+        "group_0_name": "Metabolic dysfunction-associated steatotic liver disease (MASLD)",
+        "group_1_name": "Severe metabolic dysfunction-associated steatotic liver disease (sMASLD)",
+        "taxa": [
+          {
+            "ncbi_id": "1283313",
+            "name": "g__Alloprevotella"
+          },
+          {
+            "ncbi_id": "1505660",
+            "name": "g__Asaccharospora"
+          },
+          {
+            "ncbi_id": "135858",
+            "name": "g__Catenibacterium"
+          },
+          {
+            "ncbi_id": "872",
+            "name": "g__Desulfovibrio"
+          },
+          {
+            "ncbi_id": "39948",
+            "name": "g__Dialister"
+          },
+          {
+            "ncbi_id": "1279388",
+            "name": "g__Kandleria"
+          },
+          {
+            "ncbi_id": "488548",
+            "name": "g__Lutaonella"
+          },
+          {
+            "ncbi_id": "906",
+            "name": "g__Megasphaera"
+          },
+          {
+            "ncbi_id": "133925",
+            "name": "g__Olsenella"
+          },
+          {
+            "ncbi_id": "2082587",
+            "name": "g__Parolsenella"
+          },
+          {
+            "ncbi_id": "33024",
+            "name": "g__Phascolarctobacterium"
+          },
+          {
+            "ncbi_id": "838",
+            "name": "g__Prevotella"
+          },
+          {
+            "ncbi_id": "1501226",
+            "name": "g__Romboutsia"
+          },
+          {
+            "ncbi_id": "1473205",
+            "name": "g__Senegalimassilia"
+          },
+          {
+            "ncbi_id": "84108",
+            "name": "g__Slackia"
+          },
+          {
+            "ncbi_id": "31953",
+            "name": "f__Bifidobacteriaceae"
+          },
+          {
+            "ncbi_id": "216572",
+            "name": "f__Oscillospiraceae"
+          },
+          {
+            "ncbi_id": "186804",
+            "name": "f__Peptostreptococcaceae"
+          },
+          {
+            "ncbi_id": "83763",
+            "name": "f__Succinivibrionaceae"
+          },
+          {
+            "ncbi_id": "1485",
+            "name": "g__Clostridium"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "study_id": "30675188",
+    "pmid": "30675188",
+    "pmcid": "PMC6337822",
+    "license": "CC BY",
+    "study_title": "Alteration in gut microbiota associated with hepatitis B and non-hepatitis virus related hepatocellular carcinoma",
+    "figure_type": "other",
+    "figure_label_source": "Figure 3",
+    "figure_label_matched": "Fig. 3",
+    "figure_filename": "13099_2018_281_Fig3_HTML.jpg",
+    "blob_url": "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/a6bc/6337822/2883ef54ddb1/13099_2018_281_Fig3_HTML.jpg",
+    "image_path": "data/figbench/images/PMC6337822_F3.jpg",
+    "legend": "Genera strikingly different in gut microbiota of healthy controls (a), NBNC-HCC (b) and B-HCC (c)",
+    "group_0_name": "healthy controls",
+    "group_1_name": "non-HBV non-HCV related HCC",
+    "gold": [
+      {
+        "signature_id": "bsdb:30675188/1/1",
+        "direction": "increased",
+        "group_0_name": "healthy controls",
+        "group_1_name": "non-HBV non-HCV related HCC",
+        "taxa": [
+          {
+            "ncbi_id": "244127",
+            "name": "g__Anaerotruncus"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:30675188/1/2",
+        "direction": "decreased",
+        "group_0_name": "healthy controls",
+        "group_1_name": "non-HBV non-HCV related HCC",
+        "taxa": [
+          {
+            "ncbi_id": "39496",
+            "name": "s__Eubacterium ventriosum"
+          },
+          {
+            "ncbi_id": "28050",
+            "name": "g__Lachnospira"
+          },
+          {
+            "ncbi_id": "186803",
+            "name": "f__Lachnospiraceae"
+          },
+          {
+            "ncbi_id": "158846",
+            "name": "g__Megamonas"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:30675188/2/1",
+        "direction": "increased",
+        "group_0_name": "healthy controls",
+        "group_1_name": "HBV-related HCC patients",
+        "taxa": [
+          {
+            "ncbi_id": "244127",
+            "name": "g__Anaerotruncus"
+          },
+          {
+            "ncbi_id": "541000",
+            "name": "f__Oscillospiraceae"
+          },
+          {
+            "ncbi_id": "33024",
+            "name": "g__Phascolarctobacterium"
+          },
+          {
+            "ncbi_id": "838",
+            "name": "g__Prevotella"
+          }
+        ]
+      },
+      {
+        "signature_id": "bsdb:30675188/3/1",
+        "direction": "decreased",
+        "group_0_name": "HBV related HCC patients",
+        "group_1_name": "non-HBV non-HCV patients",
+        "taxa": [
+          {
+            "ncbi_id": "32199",
+            "name": "g__Buchnera"
+          },
+          {
+            "ncbi_id": "39496",
+            "name": "s__Eubacterium ventriosum"
+          },
+          {
+            "ncbi_id": "28050",
+            "name": "g__Lachnospira"
+          },
+          {
+            "ncbi_id": "33024",
+            "name": "g__Phascolarctobacterium"
+          }
+        ]
+      }
+    ]
+  }
+]
