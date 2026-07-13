@@ -9,8 +9,8 @@ row that shares them. This module:
    (`schema/bugsigdb.yaml`) expects (ints, floats, bools, enum values, and
    multivalued lists — see the `coerce_*` / `split_*` / `parse_*` helpers), and
 3. folds the flat rows into nested `Study -> Experiment -> Signature` dicts
-   keyed by PMID (falling back to the `Study` column when PMID is blank) via
-   :func:`load_studies`.
+   keyed by the `Study` column (the wiki page name, always present, exposed as
+   the `uid` slot — the Study identifier) via :func:`load_studies`.
 
 This module has no CLI/IO-formatting concerns (those live in
 :mod:`bugsigdb_curation.cli`) and no dependency on `linkml`/`pydantic` — the
@@ -438,20 +438,26 @@ def _set(d: dict[str, Any], key: str, value: Any) -> None:
 
 
 def _study_key(row: dict[str, str]) -> str:
-    """Grouping key for a Study: PMID when present, else the raw `Study` column."""
-    pmid = row.get("PMID")
-    if not is_blank(pmid):
-        return pmid.strip()
+    """Grouping key for a Study: the `Study` column (the wiki page name).
+
+    Always present in every row (unlike PMID, which ~16 of ~2068 real studies
+    lack entirely), so it is the natural, always-available primary key and is
+    also emitted as the `uid` slot.
+    """
     return (row.get("Study") or "").strip()
 
 
 def _extract_study(row: dict[str, str]) -> dict[str, Any]:
     d: dict[str, Any] = {}
+    # `uid` is the Study identifier (schema: `slot_usage.uid.identifier: true`)
+    # and must be emitted first/always; populated from the same `Study` column
+    # used to key studies in `_study_key`.
+    _set(d, "uid", _study_key(row))
     _set(d, "pmid", coerce_int(row.get("PMID")))
     # citation_mode is `required: true` on the schema (a mandatory radio button
     # on the Study form; default Auto) with no way to observe it directly in
     # full_dump.csv, so it's inferred per the schema's own AGENT comment: Auto
-    # when a PMID applies, Manual otherwise (matches _study_key's fallback).
+    # when a PMID applies, Manual otherwise.
     _set(d, "citation_mode", "Auto" if not is_blank(row.get("PMID")) else "Manual")
     _set(d, "doi", None if is_blank(row.get("DOI")) else row["DOI"].strip())
     _set(d, "uri", None if is_blank(row.get("URL")) else row["URL"].strip())
@@ -541,8 +547,9 @@ def load_studies(source: Path | Iterable[dict[str, str]], *, limit: int | None =
     `source` is either a path to the CSV file, or (mainly for testing) an
     iterable of raw row dicts as `read_rows` would yield.
 
-    Studies are keyed by PMID, falling back to the `Study` column when PMID is
-    blank. Experiments are keyed within a study by the `Experiment` column.
+    Studies are keyed by the `Study` column (the wiki page name, always present;
+    also emitted as each study's `uid`). Experiments are keyed within a study by
+    the `Experiment` column.
     Each row contributes exactly one Signature (the dump is one row per
     signature; see module docstring).
 

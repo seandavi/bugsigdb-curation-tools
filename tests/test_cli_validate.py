@@ -12,6 +12,7 @@ from bugsigdb_curation.cli import app
 runner = CliRunner()
 
 VALID_STUDY = {
+    "uid": "27409883",
     "pmid": 27409883,
     "citation_mode": "Auto",
     "study_design": ["case-control"],
@@ -44,6 +45,24 @@ def _write_yaml(tmp_path, name, obj):
 
 def test_validate_valid_study_exits_zero(tmp_path):
     path = _write_yaml(tmp_path, "study.yaml", VALID_STUDY)
+    result = runner.invoke(app, ["validate", str(path)])
+    assert result.exit_code == 0, result.output
+
+
+def test_validate_study_missing_uid_exits_one(tmp_path):
+    bad = {k: v for k, v in VALID_STUDY.items() if k != "uid"}
+    path = _write_yaml(tmp_path, "study.yaml", bad)
+    result = runner.invoke(app, ["validate", str(path)])
+    assert result.exit_code == 1
+    assert "uid" in result.output
+
+
+def test_validate_study_without_pmid_but_with_uid_exits_zero(tmp_path):
+    # The whole point of this change: a PMID-less study is valid as long as
+    # it carries a `uid`.
+    no_pmid = {k: v for k, v in VALID_STUDY.items() if k != "pmid"}
+    no_pmid["citation_mode"] = "Manual"
+    path = _write_yaml(tmp_path, "study.yaml", no_pmid)
     result = runner.invoke(app, ["validate", str(path)])
     assert result.exit_code == 0, result.output
 

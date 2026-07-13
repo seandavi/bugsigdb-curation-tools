@@ -217,6 +217,7 @@ def test_load_studies_citation_mode_inferred_from_pmid(studies):
 
 def test_load_studies_pmid_keyed_study(studies):
     study_a = next(s for s in studies if s.get("pmid") == 100001)
+    assert study_a["uid"] == "100001"
     assert study_a["doi"] == "10.1000/xyz1"
     assert study_a["title"] == "Test Study One"
     assert study_a["year"] == 2020
@@ -226,10 +227,20 @@ def test_load_studies_pmid_keyed_study(studies):
     assert len(study_a["experiments"]) == 2
 
 
+def test_load_studies_uid_is_first_key(studies):
+    # Cosmetic but required: `uid` is the Study identifier and should be the
+    # first key emitted for each study dict (insertion order == dict order).
+    for study in studies:
+        assert next(iter(study)) == "uid"
+
+
 def test_load_studies_pmid_less_study_keyed_by_study_column(studies):
     assert not any(s.get("pmid") == 77 for s in studies)
     study_b = next(s for s in studies if s.get("title") is None and s.get("doi") is None)
     assert "pmid" not in study_b
+    # This is the whole point of the change: a PMID-less study still gets a
+    # stable `uid` (the wiki page name / `Study` column), so it validates.
+    assert study_b["uid"] == "Study 77"
     assert len(study_b["experiments"]) == 1
     assert len(study_b["experiments"][0]["signatures"]) == 3
 

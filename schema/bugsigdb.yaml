@@ -13,7 +13,8 @@ description: >-
   controlled vocabularies and ontology terms (EFO for condition, UBERON for body site,
   NCBI Taxonomy for host species and signature taxa).
 
-  HIERARCHY. A Study is one publication (page name = PMID). A Study contains one or more
+  HIERARCHY. A Study is one publication (identified by `uid`, the wiki page name — usually
+  a PMID, but not always). A Study contains one or more
   Experiments; each Experiment is a single two-group comparison (Group 0 = control/reference,
   Group 1 = case/exposed) with its subject, laboratory and statistical context. Each Experiment
   contains one or more Signatures; a Signature is the set of taxa reported as changing in one
@@ -93,14 +94,17 @@ classes:
     description: >-
       A single published study (usually one PubMed publication) from which one or
       more microbial signatures were curated. The wiki page name is the PMID (or
-      "Study_<id>" when no PMID applies).
+      "Study_<id>" when no PMID applies); that page name is captured as `uid`, the
+      Study's stable identifier, since not every study has a pmid.
     comments:
       - "CURATOR: create a Study by entering the PMID (integers only, no leading zeroes) as the page name (Help:How_to_add_a_Study). If the PMID does not apply, name the page 'Study_<other identifier>'. If 'must be unique' appears, the study is already in BugSigDB."
       - "CURATOR: in Auto citation mode almost all bibliographic fields are pulled from PubMed; you normally only choose the study design and optionally add DOI/URI."
       - "AGENT: one Study == one publication. Do not split a single paper into multiple Studies; use nested Experiments for its separate comparisons."
+      - "AGENT: `uid` (the page name) is the identifier for Study, not `pmid` — ~16 of ~2068 real studies have no PMID and would otherwise fail validation. Always populate `uid`; populate `pmid` only when the study has one."
     mixins:
       - CurationProvenance
     slots:
+      - uid
       - pmid
       - doi
       - uri
@@ -116,7 +120,7 @@ classes:
       - study_design
       - experiments
     slot_usage:
-      pmid:
+      uid:
         identifier: true
 
   Experiment:
@@ -224,17 +228,32 @@ classes:
 slots:
 
   # --- identifiers & citation (Study) ---
+  uid:
+    description: >-
+      Stable BugSigDB study identifier: the wiki page name for this Study (e.g. "Study 623"
+      or a bare PMID like "27409883" when the page is named by its PMID). Always present,
+      unlike pmid — this is the primary key for Study, not the PMID, precisely because a
+      minority of real studies (papers with no PMID) have no value for pmid at all.
+    range: string
+    comments:
+      - "CURATOR: this is the wiki page name itself, not a separately-entered property; every Study page has one by construction."
+      - "AGENT: populate from the source system's page-name/identifier field (e.g. the CSV export's 'Study' column), not by deriving it from pmid — a PMID-less study still has a uid."
+    examples:
+      - value: "Study 623"
+      - value: "27409883"
   pmid:
     description: >-
-      PubMed identifier of the source publication. Tooltip: "PubMed identifier for
-      scientific articles." Serves as the Study page name (integers only, no leading zeroes).
+      PubMed identifier of the source publication, when one exists. Tooltip: "PubMed
+      identifier for scientific articles." Historically also served as the Study page name,
+      but the stable primary key is now `uid` — pmid is an optional external identifier and
+      is absent for studies with no PubMed record.
     range: integer
     slot_uri: bugsigdb:PMID
     exact_mappings:
       - PMID
     comments:
-      - "CURATOR: the PMID IS the page name. Enter integers only with no leading zeroes. If the article has no PMID, name the page 'Study_<other identifier>' and leave this empty; a PMID acquired later is added by moving/renaming the page."
-      - "AGENT: extract the numeric PubMed ID from the article record. Do not include the 'PMID:' prefix. External URL pattern: https://pubmed.ncbi.nlm.nih.gov/$1/"
+      - "CURATOR: the PMID IS the page name when one applies. Enter integers only with no leading zeroes. If the article has no PMID, name the page 'Study_<other identifier>' and leave this empty; a PMID acquired later is added by moving/renaming the page."
+      - "AGENT: extract the numeric PubMed ID from the article record. Do not include the 'PMID:' prefix. External URL pattern: https://pubmed.ncbi.nlm.nih.gov/$1/. Optional: omit rather than guess when the study has no PMID — use `uid` as the primary key in that case."
     examples:
       - value: "27409883"
   doi:

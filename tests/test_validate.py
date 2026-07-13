@@ -17,6 +17,7 @@ from bugsigdb_curation.validate import (
 )
 
 VALID_STUDY = {
+    "uid": "27409883",
     "pmid": 27409883,
     "citation_mode": "Auto",
     "study_design": ["case-control"],
@@ -133,6 +134,23 @@ def test_validate_instance_wrong_type():
     problems = validate_instance(bad, "Study", default_schema_path())
     assert len(problems) == 1
     assert "not-an-integer" in problems[0].message
+
+
+def test_validate_instance_study_missing_uid_is_invalid():
+    # `uid` (not `pmid`) is now the Study identifier, so dropping it must fail.
+    bad = {k: v for k, v in VALID_STUDY.items() if k != "uid"}
+    problems = validate_instance(bad, "Study", default_schema_path())
+    assert len(problems) == 1
+    assert "uid" in problems[0].message
+
+
+def test_validate_instance_study_without_pmid_but_with_uid_is_valid():
+    # The whole point of this change: a PMID-less study (~16 of ~2068 real
+    # studies) is valid as long as it has a `uid`.
+    no_pmid = {k: v for k, v in VALID_STUDY.items() if k != "pmid"}
+    no_pmid["citation_mode"] = "Manual"
+    problems = validate_instance(no_pmid, "Study", default_schema_path())
+    assert problems == []
 
 
 def test_validate_instance_missing_required_field_on_experiment():
