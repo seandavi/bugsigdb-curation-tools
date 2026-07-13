@@ -1,7 +1,14 @@
 # Session handoff — BugSigDB automated curation
 
 **Purpose:** resume cleanly after a context clear. Read this first, then the plan docs it points to.
-**As of:** 2026-07-13. `main` @ `6edb169`, working tree clean, no open branches/worktrees.
+**As of:** 2026-07-13. `main` @ `0c39fa2`, working tree clean, no open branches/worktrees.
+
+> **UPDATE 2026-07-13:** the open thread below is **resolved**. Sean answered both questions —
+> the **3 designs as-is** (Fused-Lean / Split-Verify / Split-Panel) and **text+tables+figures**
+> as the first source config. The experiment-design addendum is written and committed as **§6 of
+> `de-novo-curation-workflow-plan.md`** (commit `0c39fa2`). **Next action:** build the eval harness
+> + walking skeleton (§6d step 1 = Design 1 over text+tables+figures at a fixed cheap model on the
+> ~20-study smoke set) via the **worktree pipeline**. The narrative below is kept for context.
 
 ---
 
