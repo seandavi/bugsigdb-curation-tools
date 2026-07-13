@@ -251,3 +251,104 @@ def test_download_export_files_force_redownloads(tmp_path, httpx_mock: HTTPXMock
 )
 def test_human_size(num_bytes, expected):
     assert human_size(num_bytes) == expected
+
+
+class _RaisingStream(httpx.AsyncByteStream):
+    """A response body that yields one chunk, then blows up mid-stream."""
+
+    async def __aiter__(self):
+        yield b"partial-data-that-should-not-survive"
+        raise RuntimeError("simulated connection drop mid-stream")
+
+    async def aclose(self) -> None:
+        pass
+
+
+class _RaisingTransport(httpx.AsyncBaseTransport):
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, stream=_RaisingStream(), headers={"content-length": "1000"})
+
+
+def test_download_file_cleans_up_part_file_on_stream_error(tmp_path):
+    dest = tmp_path / "full_dump.csv"
+    tmp_dest = dest.with_name(dest.name + ".part")
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=_RaisingTransport()) as client:
+            await download_file(client, "https://example.invalid/full_dump.csv", dest)
+
+    with pytest.raises(RuntimeError, match="simulated connection drop"):
+        asyncio.run(run())
+
+    assert not dest.exists(), "destination file must not exist after a failed download"
+    assert not tmp_dest.exists(), "the .part temp file must be cleaned up after a failed download"
+
+
+class _ConcurrencyGate:
+    """Tracks how many "requests" are in flight at once."""
+
+    def __init__(self) -> None:
+        self.current = 0
+        self.max_seen = 0
+
+    def enter(self) -> None:
+        self.current += 1
+        self.max_seen = max(self.max_seen, self.current)
+
+    def exit(self) -> None:
+        self.current -= 1
+
+
+class _SlowStream(httpx.AsyncByteStream):
+    def __init__(self, gate: _ConcurrencyGate, content: bytes) -> None:
+        self.gate = gate
+        self.content = content
+
+    async def __aiter__(self):
+        self.gate.enter()
+        try:
+            # Yield control so other concurrent downloads get a chance to run
+            # (and to overlap with this one) before this "request" completes.
+            await asyncio.sleep(0.05)
+            yield self.content
+        finally:
+            self.gate.exit()
+
+    async def aclose(self) -> None:
+        pass
+
+
+class _SlowTransport(httpx.AsyncBaseTransport):
+    def __init__(self, gate: _ConcurrencyGate) -> None:
+        self.gate = gate
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        content = b"x" * 10
+        return httpx.Response(200, stream=_SlowStream(self.gate, content), headers={"content-length": "10"})
+
+
+def test_download_export_files_respects_concurrency_limit(tmp_path):
+    concurrency = 3
+    files = [
+        ExportFile(name=f"sig_{i}.gmt", path=f"sig_{i}.gmt", size=10, group="gmt") for i in range(9)
+    ]
+    gate = _ConcurrencyGate()
+
+    async def run():
+        async with httpx.AsyncClient(transport=_SlowTransport(gate)) as client:
+            return await download_export_files(
+                files,
+                ref="devel",
+                output_dir=tmp_path,
+                force=True,
+                client=client,
+                concurrency=concurrency,
+            )
+
+    results = asyncio.run(run())
+    assert len(results) == len(files)
+    assert all(r.status == "downloaded" for r in results)
+    assert gate.max_seen <= concurrency
+    # Sanity check the gate actually observed overlap, so this test would fail
+    # if the semaphore were removed (unbounded concurrency would hit 9).
+    assert gate.max_seen == concurrency

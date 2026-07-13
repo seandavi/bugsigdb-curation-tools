@@ -113,8 +113,7 @@ async def _run(output_dir: Path, select: str, ref: str, force: bool, list_only: 
             _print_file_table(files, ref, console)
             return
 
-        output_dir.mkdir(parents=True, exist_ok=True)
-
+        # output_dir is created by download_export_files() itself.
         is_tty = sys.stdout.isatty()
         with Progress(
             TextColumn("[bold blue]{task.fields[name]}"),
@@ -132,15 +131,26 @@ async def _run(output_dir: Path, select: str, ref: str, force: bool, list_only: 
             def on_progress(name: str, downloaded: int, total: int) -> None:
                 progress.update(task_ids[name], completed=downloaded, total=total or max(downloaded, 1))
 
-            results = await download_export_files(
-                files,
-                ref=ref,
-                output_dir=output_dir,
-                force=force,
-                client=client,
-                concurrency=DEFAULT_CONCURRENCY,
-                progress_hook=on_progress,
-            )
+            try:
+                results = await download_export_files(
+                    files,
+                    ref=ref,
+                    output_dir=output_dir,
+                    force=force,
+                    client=client,
+                    concurrency=DEFAULT_CONCURRENCY,
+                    progress_hook=on_progress,
+                )
+            except ExportError as exc:
+                # One file failing aborts the whole gather(), but others may have
+                # already finished writing to output_dir before that happened.
+                completed = sorted(f.name for f in files if (output_dir / f.name).exists())
+                if completed:
+                    raise ExportError(
+                        f"{exc} Note: {', '.join(completed)} may have already been saved to "
+                        f"{output_dir} before this error occurred."
+                    ) from exc
+                raise
 
         downloaded = [r for r in results if r.status == "downloaded"]
         skipped = [r for r in results if r.status == "skipped"]

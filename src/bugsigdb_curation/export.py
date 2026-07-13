@@ -15,6 +15,7 @@ import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Literal
+from urllib.parse import quote
 
 import httpx
 
@@ -98,7 +99,14 @@ def filter_files(files: list[ExportFile], select: Select) -> list[ExportFile]:
 
 
 def build_raw_url(ref: str, path: str) -> str:
-    """Build the raw.githubusercontent.com download URL for a file path at a given ref."""
+    """Build the raw.githubusercontent.com download URL for a file path at a given ref.
+
+    Note: unlike the git trees API, raw.githubusercontent.com places `ref` directly
+    in the URL path with no way to disambiguate it from the following `path`
+    segments. A ref containing `/` (e.g. a branch named `release/1.0`) is
+    inherently ambiguous here and is not handled specially — this only matters
+    for `--select` values that need per-file raw URLs, not the tree listing.
+    """
     return RAW_BASE_URL.format(repo=REPO, ref=ref, path=path)
 
 
@@ -119,14 +127,22 @@ def should_download(dest: Path, remote_size: int, force: bool) -> bool:
 async def fetch_export_files(client: httpx.AsyncClient, ref: str) -> list[ExportFile]:
     """Fetch and parse the root-level export file listing for a given git ref.
 
-    Raises :class:`ExportError` with a friendly message if `ref` doesn't exist.
+    Raises :class:`ExportError` with a friendly message if `ref` doesn't exist or
+    the API response isn't the JSON we expect.
     """
-    url = GITHUB_TREE_API.format(repo=REPO, ref=ref)
+    # The trees API treats `ref` as a single path segment, so a ref containing
+    # `/` (e.g. `release/1.0`) must be percent-encoded or it splits into extra
+    # path segments and 404s misleadingly.
+    url = GITHUB_TREE_API.format(repo=REPO, ref=quote(ref, safe=""))
     response = await client.get(url)
     if response.status_code == 404:
         raise ExportError(f"Ref {ref!r} was not found in {REPO} (HTTP 404). Check the --ref value.")
     response.raise_for_status()
-    return parse_tree(response.json())
+    try:
+        tree_json = response.json()
+    except ValueError as exc:
+        raise ExportError(f"Unexpected (non-JSON) response from the GitHub trees API: {exc}") from exc
+    return parse_tree(tree_json)
 
 
 async def download_file(
@@ -143,8 +159,12 @@ async def download_file(
     Writes to a temporary `<dest>.part` file and atomically renames it on
     success, so a failed/interrupted download never leaves a corrupt file at
     `dest`. Returns the number of bytes written.
+
+    All blocking filesystem calls (directory creation, file open/write, and the
+    final atomic rename) are offloaded to a worker thread via `asyncio.to_thread`
+    so they don't block the event loop and starve other concurrent downloads.
     """
-    dest.parent.mkdir(parents=True, exist_ok=True)
+    await asyncio.to_thread(dest.parent.mkdir, parents=True, exist_ok=True)
     tmp_dest = dest.with_name(dest.name + ".part")
     bytes_written = 0
     display_name = name or dest.name
@@ -154,16 +174,19 @@ async def download_file(
         response.raise_for_status()
         total = int(response.headers.get("content-length", 0))
         try:
-            with tmp_dest.open("wb") as fh:
+            fh = await asyncio.to_thread(tmp_dest.open, "wb")
+            try:
                 async for chunk in response.aiter_bytes(chunk_size):
-                    fh.write(chunk)
+                    await asyncio.to_thread(fh.write, chunk)
                     bytes_written += len(chunk)
                     if progress_hook is not None:
                         progress_hook(display_name, bytes_written, total or bytes_written)
+            finally:
+                await asyncio.to_thread(fh.close)
         except BaseException:
-            tmp_dest.unlink(missing_ok=True)
+            await asyncio.to_thread(tmp_dest.unlink, True)
             raise
-    tmp_dest.replace(dest)
+    await asyncio.to_thread(tmp_dest.replace, dest)
     return bytes_written
 
 
