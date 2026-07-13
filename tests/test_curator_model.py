@@ -108,7 +108,12 @@ def test_parse_json_loose(text, expected):
 
 
 def test_resolve_google_api_key_checks_names_in_priority_order(monkeypatch, tmp_path):
-    monkeypatch.chdir(tmp_path)  # no .env to accidentally pick up
+    monkeypatch.chdir(tmp_path)
+    # `resolve_google_api_key` calls `load_dotenv()`, whose default find_dotenv walks up
+    # from the *module file* (not the CWD), so it would load the developer's real repo-root
+    # `.env` and clobber the env vars this test controls — passing on CI (no `.env` checked
+    # out) but failing locally for anyone who has a `.env`. Neutralize it so the test is hermetic.
+    monkeypatch.setattr("bugsigdb_curation.curator.model.load_dotenv", lambda *a, **k: None)
     for name in _GOOGLE_KEY_ENV_NAMES:
         monkeypatch.delenv(name, raising=False)
     assert resolve_google_api_key() is None
