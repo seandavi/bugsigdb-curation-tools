@@ -102,7 +102,8 @@ async def extract_signatures(
         if not isinstance(item, dict):
             continue
         name = item.get("name")
-        direction = item.get("direction")
+        raw_direction = item.get("direction")
+        direction = str(raw_direction).strip().lower() if raw_direction is not None else None
         if not name or direction not in _DIRECTIONS:
             continue
 

@@ -157,6 +157,33 @@ def test_extract_signatures_skips_malformed_items():
     assert signatures[0].taxa[0].taxon_name == "Bacteroides fragilis"
 
 
+def test_extract_signatures_normalizes_direction_case_and_whitespace():
+    """A JSON-mode casing artifact like "Increased" must not silently drop
+    the taxon -- direction is normalized (case/whitespace-insensitive)
+    before the `_DIRECTIONS` membership check, matching `loader.normalize_enum`
+    elsewhere in the codebase."""
+    model = MockModel(
+        responses={
+            "signature_extract": {
+                "taxa": [{"name": "Bacteroides fragilis", "direction": " Increased ", "proposed_ncbi_id": None}]
+            }
+        }
+    )
+    resolver = NcbiTaxonomyResolver(cache={"bacteroides fragilis": None}, cache_path=None)
+    artifact = LocatedArtifact(kind="table", table=_TABLE)
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await extract_signatures(artifact, model=model, resolver=resolver, client=client)
+
+    signatures = _run(run())
+
+    assert len(signatures) == 1
+    assert signatures[0].direction == "increased"
+    assert signatures[0].taxa[0].taxon_name == "Bacteroides fragilis"
+    assert signatures[0].taxa[0].direction == "increased"
+
+
 def test_extract_signatures_uses_multimodal_message_for_figure_artifact():
     model = MockModel(responses={"signature_extract": {"taxa": []}})
     resolver = NcbiTaxonomyResolver(cache_path=None)
