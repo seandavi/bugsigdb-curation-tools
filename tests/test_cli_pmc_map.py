@@ -100,6 +100,7 @@ def test_pmc_map_limit_only_queries_first_n_pmids(tmp_path, httpx_mock: HTTPXMoc
     # Study 3 (pmid=2) was excluded from the query by --limit, so its row is dropped.
     assert [r["study_id"] for r in rows] == ["Study 1"]
     assert "1 PMIDs: 1 with PMCID (100.0%), 0 without." in result.output
+    assert "Note: 1 study row(s) excluded (PMID outside --limit)." in result.output
 
 
 def test_pmc_map_missing_input_file_errors(tmp_path):

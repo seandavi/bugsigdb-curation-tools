@@ -165,6 +165,18 @@ def test_parse_idconv_response_mixed_batch():
 
 
 def test_parse_idconv_response_top_level_error_raises():
+    # Real idconv error bodies nest the message inside an `errors` list, e.g.
+    # {"status": "error", "errors": [{"message": "...", "code": "..."}]}.
+    response_json = {
+        "status": "error",
+        "errors": [{"message": "Your maximum number of identifiers to convert is 200", "code": "too-many-ids"}],
+    }
+    with pytest.raises(PmcMapError, match="Your maximum number of identifiers to convert is 200"):
+        parse_idconv_response(response_json)
+
+
+def test_parse_idconv_response_top_level_error_falls_back_to_message_key():
+    # Defensive fallback for any error body that doesn't use the `errors` shape.
     response_json = {"status": "error", "message": "ID list empty or invalid"}
     with pytest.raises(PmcMapError, match="ID list empty or invalid"):
         parse_idconv_response(response_json)
@@ -260,7 +272,9 @@ def test_convert_pmids_mixed_batch_some_with_some_without_pmc(httpx_mock: HTTPXM
     assert [r.pmcid for r in records] == ["PMC1", None, "PMC3"]
 
 
-def test_convert_pmids_raises_friendly_error_on_top_level_error(httpx_mock: HTTPXMock):
+def test_convert_pmids_raises_friendly_error_on_real_api_error_shape(httpx_mock: HTTPXMock):
+    # Mirrors the REAL idconv API: HTTP 400, with the message nested inside
+    # an `errors` list, not a top-level `message` field on a 200 response.
     httpx_mock.add_response(
         url=IDCONV_URL,
         match_params={
@@ -270,15 +284,75 @@ def test_convert_pmids_raises_friendly_error_on_top_level_error(httpx_mock: HTTP
             "tool": "bugsigdb-curation",
             "email": "me@example.com",
         },
-        json={"status": "error", "message": "bad request"},
+        status_code=400,
+        json={
+            "status": "error",
+            "errors": [{"message": "Your maximum number of identifiers to convert is 200", "code": "too-many-ids"}],
+        },
     )
 
     async def run() -> list[ConversionRecord]:
         async with httpx.AsyncClient() as client:
             return await convert_pmids(["1"], email="me@example.com", client=client)
 
-    with pytest.raises(PmcMapError, match="bad request"):
+    with pytest.raises(PmcMapError, match="Your maximum number of identifiers to convert is 200"):
         asyncio.run(run())
+
+
+def test_fetch_batch_raises_friendly_error_on_http_400(httpx_mock: HTTPXMock):
+    # Same real-API error shape as above, exercised directly against
+    # fetch_batch (mirrors export.py/test_export.py's 404 convention).
+    httpx_mock.add_response(
+        url=IDCONV_URL,
+        match_params={
+            "ids": "1",
+            "idtype": "pmid",
+            "format": "json",
+            "tool": "bugsigdb-curation",
+            "email": "me@example.com",
+        },
+        status_code=400,
+        json={"status": "error", "errors": [{"message": "Identifiers must be numeric", "code": "bad-id"}]},
+    )
+
+    async def run() -> list[ConversionRecord]:
+        async with httpx.AsyncClient() as client:
+            return await fetch_batch(client, ["1"], email="me@example.com")
+
+    with pytest.raises(PmcMapError, match="Identifiers must be numeric"):
+        asyncio.run(run())
+
+
+def test_fetch_batch_coerces_int_pmid_to_str(httpx_mock: HTTPXMock):
+    # The real API returns "pmid" as a JSON *number*, not a string
+    # (e.g. `"pmid": 19849869`). Dropping the `str()` coercion in
+    # parse_idconv_response should fail this test.
+    httpx_mock.add_response(
+        url=IDCONV_URL,
+        match_params={
+            "ids": "19849869",
+            "idtype": "pmid",
+            "format": "json",
+            "tool": "bugsigdb-curation",
+            "email": "me@example.com",
+        },
+        json={"status": "ok", "records": [{"pmid": 19849869, "pmcid": "PMC2809006"}]},
+    )
+
+    async def run() -> list[ConversionRecord]:
+        async with httpx.AsyncClient() as client:
+            return await fetch_batch(client, ["19849869"], email="me@example.com")
+
+    records = asyncio.run(run())
+    assert records == [ConversionRecord(pmid="19849869", pmcid="PMC2809006", doi=None)]
+    assert isinstance(records[0].pmid, str)
+
+
+def test_idconv_url_is_the_canonical_non_redirecting_endpoint():
+    # Regression guard: the old www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/
+    # URL 301-redirects here; a plain client.get() (no follow_redirects) only
+    # works against the canonical URL directly.
+    assert IDCONV_URL == "https://pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/articles/"
 
 
 # --- join_results / compute_coverage ----------------------------------------------------

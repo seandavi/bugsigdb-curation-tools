@@ -251,7 +251,11 @@ def pmc_map_command(
         None,
         "--limit",
         "-n",
-        help="Only convert the first N distinct PMIDs (handy for a quick/test run).",
+        help=(
+            "Only convert the first N distinct PMIDs (handy for a quick/test run). "
+            "Study rows whose PMID falls outside that subset are excluded from the "
+            "output CSV (a note with the excluded count is printed to stderr)."
+        ),
     ),
 ) -> None:
     """Map curated BugSigDB study PMIDs to PubMed Central IDs (PMCIDs).
@@ -290,6 +294,10 @@ async def _run_pmc_map(input_file: Path, output_file: Path, email: str, limit: i
     mapped = join_results(rows, records)
     write_mapping_csv(mapped, output_file)
     console.print(f"[green]Wrote {len(mapped)} rows to {output_file}[/green]")
+
+    if limit is not None and len(mapped) < len(rows):
+        excluded = len(rows) - len(mapped)
+        error_console.print(f"Note: {excluded} study row(s) excluded (PMID outside --limit).")
 
     stats = compute_coverage(records)
     error_console.print(

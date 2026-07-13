@@ -133,6 +133,12 @@ that share a PMID both appear. A coverage summary (`N PMIDs: M with PMCID
 (X%), K without.`) is printed to stderr. Of the current 2068 curated
 studies, 2052 have a numeric PMID, of which about 84% resolve to a PMCID.
 
+`--limit` truncates the *distinct PMID* list before querying, not the study
+rows — so any study row whose PMID falls outside that truncated subset is
+excluded from the output CSV (its PMID was simply never queried). When that
+happens, a `Note: N study row(s) excluded (PMID outside --limit).` line is
+printed to stderr so the row-count drop isn't silent.
+
 ## License
 
 Schema released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),

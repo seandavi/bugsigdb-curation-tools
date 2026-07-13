@@ -137,18 +137,36 @@ def build_request_params(pmids: list[str], *, email: str) -> dict[str, str]:
     }
 
 
+def _extract_error_message(body: dict[str, Any]) -> str:
+    """Pull a human-readable message out of an idconv error response body.
+
+    The real API reports errors as an HTTP 4xx response whose JSON body
+    looks like ``{"status": "error", "errors": [{"message": "...", "code":
+    "..."}]}`` — the message lives inside the `errors` list, not at the
+    top level. Fall back to a top-level `message`/`errmsg` (in case a
+    differently-shaped error ever shows up) and finally to a generic
+    string if neither is present.
+    """
+    errors = body.get("errors")
+    if isinstance(errors, list) and errors:
+        first = errors[0]
+        if isinstance(first, dict) and first.get("message"):
+            return str(first["message"])
+    return str(body.get("message") or body.get("errmsg") or "unknown error")
+
+
 def parse_idconv_response(response_json: dict[str, Any]) -> list[ConversionRecord]:
     """Parse an idconv JSON response into per-PMID conversion records.
 
     Raises :class:`PmcMapError` on a top-level `status: "error"` response
-    (e.g. malformed request). Individual records with no PMC match (no
+    (e.g. malformed request) — see :func:`_extract_error_message` for how
+    the message is found. Individual records with no PMC match (no
     `pmcid`, possibly a `status`/`errmsg`/`live` field) are expected and
     common, and are returned with `pmcid=None` rather than treated as
     errors.
     """
     if response_json.get("status") == "error":
-        message = response_json.get("message") or response_json.get("errmsg") or "unknown error"
-        raise PmcMapError(f"NCBI idconv reported an error: {message}")
+        raise PmcMapError(f"NCBI idconv reported an error: {_extract_error_message(response_json)}")
 
     records: list[ConversionRecord] = []
     for rec in response_json.get("records", []):
@@ -160,10 +178,25 @@ def parse_idconv_response(response_json: dict[str, Any]) -> list[ConversionRecor
 
 
 async def fetch_batch(client: httpx.AsyncClient, pmids: list[str], *, email: str) -> list[ConversionRecord]:
-    """Fetch and parse idconv results for a single batch (<= 200 PMIDs)."""
+    """Fetch and parse idconv results for a single batch (<= 200 PMIDs).
+
+    The real idconv API signals errors (e.g. "too many identifiers") with
+    an HTTP 4xx status rather than a 200 with a top-level `status: "error"`
+    body, so the status is checked (and the error body parsed for NCBI's
+    real message) before `.json()` is called for the success path.
+    """
     params = build_request_params(pmids, email=email)
     response = await client.get(IDCONV_URL, params=params)
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        try:
+            error_body = response.json()
+        except ValueError:
+            raise PmcMapError(
+                f"NCBI idconv reported an error: HTTP {response.status_code} {response.reason_phrase}"
+            ) from exc
+        raise PmcMapError(f"NCBI idconv reported an error: {_extract_error_message(error_body)}") from exc
     try:
         response_json = response.json()
     except ValueError as exc:
@@ -186,6 +219,12 @@ async def convert_pmids(
     failures; network errors (`httpx.HTTPError`) propagate as-is.
     """
     chunks = chunk(pmids)
+    # Note: this bounds *concurrency* (at most `concurrency` requests in
+    # flight at once), not requests/sec. NCBI's unauthenticated etiquette
+    # (https://www.ncbi.nlm.nih.gov/books/NBK25497/) asks for ~3 req/s; at
+    # the current PMID volume that's not distinguishable from a plain
+    # concurrency cap, but if this were scaled up significantly a wall-clock
+    # throttle (e.g. a token bucket) would be needed in addition to this.
     semaphore = asyncio.Semaphore(concurrency)
 
     async def _one(batch: list[str]) -> list[ConversionRecord]:
