@@ -9,6 +9,13 @@
 > `de-novo-curation-workflow-plan.md`** (commit `0c39fa2`). **Next action:** build the eval harness
 > + walking skeleton (§6d step 1 = Design 1 over text+tables+figures at a fixed cheap model on the
 > ~20-study smoke set) via the **worktree pipeline**. The narrative below is kept for context.
+>
+> **DATA FIREWALL (non-negotiable, added 2026-07-13):** the curated gold
+> (`data/exports/relational/*.csv`, `data/eval/pmid_pmcid_map.csv`) is **held out for scoring only**.
+> The curator/pipeline gets **only a PMID + source artifacts it fetches itself** — never any gold field
+> (study_design, segmentation, body_site/condition, group orientation, taxa sets, directions, source).
+> Only the scorer reads gold. Curator S6 taxonomy normalization uses a **general NCBI authority, not
+> `taxa.csv`**. Curator modules must not import `eval.gold`. Full rules in **§6e** of the workflow plan.
 
 ---
 
