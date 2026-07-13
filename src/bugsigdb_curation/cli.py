@@ -29,6 +29,12 @@ from rich.progress import (
 )
 from rich.table import Table
 
+from bugsigdb_curation.eval.gold import load_gold, to_nested_dict
+from bugsigdb_curation.eval.report import ScoringError, write_reports
+from bugsigdb_curation.eval.score import StudyScore, aggregate_scores, score_study
+from bugsigdb_curation.eval.smoke import select_smoke
+from bugsigdb_curation.eval.taxonomy import DEFAULT_CACHE_PATH as DEFAULT_TAXONOMY_CACHE_PATH
+from bugsigdb_curation.eval.taxonomy import TaxonomyResolver
 from bugsigdb_curation.export import (
     DEFAULT_CONCURRENCY,
     ExportError,
@@ -56,6 +62,7 @@ from bugsigdb_curation.validate import (
     InstanceResult,
     ValidationInputError,
     default_schema_path,
+    load_instances,
     validate_file,
 )
 
@@ -460,3 +467,185 @@ def load_command(
         sys.stdout.write(text)
 
     error_console.print(f"{n_studies} studies, {n_experiments} experiments, {n_signatures} signatures")
+
+
+# ---------------------------------------------------------------------------
+# eval subcommand group
+# ---------------------------------------------------------------------------
+
+eval_app = typer.Typer(help="Score de-novo curator predictions against the BugSigDB gold corpus.")
+app.add_typer(eval_app, name="eval")
+
+DEFAULT_RELATIONAL_DIR = Path("data/exports/relational")
+DEFAULT_PMC_MAP_PATH = Path("data/eval/pmid_pmcid_map.csv")
+
+
+class EvalConfig(str, Enum):
+    """Source-config label recorded in the eval report (§6c); informational
+    only -- the harness scores whatever a prediction contains regardless of
+    which config produced it."""
+
+    abstract_only = "abstract-only"
+    text_tables = "text-tables"
+    text_tables_figures = "text-tables-figures"
+
+
+def _load_predictions(pred_path: Path) -> dict[str, dict]:
+    """Load prediction file(s) into `{study_id: predicted_study_dict}`.
+
+    **The prediction-record contract**: each file is YAML or JSON (reusing
+    `validate.load_instances`, so either a bare object or a list of objects
+    is accepted) holding one or more studies in the `bugsigdb_curation.loader`
+    nested-dict shape (`Study -> experiments[] -> signatures[] -> taxa[]`).
+    A study is matched to its gold counterpart by, in order: (1) a
+    `study_id` key on the study object, (2) a `uid` key (the loader's own
+    identifier slot name), (3) if the file holds exactly one study and
+    neither key is present, the file's stem (e.g. `predictions/21850056.json`
+    -> study_id `"21850056"`). `--pred` may be a single file or a directory
+    of `.json`/`.yaml`/`.yml` files.
+    """
+    files = (
+        sorted(p for p in pred_path.iterdir() if p.suffix.lower() in {".json", ".yaml", ".yml"})
+        if pred_path.is_dir()
+        else [pred_path]
+    )
+
+    predictions: dict[str, dict] = {}
+    for f in files:
+        instances = [instance for instance in load_instances(f) if isinstance(instance, dict)]
+        for instance in instances:
+            study_id = instance.get("study_id") or instance.get("uid")
+            if study_id is None and len(instances) == 1:
+                study_id = f.stem
+            if study_id is not None:
+                predictions[str(study_id)] = instance
+    return predictions
+
+
+@eval_app.command("score")
+def eval_score_command(
+    pred: Path = typer.Option(
+        ..., "--pred", help="Prediction file or directory (loader nested-shape JSON/YAML)."
+    ),
+    relational: Path = typer.Option(
+        DEFAULT_RELATIONAL_DIR, "--relational", help="Relational gold CSV directory (from `bugsigdb split`)."
+    ),
+    pmc_map: Path = typer.Option(
+        DEFAULT_PMC_MAP_PATH, "--pmc-map", help="pmid_pmcid_map.csv path (from `bugsigdb pmc-map`)."
+    ),
+    out: Path = typer.Option(..., "--out", help="Output directory for scores.jsonl/report.md/report.html."),
+    smoke: bool = typer.Option(False, "--smoke", help="Score only the curated ~20-study smoke set."),
+    config: EvalConfig | None = typer.Option(
+        None, "--config", help="Source-config label to note in the run (informational only)."
+    ),
+    taxonomy_cache: Path = typer.Option(
+        DEFAULT_TAXONOMY_CACHE_PATH, "--taxonomy-cache", help="Taxonomy resolver JSON cache path."
+    ),
+) -> None:
+    """Score predictions (loader nested-shape) against the gold corpus."""
+    console = Console()
+    error_console = Console(stderr=True)
+
+    if not relational.exists():
+        error_console.print(f"[red]Error:[/red] {relational} does not exist.")
+        raise typer.Exit(code=1)
+    if not pred.exists():
+        error_console.print(f"[red]Error:[/red] {pred} does not exist.")
+        raise typer.Exit(code=1)
+
+    gold = load_gold(relational, pmc_map)
+    if smoke:
+        gold = select_smoke(gold)
+
+    predictions = _load_predictions(pred)
+    resolver = TaxonomyResolver.load(taxa_csv=relational / "taxa.csv", cache_path=taxonomy_cache)
+
+    # Score every selected gold study, not just the ones with a prediction
+    # (Blocker 2 / §4d "same corpus, same split"): a study the pipeline
+    # failed or skipped must still count against the aggregate as a full
+    # miss, not silently vanish from the denominator. `score_study` treats
+    # `predicted=None` as an empty prediction.
+    selected_ids = sorted(gold)
+    if not selected_ids:
+        error_console.print("[yellow]No gold studies selected; nothing to score.[/yellow]")
+
+    missing_prediction_ids = sorted(study_id for study_id in selected_ids if study_id not in predictions)
+
+    study_scores: list[StudyScore] = []
+    scoring_errors: list[ScoringError] = []
+    for study_id in selected_ids:
+        try:
+            study_scores.append(score_study(gold[study_id], predictions.get(study_id), resolver))
+        except Exception as exc:  # noqa: BLE001 -- per-study isolation: one bad prediction must not abort the run
+            scoring_errors.append({"study_id": study_id, "error": f"{type(exc).__name__}: {exc}"})
+
+    aggregate = aggregate_scores(study_scores)
+    paths = write_reports(
+        study_scores,
+        aggregate,
+        out,
+        missing_prediction_ids=missing_prediction_ids,
+        scoring_errors=scoring_errors,
+    )
+    resolver.save_cache()
+
+    # Diagnostic dump of predicted taxon names the resolver could never map
+    # to a taxid -- useful to distinguish a hallucinated taxon from a gap in
+    # the resolver's own coverage.
+    if resolver.unresolved:
+        (out / "unresolved_taxa.txt").write_text(
+            "\n".join(sorted(resolver.unresolved)) + "\n", encoding="utf-8"
+        )
+
+    config_note = f" [config={config.value}]" if config else ""
+    console.print(f"[green]Scored {len(study_scores)} studies{config_note}.[/green]")
+    if missing_prediction_ids:
+        console.print(
+            f"[yellow]  {len(missing_prediction_ids)} gold studies had no prediction "
+            "(scored as a full miss; see report's Missing predictions section).[/yellow]"
+        )
+    if scoring_errors:
+        console.print(
+            f"[red]  {len(scoring_errors)} predictions raised while scoring "
+            "(see report's Scoring errors section).[/red]"
+        )
+    console.print(
+        f"  micro taxa F1: {aggregate.micro_taxa.f1:.3f}   "
+        f"macro taxa F1: {aggregate.macro_taxa_f1:.3f}   "
+        f"direction acc: {aggregate.direction_accuracy:.1%}"
+    )
+    console.print(f"  wrote {paths['jsonl']}, {paths['md']}, {paths['html']}")
+
+
+@eval_app.command("gold")
+def eval_gold_command(
+    relational: Path = typer.Option(
+        DEFAULT_RELATIONAL_DIR, "--relational", help="Relational gold CSV directory (from `bugsigdb split`)."
+    ),
+    pmc_map: Path = typer.Option(
+        DEFAULT_PMC_MAP_PATH, "--pmc-map", help="pmid_pmcid_map.csv path (from `bugsigdb pmc-map`)."
+    ),
+    smoke: bool = typer.Option(True, "--smoke/--full", help="Dump only the curated smoke set (default) or the full gold corpus."),
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="File to write the nested gold studies to (default: stdout)."
+    ),
+) -> None:
+    """Dump gold studies in the loader nested-dict shape (handy for authoring predictions)."""
+    error_console = Console(stderr=True)
+    if not relational.exists():
+        error_console.print(f"[red]Error:[/red] {relational} does not exist.")
+        raise typer.Exit(code=1)
+
+    gold = load_gold(relational, pmc_map)
+    if smoke:
+        gold = select_smoke(gold)
+
+    nested = [to_nested_dict(g) for g in gold.values()]
+    text = yaml.safe_dump(nested, sort_keys=False, allow_unicode=True)
+
+    if output is not None:
+        output.write_text(text, encoding="utf-8")
+    else:
+        sys.stdout.write(text)
+
+    error_console.print(f"Dumped {len(nested)} gold studies.")
