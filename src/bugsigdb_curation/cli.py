@@ -601,24 +601,35 @@ async def _run_curate_smoke(
 
     n_valid = 0
     n_errors = 0
-    for study_id in ids:
-        try:
-            result = await curate_async(
-                study_id, model=model, config=config, email=email, taxonomy_cache_path=taxonomy_cache
-            )
-        except Exception as exc:  # noqa: BLE001 -- one bad study must not abort the whole batch
-            n_errors += 1
-            error_console.print(f"  [red]{study_id}: error:[/red] {escape(str(exc))}")
-            continue
+    # One shared client for the whole batch (reused connection pool/keep-
+    # alive) instead of curate_async creating and tearing down a fresh
+    # client per study -- fewer connections churned, less NCBI/PMC
+    # rate-limit exposure. Per-study error isolation stays intact: a bad
+    # study is caught and skipped without closing the shared client.
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        for study_id in ids:
+            try:
+                result = await curate_async(
+                    study_id,
+                    model=model,
+                    config=config,
+                    client=client,
+                    email=email,
+                    taxonomy_cache_path=taxonomy_cache,
+                )
+            except Exception as exc:  # noqa: BLE001 -- one bad study must not abort the whole batch
+                n_errors += 1
+                error_console.print(f"  [red]{study_id}: error:[/red] {escape(str(exc))}")
+                continue
 
-        (out_dir / f"{study_id}.json").write_text(
-            json.dumps(result.record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-        )
-        status = "[green]valid[/green]" if result.valid else "[yellow]INVALID[/yellow]"
-        channel = "has_pmc" if result.has_pmc else "abstract-only"
-        console.print(f"  {study_id}: {status} ({channel})")
-        if result.valid:
-            n_valid += 1
+            (out_dir / f"{study_id}.json").write_text(
+                json.dumps(result.record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+            status = "[green]valid[/green]" if result.valid else "[yellow]INVALID[/yellow]"
+            channel = "has_pmc" if result.has_pmc else "abstract-only"
+            console.print(f"  {study_id}: {status} ({channel})")
+            if result.valid:
+                n_valid += 1
 
     console.print(
         f"[green]Curated {len(ids)} studies -> {out_dir}[/green] ({n_valid} valid, {n_errors} error(s))"

@@ -130,6 +130,40 @@ def test_curate_smoke_writes_one_file_per_study(httpx_mock: HTTPXMock, tmp_path:
     assert written[0].name == f"{PMID}.json"
 
 
+def test_curate_smoke_reuses_one_client_across_studies(tmp_path: Path, monkeypatch):
+    """The --smoke loop must create ONE httpx.AsyncClient for the whole run
+    and pass it into every curate_async call, rather than letting each call
+    open (and curate_async tear down) its own client -- connection churn /
+    weaker keep-alive / more NCBI-PMC rate-limit exposure otherwise.
+    Pre-fix, curate_async was called with no `client` kwarg at all, so each
+    call opened its own short-lived client."""
+    import bugsigdb_curation.cli as cli_module
+    from bugsigdb_curation.curator.pipeline import CurationResult
+
+    study_ids = ["111", "222", "333"]
+    monkeypatch.setattr(cli_module, "smoke_study_ids", lambda: study_ids)
+
+    seen_clients: list[object] = []
+
+    async def fake_curate_async(pmid, *, model, config, client=None, email, taxonomy_cache_path):
+        seen_clients.append(client)
+        return CurationResult(pmid=pmid, pmcid=None, has_pmc=False, record={}, valid=True, problems=())
+
+    monkeypatch.setattr(cli_module, "curate_async", fake_curate_async)
+
+    out_dir = tmp_path / "smoke_out"
+    cache_path = tmp_path / "cache.json"
+
+    result = runner.invoke(
+        app, ["curate", "--smoke", "--mock", "--out", str(out_dir), "--taxonomy-cache", str(cache_path)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert len(seen_clients) == len(study_ids)
+    assert all(c is not None for c in seen_clients)
+    assert len(set(id(c) for c in seen_clients)) == 1  # same client object every call
+
+
 def test_curate_network_failure_exits_nonzero_with_clean_error(httpx_mock: HTTPXMock, tmp_path: Path):
     httpx_mock.add_response(
         url=httpx.URL(IDCONV_URL).copy_merge_params(
