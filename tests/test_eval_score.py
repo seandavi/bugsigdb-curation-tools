@@ -206,6 +206,24 @@ def test_align_signatures_matches_by_taxa_overlap_not_direction_label():
     assert (1, 1) in pairs
 
 
+def test_align_signatures_zero_overlap_pair_not_counted_as_matched():
+    # Exactly one gold signature and one predicted signature, with
+    # completely disjoint taxa -- the Hungarian solver has no other
+    # candidate to try and would otherwise be forced to call this "matched"
+    # (see SIGNATURE_MATCH_THRESHOLD's docstring for why that's unsafe: it
+    # would inject a coin-flip direction comparison between two unrelated
+    # signatures).
+    gold = [_signature("s1", direction="increased", taxa=frozenset({1, 2, 3}))]
+    pred = [{"abundance_in_group_1": "decreased", "taxa": [{"ncbi_id": 100}, {"ncbi_id": 200}]}]
+    resolver = TaxonomyResolver()
+
+    pairs = align_signatures(gold, pred, resolver)
+
+    assert (0, 0) not in pairs
+    assert (None, 0) in pairs  # predicted signature reported unmatched
+    assert (0, None) in pairs  # gold signature reported unmatched
+
+
 # --- score_study: taxa P/R/F1/Jaccard micro+macro -------------------------------------------
 
 
@@ -253,6 +271,25 @@ def test_score_study_missing_prediction_scores_zero_recall():
     assert result.micro_taxa.fn == 2
     assert result.micro_taxa.recall == 0.0
     assert result.experiment_alignment.under_segmentation == 1
+
+
+def test_score_study_zero_overlap_signature_pair_symmetric_fn_fp_no_direction_credit():
+    exp = _experiment(signatures=(_signature("s1", direction="increased", taxa=frozenset({1, 2, 3})),))
+    gold = _study([exp])
+    pred = {"experiments": [_pred_exp(signatures=[_pred_sig(direction="decreased", taxa=[100, 200])])]}
+    resolver = TaxonomyResolver()
+
+    result = score_study(gold, pred, resolver)
+
+    # Below SIGNATURE_MATCH_THRESHOLD: the pair is NOT "matched", so no
+    # direction comparison happens for it at all -- not even as a miss.
+    assert result.direction_total == 0
+    # Gold's 3 taxa are all FN, pred's 2 taxa are all FP -- symmetric, as if
+    # these were two entirely separate unmatched signatures (already-safe
+    # per SIGNATURE_MATCH_THRESHOLD's docstring).
+    assert result.micro_taxa.tp == 0
+    assert result.micro_taxa.fn == 3
+    assert result.micro_taxa.fp == 2
 
 
 # --- direction correctness ------------------------------------------------------------------
@@ -305,16 +342,30 @@ def test_name_to_id_subscore_counts_found_and_correct():
 
 
 def test_name_to_id_subscore_wrong_mapping_not_counted_correct():
-    exp = _experiment(signatures=(_signature("s1", taxa=frozenset({561})),))
+    # Gold has two taxa; the prediction correctly finds one (620, by id) so
+    # the pair clears SIGNATURE_MATCH_THRESHOLD and aligns as a matched
+    # signature -- a *single*-taxon signature that's 100% wrong would be a
+    # zero-overlap pair the alignment floor correctly excludes (see the
+    # dedicated sub-floor test below), which isn't what this test means to
+    # exercise.
+    exp = _experiment(signatures=(_signature("s1", taxa=frozenset({561, 620})),))
     gold = _study([exp])
-    resolver = TaxonomyResolver(seed={"escherichia coli": 561})
+    resolver = TaxonomyResolver(seed={"escherichia coli": 561, "shigella": 620})
     resolver.id_to_name[561] = "escherichia coli"
+    resolver.id_to_name[620] = "shigella"
 
     # Predicted taxon carries the RIGHT name string but a WRONG hardcoded id
     # (simulating a mis-mapping / hallucinated id despite finding the taxon).
     pred = {
         "experiments": [
-            _pred_exp(signatures=[{"abundance_in_group_1": "increased", "taxa": [{"taxon_name": "Escherichia coli", "ncbi_id": 99999}]}])
+            _pred_exp(
+                signatures=[
+                    {
+                        "abundance_in_group_1": "increased",
+                        "taxa": [{"ncbi_id": 620}, {"taxon_name": "Escherichia coli", "ncbi_id": 99999}],
+                    }
+                ]
+            )
         ]
     }
     result = score_study(gold, pred, resolver)

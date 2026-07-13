@@ -63,6 +63,20 @@ _CONTENT_TIEBREAK_WEIGHT = 0.01
 #: field-accuracy numbers.
 EXPERIMENT_MATCH_THRESHOLD = 0.15
 
+#: Minimum taxa-set Jaccard overlap (see `_taxa_jaccard`) for a
+#: Hungarian-optimal predicted<->gold signature pair to count as "matched"
+#: rather than as one unmatched-pred + one unmatched-gold. `align_signatures`
+#: always assigns every row (predicted signature) to some column (gold
+#: signature) when there are at least as many gold signatures as predicted
+#: -- without this floor, two signatures with ~zero taxa overlap can still
+#: be reported "matched" (the least-bad of a bad set of options), which then
+#: feeds `direction_total` as coin-flip noise between two unrelated
+#: signatures. Mirrors `EXPERIMENT_MATCH_THRESHOLD`; kept smaller because
+#: signature taxa sets are typically tiny (<=1-5 taxa), so a real match's
+#: Jaccard swings less predictably than the four-component experiment
+#: overlap average.
+SIGNATURE_MATCH_THRESHOLD = 0.1
+
 
 # ---------------------------------------------------------------------------
 # result dataclasses
@@ -411,12 +425,18 @@ def align_signatures(
     gold_signatures: list[GoldSignature],
     pred_signatures: list[dict[str, Any]],
     resolver: TaxonomyResolver,
+    *,
+    threshold: float = SIGNATURE_MATCH_THRESHOLD,
 ) -> list[tuple[int | None, int | None]]:
     """Bipartite-match gold<->predicted signatures within one experiment.
 
     Matched by taxid-set Jaccard overlap, NOT by the declared direction label
-    -- see this module's docstring for why. Returns `(gold_index,
-    pred_index)` pairs; either side may be `None` for an unmatched signature.
+    -- see this module's docstring for why. Runs the Hungarian algorithm to
+    maximize total overlap, then drops any optimal-but-poor pair below
+    `threshold` back into unmatched/unmatched (see
+    `SIGNATURE_MATCH_THRESHOLD`'s docstring for why that floor exists).
+    Returns `(gold_index, pred_index)` pairs; either side may be `None` for
+    an unmatched signature.
     """
     n_gold = len(gold_signatures)
     n_pred = len(pred_signatures)
@@ -434,7 +454,7 @@ def align_signatures(
     pairs: list[tuple[int | None, int | None]] = []
     matched_gold: set[int] = set()
     for pred_idx, gold_idx in enumerate(assignment):
-        if gold_idx is not None:
+        if gold_idx is not None and scores[pred_idx][gold_idx] >= threshold:
             pairs.append((gold_idx, pred_idx))
             matched_gold.add(gold_idx)
         else:
