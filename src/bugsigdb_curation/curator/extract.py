@@ -54,7 +54,7 @@ def build_study_design_messages(bundle: EvidenceBundle) -> list[dict]:
 def extract_study_design(bundle: EvidenceBundle, *, model: Model) -> tuple[str, ...]:
     """S2's one model call: classify `study_design` against the closed enum."""
     response = model.complete(stage="study_design", messages=build_study_design_messages(bundle))
-    raw = response.get("study_design", [])
+    raw = response.get("study_design", []) or []
     if isinstance(raw, str):
         raw = [raw]
     normalized = [v for v in (normalize_enum(x, STUDY_DESIGN_VALUES) for x in raw) if v]

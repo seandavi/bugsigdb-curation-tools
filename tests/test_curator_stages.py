@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from bugsigdb_curation.curator.evidence import EvidenceBundle, EvidenceFigure, EvidenceTable
 from bugsigdb_curation.curator.experiment import extract_experiment
-from bugsigdb_curation.curator.extract import extract_study
+from bugsigdb_curation.curator.extract import extract_study, extract_study_design
 from bugsigdb_curation.curator.locate import locate_artifact
 from bugsigdb_curation.curator.model import MockModel
 from bugsigdb_curation.curator.resolve import ResolvedIds
@@ -73,6 +73,15 @@ def test_extract_study_design_drops_values_outside_the_enum():
     fields = extract_study(bundle, resolved, model=model)
 
     assert fields.study_design == ("meta-analysis",)
+
+
+def test_extract_study_design_tolerates_null_study_design():
+    """A model reply of {"study_design": null} must not crash -- `.get(...,
+    []) or []` guards against `None`, matching segment.py/signature.py."""
+    bundle = _bundle()
+    model = MockModel(responses={"study_design": {"study_design": None}})
+
+    assert extract_study_design(bundle, model=model) == ()
 
 
 # --- S3 segment_experiments ------------------------------------------------------------------
