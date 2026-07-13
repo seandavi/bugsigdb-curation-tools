@@ -6,4 +6,6 @@ venv/
 /tmp/
 *.egg-info/
 .pytest_cache/
-data/exports/
+# Generated / downloaded data artifacts (exports, split CSVs, loaded YAML, …)
+/data/*
+!/data/.gitkeep
