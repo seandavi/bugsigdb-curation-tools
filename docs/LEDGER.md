@@ -246,3 +246,16 @@ taxid-set scorer + reports + CLI, all offline-verifiable. **Next (worktree 2):**
 nested-dict prediction contract this harness consumes, run over text+tables+figures on the
 smoke set — subject to the L013 data firewall (curator takes no gold path; no `eval.gold`
 import).
+
+## L016 — Model-access decision: LiteLLM, Google-first — 2026-07-13
+**Artifact:** workflow plan §6c (Phase B) updated; memory `model-access-litellm-google`.
+PI decision for the curator's real backend and the eventual sweep: **all LLM access is routed
+through LiteLLM** (single interface + built-in cost map), and **Google-first** because the PI
+has **no Anthropic API key**. Gemini runs via Google AI Studio (LiteLLM `gemini/<id>`); Claude
+models, if used, run via **Vertex AI** (`vertex_ai/claude-*`), not the Anthropic API. The
+walking skeleton's default real worker = **`gemini/gemini-3.1-flash-lite`** (cheap, stable,
+multimodal — so it also serves the S5b figure-vision path); sweep tiers add `gemini-3.5-flash`
+and a Pro tier. Current Gemini IDs verified against ai.google.dev/gemini-api/docs/models
+(2026-07): stable = `gemini-3.5-flash`, `gemini-3.1-flash-lite`, `gemini-2.5-{pro,flash,flash-lite}`
+(2.5 family sunsets 2026-10); `gemini-3.1-pro` is preview. Re-pin at sweep time. This supersedes
+the earlier "Claude {haiku/sonnet/opus} + Gemini" framing in the deferred model-sweep notes.

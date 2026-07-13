@@ -473,12 +473,17 @@ The parameter space is kept additive, not multiplicative:
 - **Phase A — design comparison at a single fixed cheap worker model.** Run designs 1/2/3 at one
   pinned cheap model (candidate: `claude-haiku-4-5`). Headline metrics: taxa-set micro/macro F1,
   direction correctness, structural-pass rate, **cost & latency per study**. → **pick a winner.**
-- **Phase B — model sweep on the winner only.** Sweep worker model over Claude {haiku-4-5, sonnet-5,
-  opus-4-8} + Gemini {flash-lite, flash, pro} (pin exact Gemini IDs against live docs at build time —
-  training cutoff predates current Gemini). For **Design 3** additionally sweep the **reviewer model**
-  independently of the worker (the mixed-model cell). This is where the reproducibility packaging
-  (LiteLLM one-interface runner, pinned IDs, versioned prompts, archived predictions, `runs/<date>_<model>/`)
-  folds in.
+- **Phase B — model sweep on the winner only.** All model access is routed through **LiteLLM**
+  (one interface + cost map), **Google-first** — the PI has no Anthropic key, so Gemini runs via
+  Google AI Studio (`gemini/<id>`) and any Claude models run via **Vertex AI** (`vertex_ai/claude-*`),
+  not the Anthropic API. Sweep the worker model over the Gemini tiers first —
+  **`gemini/gemini-3.1-flash-lite`** (cheap default; multimodal, so it also serves the figure channel),
+  **`gemini/gemini-3.5-flash`**, and a Pro tier (`gemini/gemini-2.5-pro`, or `gemini-3.1-pro` once GA) —
+  then Claude-via-Vertex {haiku/sonnet/opus} if useful. (Gemini IDs verified against
+  ai.google.dev/gemini-api/docs/models, 2026-07; 2.5 family sunsets 2026-10, prefer 3.x. Re-pin at
+  sweep time.) For **Design 3** additionally sweep the **reviewer model** independently of the worker
+  (the mixed-model cell). The reproducibility packaging (LiteLLM runner, pinned IDs, versioned prompts,
+  archived predictions, `runs/<date>_<model>/`) folds in here.
 
 So the run count is `3 designs + (≤6 worker models on 1 winner) + (mixed-model reviewer cells for
 Design 3)` — **not** `3 × 6 × …`.
