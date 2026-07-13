@@ -1,14 +1,15 @@
-"""Typer CLI for downloading BugSigDB export files.
+"""Typer CLI for the `bugsigdb` command.
 
-Thin layer: parses arguments, drives the async download logic in
-:mod:`bugsigdb_curation.export`, and renders progress/output with `rich`. All
-actual HTTP/filesystem logic lives in `export.py` so it can be unit tested
-without a CLI in the loop.
+Thin layer: parses arguments, drives the (async, for `export`) logic in
+:mod:`bugsigdb_curation.export` / :mod:`bugsigdb_curation.validate`, and
+renders output with `rich`. All actual HTTP/filesystem/validation logic lives
+in those modules so it can be unit tested without a CLI in the loop.
 """
 
 from __future__ import annotations
 
 import asyncio
+import json as json_module
 import sys
 from enum import Enum
 from pathlib import Path
@@ -16,6 +17,7 @@ from pathlib import Path
 import httpx
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.progress import (
     BarColumn,
     DownloadColumn,
@@ -35,8 +37,14 @@ from bugsigdb_curation.export import (
     filter_files,
     human_size,
 )
+from bugsigdb_curation.validate import (
+    InstanceResult,
+    ValidationInputError,
+    default_schema_path,
+    validate_file,
+)
 
-app = typer.Typer(help="Download BugSigDB export artifacts from waldronlab/bugsigdbexports.")
+app = typer.Typer(help="Download and validate BugSigDB curation data.")
 
 
 @app.callback()
@@ -170,3 +178,109 @@ def _print_file_table(files: list[ExportFile], ref: str, console: Console) -> No
     for f in sorted(files, key=lambda f: (f.group, f.name)):
         table.add_row(f.name, f.group, human_size(f.size))
     console.print(table)
+
+
+class OutputFormat(str, Enum):
+    """Rendering format for `bugsigdb validate` results."""
+
+    text = "text"
+    json = "json"
+
+
+DEFAULT_TARGET_CLASS = "Study"
+
+
+@app.command("validate")
+def validate_command(
+    files: list[Path] = typer.Argument(
+        ..., help="Instance file(s) (YAML or JSON) to validate. Each may hold a single object or a list."
+    ),
+    target_class: str = typer.Option(
+        DEFAULT_TARGET_CLASS,
+        "--target-class",
+        "-C",
+        help="LinkML class to validate each instance against.",
+    ),
+    schema: Path = typer.Option(
+        None,
+        "--schema",
+        "-s",
+        help="Override the LinkML schema (default: the packaged schema/bugsigdb.yaml).",
+    ),
+    output_format: OutputFormat = typer.Option(
+        OutputFormat.text, "--format", help="Output format: 'text' (rich table) or 'json'."
+    ),
+) -> None:
+    """Validate curated BugSigDB instance file(s) against the LinkML schema.
+
+    Exit code 0 if every instance in every file is valid; 1 if any instance
+    fails schema validation; 2 for usage/IO errors (file not found,
+    unparseable YAML/JSON, unknown --target-class, or bad --schema path).
+    """
+    error_console = Console(stderr=True)
+    try:
+        schema_path = schema if schema is not None else default_schema_path()
+    except FileNotFoundError as exc:
+        error_console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=2) from None
+
+    all_results: list[InstanceResult] = []
+    try:
+        for path in files:
+            all_results.extend(validate_file(path, target_class, schema_path))
+    except ValidationInputError as exc:
+        error_console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=2) from None
+
+    if output_format is OutputFormat.json:
+        print(json_module.dumps([_result_to_dict(r) for r in all_results], indent=2))
+    else:
+        _render_validation_text(all_results, Console())
+
+    has_errors = any(not r.valid for r in all_results)
+    raise typer.Exit(code=1 if has_errors else 0)
+
+
+def _result_to_dict(result: InstanceResult) -> dict:
+    return {
+        "file": str(result.file),
+        "index": result.index,
+        "target_class": result.target_class,
+        "valid": result.valid,
+        "problems": [
+            {
+                "severity": p.severity,
+                "message": p.message,
+                "instantiates": p.instantiates,
+                "path": p.path,
+            }
+            for p in result.problems
+        ],
+    }
+
+
+def _render_validation_text(results: list[InstanceResult], console: Console) -> None:
+    if not results:
+        console.print("[yellow]No instances found to validate.[/yellow]")
+        return
+
+    total = len(results)
+    valid_count = sum(1 for r in results if r.valid)
+
+    for result in results:
+        label = f"{result.file}[{result.index}]" if len(results) > 1 or result.index > 0 else str(result.file)
+        label = escape(label)
+        if result.valid:
+            console.print(f"[green]PASS[/green] {label} ({result.target_class}: valid)")
+            continue
+        console.print(f"[red]FAIL[/red] {label} ({result.target_class}: {len(result.problems)} problem(s))")
+        for problem in result.problems:
+            # `problem.message` already ends in "... in /json/pointer/path" (from
+            # the LinkML jsonschema plugin), so it's not repeated here; `path` is
+            # still exposed as its own field in --format json for machine use.
+            console.print(f"    [red]{problem.severity}[/red]: {escape(problem.message)}")
+
+    if valid_count == total:
+        console.print(f"\n[green]{valid_count}/{total} valid.[/green]")
+    else:
+        console.print(f"\n[red]{valid_count}/{total} valid.[/red]")

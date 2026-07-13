@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.28.1",
+    "linkml>=1.11.1",
     "rich>=15.0.0",
     "typer>=0.26.8",
 ]
@@ -19,6 +20,12 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/bugsigdb_curation"]
+
+# Map the repo-root schema (single source of truth) into package data at build
+# time, without physically duplicating the file under src/. Resolved at
+# runtime via importlib.resources in bugsigdb_curation.validate.default_schema_path().
+[tool.hatch.build.targets.wheel.force-include]
+"schema/bugsigdb.yaml" = "bugsigdb_curation/data/bugsigdb.yaml"
 
 [tool.pytest.ini_options]
 markers = [

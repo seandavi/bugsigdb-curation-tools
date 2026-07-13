@@ -70,6 +70,24 @@ Existing files are skipped when their size already matches the remote (use
 `--force` to override). Downloads stream to disk with bounded concurrency and
 a `rich` progress bar; run `uv run bugsigdb export --help` for all options.
 
+`bugsigdb validate` checks one or more curated instance files (YAML or JSON,
+each holding a single object or a list of objects) against the LinkML schema,
+using the [`linkml` validator](https://linkml.io/linkml/schemas/validation.html):
+
+```bash
+uv run bugsigdb validate study.yaml                          # validate as a Study (default)
+uv run bugsigdb validate study.yaml other.yaml                # multiple files in one invocation
+uv run bugsigdb validate experiment.yaml -C Experiment         # validate against a different class
+uv run bugsigdb validate study.yaml --schema my-schema.yaml    # override the schema
+uv run bugsigdb validate study.yaml --format json              # machine-readable report
+```
+
+Exit codes: `0` if every instance is valid, `1` if any instance fails schema
+validation (bad enum value, wrong type, missing required field, …), `2` for
+usage/IO errors (file not found, unparseable YAML/JSON, unknown
+`--target-class`, bad `--schema` path). Run `uv run bugsigdb validate --help`
+for all options.
+
 ## License
 
 Schema released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
