@@ -39,6 +39,18 @@ from bugsigdb_curation.export import (
     human_size,
 )
 from bugsigdb_curation.loader import load_studies, summarize
+from bugsigdb_curation.pmc_map import (
+    DEFAULT_CONCURRENCY as PMC_MAP_DEFAULT_CONCURRENCY,
+)
+from bugsigdb_curation.pmc_map import (
+    PmcMapError,
+    compute_coverage,
+    convert_pmids,
+    distinct_pmids,
+    join_results,
+    read_study_pmids,
+    write_mapping_csv,
+)
 from bugsigdb_curation.split import split_full_dump
 from bugsigdb_curation.validate import (
     InstanceResult,
@@ -209,6 +221,89 @@ def split_command(
     except FileNotFoundError as exc:
         error_console.print(f"[red]Error:[/red] {exc}")
         raise typer.Exit(code=1) from None
+
+
+DEFAULT_STUDIES_CSV = Path("data/exports/relational/studies.csv")
+DEFAULT_PMC_MAP_OUTPUT = Path("data/eval/pmid_pmcid_map.csv")
+DEFAULT_PMC_MAP_EMAIL = "seandavi@gmail.com"
+
+
+@app.command("pmc-map")
+def pmc_map_command(
+    input_file: Path = typer.Option(
+        DEFAULT_STUDIES_CSV,
+        "--input",
+        "-i",
+        help="Path to a relational studies.csv (as produced by `bugsigdb split`).",
+    ),
+    output_file: Path = typer.Option(
+        DEFAULT_PMC_MAP_OUTPUT,
+        "--output",
+        "-o",
+        help="Path to write the study_id/pmid/pmcid/doi/has_pmc mapping CSV to (created if missing).",
+    ),
+    email: str = typer.Option(
+        DEFAULT_PMC_MAP_EMAIL,
+        "--email",
+        help="Contact email sent to NCBI's idconv API (their etiquette for unauthenticated use).",
+    ),
+    limit: int | None = typer.Option(
+        None,
+        "--limit",
+        "-n",
+        help=(
+            "Only convert the first N distinct PMIDs (handy for a quick/test run). "
+            "Study rows whose PMID falls outside that subset are excluded from the "
+            "output CSV (a note with the excluded count is printed to stderr)."
+        ),
+    ),
+) -> None:
+    """Map curated BugSigDB study PMIDs to PubMed Central IDs (PMCIDs).
+
+    Queries the NCBI PMC ID Converter API to determine which curated
+    studies' PMIDs have a corresponding PMC full-text article, producing a
+    gold/eval set for de-novo curation workflows that need full text.
+    """
+    error_console = Console(stderr=True)
+    if not input_file.exists():
+        error_console.print(f"[red]Error:[/red] {input_file} does not exist.")
+        raise typer.Exit(code=1)
+
+    try:
+        asyncio.run(_run_pmc_map(input_file, output_file, email, limit))
+    except PmcMapError as exc:
+        error_console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from None
+    except httpx.HTTPError as exc:
+        error_console.print(f"[red]Error:[/red] request failed: {exc}")
+        raise typer.Exit(code=1) from None
+
+
+async def _run_pmc_map(input_file: Path, output_file: Path, email: str, limit: int | None) -> None:
+    console = Console()
+    error_console = Console(stderr=True)
+
+    rows = read_study_pmids(input_file)
+    ids = distinct_pmids(rows)
+    if limit is not None:
+        ids = ids[:limit]
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        records = await convert_pmids(ids, email=email, client=client, concurrency=PMC_MAP_DEFAULT_CONCURRENCY)
+
+    mapped = join_results(rows, records)
+    write_mapping_csv(mapped, output_file)
+    console.print(f"[green]Wrote {len(mapped)} rows to {output_file}[/green]")
+
+    if limit is not None and len(mapped) < len(rows):
+        excluded = len(rows) - len(mapped)
+        error_console.print(f"Note: {excluded} study row(s) excluded (PMID outside --limit).")
+
+    stats = compute_coverage(records)
+    error_console.print(
+        f"{stats.total} PMIDs: {stats.with_pmc} with PMCID ({stats.coverage_pct:.1f}%), "
+        f"{stats.without_pmc} without."
+    )
 
 
 class OutputFormat(str, Enum):
