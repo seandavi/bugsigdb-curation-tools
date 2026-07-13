@@ -438,3 +438,26 @@ def test_aggregate_scores_direction_accuracy_and_name_to_id_accuracy():
     aggregate = aggregate_scores(scores)
     assert aggregate.direction_accuracy == 1.0
     assert aggregate.n_studies == 1
+
+
+def test_aggregate_scores_rolls_up_segmentation_totals_across_studies():
+    # Study 1: 1 gold experiment, pipeline predicted 3 -> over-segmentation 2.
+    exp1 = _experiment("1/Experiment 1")
+    study1 = _study([exp1], study_id="1")
+    pred1 = {
+        "experiments": [
+            _pred_exp(), _pred_exp(body_site=("Skin",)), _pred_exp(body_site=("Oral",))
+        ]
+    }
+    # Study 2: 2 gold experiments, pipeline predicted 1 -> under-segmentation 1.
+    exp2a = _experiment("2/Experiment 1")
+    exp2b = _experiment("2/Experiment 2", body_site=("Skin",))
+    study2 = _study([exp2a, exp2b], study_id="2")
+    pred2 = {"experiments": [_pred_exp()]}
+
+    resolver = TaxonomyResolver()
+    scores = [score_study(study1, pred1, resolver), score_study(study2, pred2, resolver)]
+    aggregate = aggregate_scores(scores)
+
+    assert aggregate.over_segmentation == 2
+    assert aggregate.under_segmentation == 1

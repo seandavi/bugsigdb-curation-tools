@@ -30,8 +30,8 @@ from rich.progress import (
 from rich.table import Table
 
 from bugsigdb_curation.eval.gold import load_gold, to_nested_dict
-from bugsigdb_curation.eval.report import write_reports
-from bugsigdb_curation.eval.score import aggregate_scores, score_study
+from bugsigdb_curation.eval.report import ScoringError, write_reports
+from bugsigdb_curation.eval.score import StudyScore, aggregate_scores, score_study
 from bugsigdb_curation.eval.smoke import select_smoke
 from bugsigdb_curation.eval.taxonomy import DEFAULT_CACHE_PATH as DEFAULT_TAXONOMY_CACHE_PATH
 from bugsigdb_curation.eval.taxonomy import TaxonomyResolver
@@ -560,19 +560,55 @@ def eval_score_command(
     predictions = _load_predictions(pred)
     resolver = TaxonomyResolver.load(taxa_csv=relational / "taxa.csv", cache_path=taxonomy_cache)
 
-    scored_ids = sorted(set(gold) & set(predictions))
-    if not scored_ids:
-        error_console.print(
-            "[yellow]No overlap between gold study_ids and prediction study_ids; nothing to score.[/yellow]"
-        )
+    # Score every selected gold study, not just the ones with a prediction
+    # (Blocker 2 / §4d "same corpus, same split"): a study the pipeline
+    # failed or skipped must still count against the aggregate as a full
+    # miss, not silently vanish from the denominator. `score_study` treats
+    # `predicted=None` as an empty prediction.
+    selected_ids = sorted(gold)
+    if not selected_ids:
+        error_console.print("[yellow]No gold studies selected; nothing to score.[/yellow]")
 
-    study_scores = [score_study(gold[study_id], predictions[study_id], resolver) for study_id in scored_ids]
+    missing_prediction_ids = sorted(study_id for study_id in selected_ids if study_id not in predictions)
+
+    study_scores: list[StudyScore] = []
+    scoring_errors: list[ScoringError] = []
+    for study_id in selected_ids:
+        try:
+            study_scores.append(score_study(gold[study_id], predictions.get(study_id), resolver))
+        except Exception as exc:  # noqa: BLE001 -- per-study isolation: one bad prediction must not abort the run
+            scoring_errors.append({"study_id": study_id, "error": f"{type(exc).__name__}: {exc}"})
+
     aggregate = aggregate_scores(study_scores)
-    paths = write_reports(study_scores, aggregate, out)
+    paths = write_reports(
+        study_scores,
+        aggregate,
+        out,
+        missing_prediction_ids=missing_prediction_ids,
+        scoring_errors=scoring_errors,
+    )
     resolver.save_cache()
+
+    # Diagnostic dump of predicted taxon names the resolver could never map
+    # to a taxid -- useful to distinguish a hallucinated taxon from a gap in
+    # the resolver's own coverage.
+    if resolver.unresolved:
+        (out / "unresolved_taxa.txt").write_text(
+            "\n".join(sorted(resolver.unresolved)) + "\n", encoding="utf-8"
+        )
 
     config_note = f" [config={config.value}]" if config else ""
     console.print(f"[green]Scored {len(study_scores)} studies{config_note}.[/green]")
+    if missing_prediction_ids:
+        console.print(
+            f"[yellow]  {len(missing_prediction_ids)} gold studies had no prediction "
+            "(scored as a full miss; see report's Missing predictions section).[/yellow]"
+        )
+    if scoring_errors:
+        console.print(
+            f"[red]  {len(scoring_errors)} predictions raised while scoring "
+            "(see report's Scoring errors section).[/red]"
+        )
     console.print(
         f"  micro taxa F1: {aggregate.micro_taxa.f1:.3f}   "
         f"macro taxa F1: {aggregate.macro_taxa_f1:.3f}   "

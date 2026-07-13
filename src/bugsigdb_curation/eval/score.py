@@ -149,6 +149,11 @@ class AggregateScore:
     name_to_id_accuracy: float
     by_source_type: dict[str, PRF1]
     by_experiment_bucket: dict[str, PRF1]
+    #: Corpus-level roll-up of every study's `ExperimentAlignment.over_segmentation`
+    #: / `.under_segmentation` (§4b wants this reportable at corpus level, not
+    #: just per-study).
+    over_segmentation: int
+    under_segmentation: int
 
 
 EXPERIMENT_COUNT_BUCKETS = ("1", "2-5", "6-20", "21+")
@@ -640,4 +645,6 @@ def aggregate_scores(study_scores: list[StudyScore]) -> AggregateScore:
         name_to_id_accuracy=(name_to_id_correct / name_to_id_found) if name_to_id_found else 0.0,
         by_source_type=by_source_type,
         by_experiment_bucket=by_experiment_bucket,
+        over_segmentation=sum(s.experiment_alignment.over_segmentation for s in study_scores),
+        under_segmentation=sum(s.experiment_alignment.under_segmentation for s in study_scores),
     )

@@ -145,6 +145,24 @@ def _write_prediction(path: Path) -> None:
     path.write_text(json.dumps(prediction))
 
 
+def _write_malformed_prediction(path: Path) -> None:
+    """A prediction whose taxon is a bare string instead of a taxon dict --
+    triggers `AttributeError` in `taxonomy.resolve_taxon`'s `taxon.get(...)`
+    (a real malformed-pipeline-output shape, not a synthetic one)."""
+    prediction = {
+        "study_id": "222",
+        "experiments": [
+            {
+                "body_site": ["Feces"],
+                "signatures": [
+                    {"abundance_in_group_1": "increased", "taxa": ["Escherichia coli"]},
+                ],
+            }
+        ],
+    }
+    path.write_text(json.dumps(prediction))
+
+
 def test_eval_score_end_to_end_writes_jsonl_md_html(tmp_path):
     relational_dir, pmc_map = _build_gold_fixture(tmp_path)
     pred_dir = tmp_path / "predictions"
@@ -170,11 +188,58 @@ def test_eval_score_end_to_end_writes_jsonl_md_html(tmp_path):
     assert (out_dir / "report.html").exists()
 
     lines = (out_dir / "scores.jsonl").read_text().strip().splitlines()
-    assert len(lines) == 1  # only study 111 has a prediction; 222 is unscored
-    record = json.loads(lines[0])
-    assert record["study_id"] == "111"
-    assert record["micro_taxa"]["f1"] == 1.0
-    assert record["direction_correct"] == record["direction_total"] == 2
+    records = [json.loads(line) for line in lines]
+    # Both gold studies are scored -- 222 has no prediction, so it's scored
+    # as a full miss (Blocker 2 / §4d "same corpus, same split") AND listed
+    # in its own missing-prediction bucket, rather than silently dropped.
+    study_scores = {r["study_id"]: r for r in records if r["record_type"] == "study_score"}
+    assert set(study_scores) == {"111", "222"}
+    assert study_scores["111"]["micro_taxa"]["f1"] == 1.0
+    assert study_scores["111"]["direction_correct"] == study_scores["111"]["direction_total"] == 2
+
+    missing = [r for r in records if r["record_type"] == "missing_prediction"]
+    assert [r["study_id"] for r in missing] == ["222"]
+
+    md = (out_dir / "report.md").read_text()
+    assert "## Missing predictions" in md
+    assert "- 222" in md
+
+
+def test_eval_score_isolates_per_study_scoring_errors(tmp_path):
+    relational_dir, pmc_map = _build_gold_fixture(tmp_path)
+    pred_dir = tmp_path / "predictions"
+    pred_dir.mkdir()
+    _write_prediction(pred_dir / "111.json")  # well-formed
+    _write_malformed_prediction(pred_dir / "222.json")  # taxon is a bare string, not a dict
+
+    out_dir = tmp_path / "out"
+    result = runner.invoke(
+        app,
+        [
+            "eval", "score",
+            "--pred", str(pred_dir),
+            "--relational", str(relational_dir),
+            "--pmc-map", str(pmc_map),
+            "--out", str(out_dir),
+            "--taxonomy-cache", str(tmp_path / "cache.json"),
+        ],
+    )
+
+    # The batch completes despite one malformed prediction -- it must not
+    # abort the whole corpus run with no partial report.
+    assert result.exit_code == 0, result.output
+
+    records = [json.loads(line) for line in (out_dir / "scores.jsonl").read_text().strip().splitlines()]
+    study_scores = {r["study_id"] for r in records if r["record_type"] == "study_score"}
+    assert study_scores == {"111"}  # 222 raised while scoring, so it's not a study_score record
+
+    errors = [r for r in records if r["record_type"] == "scoring_error"]
+    assert [e["study_id"] for e in errors] == ["222"]
+    assert "AttributeError" in errors[0]["error"]
+
+    md = (out_dir / "report.md").read_text()
+    assert "## Scoring errors" in md
+    assert "222" in md
 
 
 def test_eval_score_is_deterministic_across_runs(tmp_path):
@@ -226,6 +291,52 @@ def test_eval_score_missing_pred_path_errors(tmp_path):
     )
     assert result.exit_code == 1
     assert "does not exist" in result.output
+
+
+def test_eval_score_writes_unresolved_taxa_diagnostic_file(tmp_path):
+    relational_dir, pmc_map = _build_gold_fixture(tmp_path)
+    pred_dir = tmp_path / "predictions"
+    pred_dir.mkdir()
+    prediction = {
+        "study_id": "111",
+        "experiments": [
+            {
+                "experiment_id": "111/Experiment 1",
+                "body_site": ["Feces"],
+                "condition": ["CRC"],
+                "group_0_name": "healthy",
+                "group_1_name": "CRC",
+                "sequencing_type": "16S",
+                "signatures": [
+                    {
+                        "abundance_in_group_1": "increased",
+                        # 561 resolves via ncbi_id; the second taxon is only a
+                        # name the resolver has no seed/cache entry for.
+                        "taxa": [{"ncbi_id": 561}, {"taxon_name": "Some Unresolvable Organism"}],
+                    },
+                ],
+            }
+        ],
+    }
+    (pred_dir / "111.json").write_text(json.dumps(prediction))
+
+    out_dir = tmp_path / "out"
+    result = runner.invoke(
+        app,
+        [
+            "eval", "score",
+            "--pred", str(pred_dir),
+            "--relational", str(relational_dir),
+            "--pmc-map", str(pmc_map),
+            "--out", str(out_dir),
+            "--taxonomy-cache", str(tmp_path / "cache.json"),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    unresolved_path = out_dir / "unresolved_taxa.txt"
+    assert unresolved_path.exists()
+    assert "some unresolvable organism" in unresolved_path.read_text()
 
 
 def test_eval_gold_dumps_nested_shape(tmp_path):
@@ -291,5 +402,8 @@ def test_eval_score_prediction_matched_by_filename_stem_when_no_id_key(tmp_path)
     )
     assert result.exit_code == 0, result.output
     lines = (out_dir / "scores.jsonl").read_text().strip().splitlines()
-    assert len(lines) == 1
-    assert json.loads(lines[0])["study_id"] == "111"
+    records = [json.loads(line) for line in lines]
+    study_ids = {r["study_id"] for r in records if r["record_type"] == "study_score"}
+    # 222 has no prediction file but is still scored (as a full miss) --
+    # both gold studies show up as study_score records.
+    assert study_ids == {"111", "222"}
