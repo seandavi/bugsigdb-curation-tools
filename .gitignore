@@ -5,3 +5,5 @@ venv/
 .DS_Store
 /tmp/
 *.egg-info/
+.pytest_cache/
+data/exports/
