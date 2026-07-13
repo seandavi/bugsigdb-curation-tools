@@ -117,6 +117,10 @@ async def curate_async(
         artifact = locate_artifact(bundle)
 
         experiments: list[tuple[ExperimentFields, list[ExtractedSignature], str | None]] = []
+        # NOTE: no per-experiment error isolation -- one bad ExperimentStub
+        # (a raised exception from S4/S5a/S5b) aborts the whole study here.
+        # Deferred to Architecture-B's fan-out (plan §2/§5), which isolates
+        # each Experiment Worker; out of scope for this Design-1 skeleton.
         for stub in stubs:
             experiment_fields = extract_experiment(bundle, stub, model=model)
 

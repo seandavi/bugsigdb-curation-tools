@@ -111,6 +111,10 @@ async def extract_signatures(
     `ExtractedSignature`s (schema shape: one signature per direction).
     """
     messages = build_signature_messages(artifact, image_bytes=image_bytes)
+    # NOTE: model.complete() is sync and blocks the event loop here (and in
+    # the other stage modules' model calls). Fine for Architecture-A's
+    # single-worker loop; only matters once Architecture-B runs experiments
+    # concurrently, at which point these calls need an async Model seam.
     response = model.complete(stage="signature_extract", messages=messages)
     raw_taxa = response.get("taxa", []) or []
 
