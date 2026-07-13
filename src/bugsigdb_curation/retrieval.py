@@ -74,7 +74,8 @@ def _normalize_ws(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _extract_figure_number(label: str) -> str | None:
+def _extract_leading_number(label: str) -> str | None:
+    """First integer found in a figure/table label, e.g. "Table 2." -> "2"."""
     match = re.search(r"(\d+)", label)
     return match.group(1) if match else None
 
@@ -112,7 +113,7 @@ def parse_fulltext_figures(xml_text: str) -> list[FigureEntry]:
         entries.append(
             FigureEntry(
                 label=label,
-                number=_extract_figure_number(label),
+                number=_extract_leading_number(label),
                 legend=legend,
                 graphic_filename=filename,
             )
@@ -308,7 +309,7 @@ def parse_fulltext_tables(xml_text: str) -> list[TableEntry]:
             TableEntry(
                 table_id=table_id,
                 label=label,
-                number=_extract_figure_number(label) if label else None,
+                number=_extract_leading_number(label) if label else None,
                 caption=caption,
                 rows=tuple(rows),
             )
