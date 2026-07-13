@@ -9,12 +9,14 @@ without a CLI in the loop.
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 from enum import Enum
 from pathlib import Path
 
 import httpx
 import typer
+import yaml
 from rich.console import Console
 from rich.progress import (
     BarColumn,
@@ -35,6 +37,7 @@ from bugsigdb_curation.export import (
     filter_files,
     human_size,
 )
+from bugsigdb_curation.loader import load_studies, summarize
 
 app = typer.Typer(help="Download BugSigDB export artifacts from waldronlab/bugsigdbexports.")
 
@@ -170,3 +173,53 @@ def _print_file_table(files: list[ExportFile], ref: str, console: Console) -> No
     for f in sorted(files, key=lambda f: (f.group, f.name)):
         table.add_row(f.name, f.group, human_size(f.size))
     console.print(table)
+
+
+class LoadFormat(str, Enum):
+    """Output serialization format for `bugsigdb load`."""
+
+    yaml = "yaml"
+    json = "json"
+
+
+@app.command("load")
+def load_command(
+    csv_path: Path = typer.Argument(
+        ..., help="Path to a BugSigDB full_dump.csv export (or a sample of it)."
+    ),
+    output: Path = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="File to write the nested studies to (default: stdout).",
+    ),
+    format: LoadFormat = typer.Option(
+        LoadFormat.yaml, "--format", help="Output serialization format."
+    ),
+    limit: int = typer.Option(
+        None,
+        "--limit",
+        "-n",
+        help="Only load the first N studies (handy for sampling the full 30 MB dump).",
+    ),
+) -> None:
+    """Parse a full_dump.csv export into nested Study -> Experiment -> Signature records."""
+    error_console = Console(stderr=True)
+    if not csv_path.exists():
+        error_console.print(f"[red]Error:[/red] {csv_path} does not exist.")
+        raise typer.Exit(code=1)
+
+    studies = load_studies(csv_path, limit=limit)
+    n_studies, n_experiments, n_signatures = summarize(studies)
+
+    if format is LoadFormat.json:
+        text = json.dumps(studies, indent=2, ensure_ascii=False) + "\n"
+    else:
+        text = yaml.safe_dump(studies, sort_keys=False, allow_unicode=True)
+
+    if output is not None:
+        output.write_text(text, encoding="utf-8")
+    else:
+        sys.stdout.write(text)
+
+    error_console.print(f"{n_studies} studies, {n_experiments} experiments, {n_signatures} signatures")
