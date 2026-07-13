@@ -62,6 +62,23 @@ _PROMPT_TEMPLATE = (
 )
 
 
+def _dedup_taxa(taxa: list[ExtractedTaxon]) -> list[ExtractedTaxon]:
+    """Dedupe taxa within one direction by normalized name, preserving order.
+
+    A model can list the same taxon name twice (e.g. once per table row).
+    Keep the first occurrence that carries a verified `ncbi_id`, or the
+    first occurrence overall if none do.
+    """
+    kept: dict[str, ExtractedTaxon] = {}
+    for taxon in taxa:
+        key = taxon.taxon_name.strip().lower()
+        if key not in kept:
+            kept[key] = taxon
+        elif kept[key].ncbi_id is None and taxon.ncbi_id is not None:
+            kept[key] = taxon
+    return list(kept.values())
+
+
 def build_signature_messages(artifact: LocatedArtifact, *, image_bytes: bytes | None = None) -> list[dict]:
     """Build S5b's fused-extract prompt: table text, or figure legend + image."""
     if artifact.kind == "table" and artifact.table is not None:
@@ -119,7 +136,7 @@ async def extract_signatures(
         )
 
     return [
-        ExtractedSignature(direction=direction, taxa=tuple(taxa))
+        ExtractedSignature(direction=direction, taxa=tuple(_dedup_taxa(taxa)))
         for direction, taxa in by_direction.items()
         if taxa
     ]

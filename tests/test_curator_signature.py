@@ -184,6 +184,35 @@ def test_extract_signatures_normalizes_direction_case_and_whitespace():
     assert signatures[0].taxa[0].direction == "increased"
 
 
+def test_extract_signatures_dedupes_repeated_taxon_within_a_direction(httpx_mock):
+    """The same taxon listed twice under one direction (e.g. duplicated
+    table rows) must collapse to a single emitted entry, preferring the
+    occurrence whose proposed id was verified."""
+    model = MockModel(
+        responses={
+            "signature_extract": {
+                "taxa": [
+                    {"name": "Bacteroides fragilis", "direction": "increased", "proposed_ncbi_id": None},
+                    {"name": "Bacteroides fragilis", "direction": "increased", "proposed_ncbi_id": 817},
+                ]
+            }
+        }
+    )
+    resolver = NcbiTaxonomyResolver(cache={"bacteroides fragilis": 817}, cache_path=None)
+    artifact = LocatedArtifact(kind="table", table=_TABLE)
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await extract_signatures(artifact, model=model, resolver=resolver, client=client)
+
+    signatures = _run(run())
+
+    assert len(signatures) == 1
+    assert len(signatures[0].taxa) == 1
+    assert signatures[0].taxa[0].taxon_name == "Bacteroides fragilis"
+    assert signatures[0].taxa[0].ncbi_id == 817  # id-carrying occurrence preserved
+
+
 def test_extract_signatures_uses_multimodal_message_for_figure_artifact():
     model = MockModel(responses={"signature_extract": {"taxa": []}})
     resolver = NcbiTaxonomyResolver(cache_path=None)
