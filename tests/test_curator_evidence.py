@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 
 import httpx
+import pytest
 from pytest_httpx import HTTPXMock
 
 from bugsigdb_curation.curator.evidence import (
@@ -125,6 +126,54 @@ def test_assemble_evidence_degrades_gracefully_when_html_fetch_fails(httpx_mock:
     bundle = asyncio.run(run())
     assert len(bundle.sections) == 2  # text/tables unaffected
     assert bundle.figures[0].blob_url is None  # figure just has no resolvable image
+
+
+def test_assemble_evidence_degrades_gracefully_when_fulltext_404s(httpx_mock: HTTPXMock):
+    """EuropePMC returns 404 for a PMCID it has no `fullTextXML` record for
+    (in PMC per idconv, but not mirrored into EuropePMC full text) -- that's
+    a normal "no full-text channel" outcome, not a failure: the bundle
+    still comes back (empty sections/tables/figures/metadata) instead of
+    the fetch raising out of the study. No article-HTML mock is registered
+    here at all -- proof that a 404'd fulltext skips that fetch entirely
+    (nothing to match figure blob URLs against), not just that it degrades."""
+    httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid="PMC1234567"), status_code=404)
+
+    async def run() -> EvidenceBundle:
+        async with httpx.AsyncClient() as client:
+            return await assemble_evidence("21850056", "PMC1234567", client=client)
+
+    bundle = asyncio.run(run())
+    assert bundle.pmid == "21850056"
+    assert bundle.pmcid == "PMC1234567"
+    assert bundle.sections == ()
+    assert bundle.tables == ()
+    assert bundle.figures == ()
+    assert bundle.metadata.title is None
+    assert bundle.full_text() == ""
+
+
+def test_assemble_evidence_propagates_non_404_fulltext_error(httpx_mock: HTTPXMock):
+    """A genuine unexpected error (e.g. a 500) fetching fullTextXML must
+    still surface -- only "not found" degrades gracefully."""
+    httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid="PMC1234567"), status_code=500)
+
+    async def run() -> EvidenceBundle:
+        async with httpx.AsyncClient() as client:
+            return await assemble_evidence("21850056", "PMC1234567", client=client)
+
+    with pytest.raises(httpx.HTTPStatusError):
+        asyncio.run(run())
+
+
+def test_build_bundle_handles_none_xml_text():
+    """`build_bundle(..., xml_text=None, ...)` is the pure-function half of
+    the 404 case above -- exercised directly on inline fixtures, no
+    network."""
+    bundle = build_bundle("21850056", "PMC1234567", None, HTML_FIXTURE)
+    assert bundle.sections == ()
+    assert bundle.tables == ()
+    assert bundle.figures == ()
+    assert bundle.metadata.title is None
 
 
 # --- fetch_figure_image ------------------------------------------------------------------

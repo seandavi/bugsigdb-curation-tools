@@ -139,14 +139,28 @@ def _build_tables(table_entries: list[TableEntry]) -> tuple[EvidenceTable, ...]:
     )
 
 
-def build_bundle(pmid: str, pmcid: str, xml_text: str, html_text: str | None) -> EvidenceBundle:
+def build_bundle(pmid: str, pmcid: str, xml_text: str | None, html_text: str | None) -> EvidenceBundle:
     """Pure assembly: parse already-fetched fullTextXML (+ optional article HTML) into a bundle.
 
     Separated from the network fetch (`assemble_evidence`) so bundle
     construction is unit-testable on inline XML/HTML fixtures with no
     network access, mirroring the figure-extraction benchmark's pure-parser
     test style.
+
+    `xml_text=None` means "no full text available at all" (EuropePMC has no
+    `fullTextXML` for this PMCID -- see `assemble_evidence`'s 404 handling);
+    the bundle still comes back, just with no sections/tables/figures and
+    empty metadata, rather than this function raising on `None`.
     """
+    if xml_text is None:
+        return EvidenceBundle(
+            pmid=pmid,
+            pmcid=pmcid,
+            metadata=ArticleMetadata(title=None, journal=None, year=None, authors=(), doi=None),
+            sections=(),
+            tables=(),
+            figures=(),
+        )
     metadata = parse_article_metadata(xml_text)
     sections = tuple(parse_fulltext_sections(xml_text))
     tables = _build_tables(parse_fulltext_tables(xml_text))
@@ -165,18 +179,38 @@ def build_bundle(pmid: str, pmcid: str, xml_text: str, html_text: str | None) ->
 async def assemble_evidence(pmid: str, pmcid: str, *, client: httpx.AsyncClient) -> EvidenceBundle:
     """S1: fetch EuropePMC fullTextXML + PMC article HTML for `pmcid` and build a bundle.
 
-    The article HTML fetch is best-effort: if it fails (e.g. a transient PMC
-    Cloudflare hiccup), figures still come back with `blob_url=None` rather
-    than aborting the whole bundle -- text and tables are unaffected either
-    way, and a figure without a resolved blob URL simply can't be fetched by
-    S5b's vision path later (it degrades gracefully to "no image evidence
-    for this figure", not a crash).
+    The fullTextXML fetch is best-effort against a **404 specifically**:
+    EuropePMC returns 404 for a PMCID it has no full-text record for (the
+    article is in PMC per S0's idconv resolution, but not mirrored into
+    EuropePMC's full-text service) -- that's a normal "no full-text
+    channel" outcome, not a failure, so it degrades to an empty bundle
+    (`build_bundle(..., xml_text=None, ...)`) rather than aborting the
+    whole study. Any other HTTP error status (a genuine unexpected failure,
+    not "not found") still propagates.
+
+    The article HTML fetch is separately best-effort: if it fails (e.g. a
+    transient PMC Cloudflare hiccup), figures still come back with
+    `blob_url=None` rather than aborting the whole bundle -- text and
+    tables are unaffected either way, and a figure without a resolved blob
+    URL simply can't be fetched by S5b's vision path later (it degrades
+    gracefully to "no image evidence for this figure", not a crash).
     """
-    xml_text = await fetch_fulltext_xml(client, pmcid)
     try:
-        html_text: str | None = await fetch_article_html(client, pmcid)
-    except httpx.HTTPError:
-        html_text = None
+        xml_text: str | None = await fetch_fulltext_xml(client, pmcid)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            xml_text = None
+        else:
+            raise
+
+    html_text: str | None = None
+    if xml_text is not None:
+        # No point fetching the article HTML (used only to resolve figure
+        # blob URLs) when there's no full text to have parsed figures from.
+        try:
+            html_text = await fetch_article_html(client, pmcid)
+        except httpx.HTTPError:
+            html_text = None
     return build_bundle(pmid, pmcid, xml_text, html_text)
 
 
