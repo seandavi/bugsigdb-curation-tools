@@ -4,7 +4,7 @@ repair loop shared by split-verify's verifier and split-panel's reviewer)."""
 from __future__ import annotations
 
 from bugsigdb_curation.curator.model import MockModel
-from bugsigdb_curation.curator.repair import resolve_direction_with_repair
+from bugsigdb_curation.curator.repair import build_direction_rederive_messages, resolve_direction_with_repair
 
 STAGE = "verify_direction"
 
@@ -88,6 +88,33 @@ def test_unparseable_direction_is_tolerated_and_does_not_crash():
     final, changed = resolve_direction_with_repair("X", "decreased", "source text", model=model, stage=STAGE, max_rounds=2)
     assert final is None
     assert changed is True
+
+
+def test_build_direction_rederive_messages_includes_image_when_bytes_given():
+    messages = build_direction_rederive_messages("X", "source text", round_num=1, image_bytes=b"x")
+    content = messages[0]["content"]
+    assert len(content) == 2
+    assert content[0]["type"] == "text"
+    assert content[1]["type"] == "image_url"
+
+
+def test_build_direction_rederive_messages_omits_image_when_bytes_none():
+    messages = build_direction_rederive_messages("X", "source text", round_num=1, image_bytes=None)
+    content = messages[0]["content"]
+    assert len(content) == 1
+    assert content[0]["type"] == "text"
+
+
+def test_resolve_direction_with_repair_forwards_image_bytes_to_every_round():
+    model = MockModel(responses={STAGE: {"direction": "increased"}})
+    resolve_direction_with_repair(
+        "X", "decreased", "source text", model=model, stage=STAGE, max_rounds=2, image_bytes=b"fake-png-bytes"
+    )
+    assert len(model.calls) == 2
+    for call in model.calls:
+        content = call["messages"][0]["content"]
+        assert len(content) == 2
+        assert content[1]["type"] == "image_url"
 
 
 def test_prompt_never_reveals_the_claimed_direction():

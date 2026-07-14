@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from bugsigdb_curation.curator.model import Model, build_text_content
+from bugsigdb_curation.curator.model import Model, build_image_content, build_text_content
 
 Direction = Literal["increased", "decreased"]
 
@@ -32,22 +32,28 @@ def _parse_direction(value: object) -> Direction | None:
     return normalized if normalized in _DIRECTIONS else None
 
 
-def build_direction_rederive_messages(taxon_name: str, source_text: str, *, round_num: int) -> list[dict]:
+def build_direction_rederive_messages(
+    taxon_name: str, source_text: str, *, round_num: int, image_bytes: bytes | None = None
+) -> list[dict]:
     """A fresh-context re-derivation prompt: shows only the taxon name + the
-    cited source text -- never the prior claim or any extractor reasoning,
-    per the plan's "sees only the claim + the cited source evidence, NOT the
-    extractor's reasoning". `round_num` is informational only (no branching
-    on it here); a caller running a second round calls this again for an
-    independent second opinion, not a continuation of the first."""
+    cited source (text and, when provided, the figure image) -- never the
+    prior claim or any extractor reasoning, per the plan's "sees only the
+    claim + the cited source evidence, NOT the extractor's reasoning".
+    `round_num` is informational only (no branching on it here); a caller
+    running a second round calls this again for an independent second
+    opinion, not a continuation of the first."""
     prompt = (
         f"A microbiome research paper reports the taxon {taxon_name!r} as differentially "
         "abundant between two compared groups (Group 0 = control/reference, Group 1 = "
-        "case/exposed). Based ONLY on the source text below, is this taxon INCREASED or "
-        "DECREASED in Group 1 relative to Group 0?\n\n"
+        "case/exposed). Based on the source below (text and, when provided, the figure "
+        "image), is this taxon INCREASED or DECREASED in Group 1 relative to Group 0?\n\n"
         f"Source:\n{source_text}\n\n"
         'Return ONLY a JSON object: {"direction": "increased"|"decreased"}'
     )
-    return [{"role": "user", "content": [build_text_content(prompt)]}]
+    content: list[dict] = [build_text_content(prompt)]
+    if image_bytes is not None:
+        content.append(build_image_content(image_bytes))
+    return [{"role": "user", "content": content}]
 
 
 def resolve_direction_with_repair(
@@ -58,6 +64,7 @@ def resolve_direction_with_repair(
     model: Model,
     stage: str,
     max_rounds: int = DEFAULT_MAX_REPAIR_ROUNDS,
+    image_bytes: bytes | None = None,
 ) -> tuple[Direction | None, bool]:
     """Independently re-derive `taxon_name`'s direction and reconcile it
     against `claimed_direction`, capped at `max_rounds` model calls.
@@ -94,7 +101,10 @@ def resolve_direction_with_repair(
     previous: Direction | None = None
     for round_num in range(1, max_rounds + 1):
         response = model.complete(
-            stage=stage, messages=build_direction_rederive_messages(taxon_name, source_text, round_num=round_num)
+            stage=stage,
+            messages=build_direction_rederive_messages(
+                taxon_name, source_text, round_num=round_num, image_bytes=image_bytes
+            ),
         )
         derived = _parse_direction(response.get("direction"))
         if derived is None:

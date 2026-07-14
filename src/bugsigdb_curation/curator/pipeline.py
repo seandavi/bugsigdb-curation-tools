@@ -176,7 +176,7 @@ async def _extract_experiment_signatures(
     )
 
     if design is Design.split_verify:
-        return verify_signatures(signatures, artifact=bundle_artifact, model=model)
+        return verify_signatures(signatures, artifact=bundle_artifact, model=model, image_bytes=image_bytes)
 
     assert design is Design.split_panel
     return await review_signatures(
@@ -186,6 +186,7 @@ async def _extract_experiment_signatures(
         resolver=resolver,
         client=client,
         source_context=source_context,
+        image_bytes=image_bytes,
     )
 
 
