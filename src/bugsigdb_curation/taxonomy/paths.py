@@ -121,6 +121,16 @@ def resolve_optional_db_path(cli_path: Path | str | None, release: str | None = 
     (was `FileNotFoundError`), and more than one candidate -> the
     most-recently-built one by mtime (was an ambiguity `ValueError`) rather
     than making an automatic fallback path force a caller to pass `--db`.
+
+    The mtime pick is deterministic even on a tie (e.g. a batch-extracted
+    taxdump where several `.duckdb` files share a filesystem-resolution-
+    limited mtime): ties are broken by the lexicographically **greatest**
+    filename, so `ncbi-taxdump-2026-07-14.duckdb` wins over
+    `ncbi-taxdump-2026-01-01.duckdb` -- the newer dated release, given these
+    filenames' `YYYY-MM-DD` naming. (A plain `max(candidates, key=mtime)`
+    over an alphabetically-sorted list would instead silently keep the
+    *first* max-mtime candidate it saw, i.e. the lexicographically
+    *smallest* filename on a tie -- the opposite of "newest wins".)
     """
     if cli_path is not None:
         return Path(cli_path).expanduser()
@@ -133,7 +143,7 @@ def resolve_optional_db_path(cli_path: Path | str | None, release: str | None = 
         path = default_db_path(release)
         return path if path.exists() else None
 
-    candidates = sorted(taxonomy_cache_root().glob("ncbi-taxdump-*.duckdb"))
+    candidates = list(taxonomy_cache_root().glob("ncbi-taxdump-*.duckdb"))
     if not candidates:
         return None
-    return max(candidates, key=lambda p: p.stat().st_mtime)
+    return max(candidates, key=lambda p: (p.stat().st_mtime, p.name))
