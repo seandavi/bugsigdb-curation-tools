@@ -158,6 +158,13 @@ async def curate_async(
     finally:
         if owns_resolver:
             resolver.save_cache()
+            # Close the resolver's local TaxonomyDB handle (if any) --
+            # only when this call built the resolver itself; a caller-
+            # supplied resolver (e.g. the CLI's `--smoke` batch loop, which
+            # shares one resolver across many `curate_async` calls) owns
+            # its own DB lifecycle and closes it once, after the whole
+            # batch, not here.
+            resolver.close()
         if owns_client:
             await client.aclose()
 
