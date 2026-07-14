@@ -66,12 +66,17 @@ _PROMPT_TEMPLATE = (
 )
 
 
-def _dedup_taxa(taxa: list[ExtractedTaxon]) -> list[ExtractedTaxon]:
+def dedup_taxa(taxa: list[ExtractedTaxon]) -> list[ExtractedTaxon]:
     """Dedupe taxa within one direction by normalized name, preserving order.
 
     A model can list the same taxon name twice (e.g. once per table row).
     Keep the first occurrence that carries a verified `ncbi_id`, or the
     first occurrence overall if none do.
+
+    Public (not `_`-prefixed): reused by `curator.reconcile`/`curator.verify`/
+    `curator.panel` (the split-A1/A2 designs), which produce the same
+    `ExtractedTaxon`-per-direction shape as this module's fused-lean path
+    and need the identical dedup policy.
     """
     kept: dict[str, ExtractedTaxon] = {}
     for taxon in taxa:
@@ -144,7 +149,7 @@ async def extract_signatures(
         )
 
     signatures = [
-        ExtractedSignature(direction=direction, taxa=tuple(_dedup_taxa(taxa)))
+        ExtractedSignature(direction=direction, taxa=tuple(dedup_taxa(taxa)))
         for direction, taxa in by_direction.items()
         if taxa
     ]

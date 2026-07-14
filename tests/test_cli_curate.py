@@ -202,7 +202,7 @@ def test_curate_smoke_reuses_one_client_across_studies(tmp_path: Path, monkeypat
     seen_clients: list[object] = []
 
     async def fake_curate_async(
-        pmid, *, model, config, client=None, email, taxonomy_cache_path, resolver=None, run_id=None
+        pmid, *, model, config, design=None, client=None, email, taxonomy_cache_path, resolver=None, run_id=None
     ):
         seen_clients.append(client)
         return CurationResult(pmid=pmid, pmcid=None, has_pmc=False, record={}, valid=True, problems=())
@@ -239,7 +239,7 @@ def test_curate_smoke_reuses_one_resolver_across_studies(tmp_path: Path, monkeyp
     seen_resolvers: list[object] = []
 
     async def fake_curate_async(
-        pmid, *, model, config, client=None, email, taxonomy_cache_path, resolver=None, run_id=None
+        pmid, *, model, config, design=None, client=None, email, taxonomy_cache_path, resolver=None, run_id=None
     ):
         seen_resolvers.append(resolver)
         return CurationResult(pmid=pmid, pmcid=None, has_pmc=False, record={}, valid=True, problems=())

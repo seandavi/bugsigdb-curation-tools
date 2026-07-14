@@ -249,6 +249,55 @@ DEFAULT_MOCK_RESPONSES: dict[str, dict[str, Any]] = {
             {"name": "Escherichia coli", "direction": "increased", "proposed_ncbi_id": 562},
         ]
     },
+    # --- split A1 (curator.ner / curator.reconcile), used by split-verify/split-panel ---
+    # Names-only mirror of "signature_extract" above, minus the id proposal
+    # (split A1's whole point -- ids come only from curator.reconcile's
+    # TaxonomyDB lookup, never a model guess).
+    "signature_ner": {
+        "taxa": [
+            {"name": "Faecalibacterium prausnitzii", "direction": "decreased"},
+            {"name": "Escherichia coli", "direction": "increased"},
+        ]
+    },
+    # "never guess": the fixed default declines to pick among ambiguous
+    # candidates it can't actually see (a real disambiguation call always
+    # gets the true candidate set; a test exercising a real pick supplies
+    # its own `responses={"taxon_disambiguate": ...}` override).
+    "taxon_disambiguate": {"chosen_tax_id": None},
+    # --- split-verify's A2 (curator.verify) ---
+    "verify_taxon_in_source": {
+        "results": [
+            {"name": "Faecalibacterium prausnitzii", "in_source": True},
+            {"name": "Escherichia coli", "in_source": True},
+        ]
+    },
+    # Fixed (not taxon-aware, per this dict's own "generic/fixed" design --
+    # see module docstring): agrees with "signature_ner"'s "decreased" claim
+    # for Faecalibacterium prausnitzii; for Escherichia coli (claimed
+    # "increased") this default disagrees and the bounded repair loop
+    # stabilizes on a flip to "decreased" -- still a schema-valid record,
+    # just not byte-identical to fused-lean's default output (expected: this
+    # is a materially different design). A test asserting exact
+    # confirm/flip/drop behavior supplies its own override.
+    "verify_direction": {"direction": "decreased"},
+    # --- split-panel's A2 (curator.panel) ---
+    # Identical to "signature_ner" by default, so the reviewer agrees with
+    # the extractor on every taxon out of the box (no reconciliation/ground-
+    # check calls needed for the default happy path); a test exercising
+    # disagreement/recall supplies its own override.
+    "review_signature": {
+        "taxa": [
+            {"name": "Faecalibacterium prausnitzii", "direction": "decreased"},
+            {"name": "Escherichia coli", "direction": "increased"},
+        ]
+    },
+    "review_reconcile_direction": {"direction": "decreased"},
+    "review_ground_check": {
+        "results": [
+            {"name": "Faecalibacterium prausnitzii", "in_source": True},
+            {"name": "Escherichia coli", "in_source": True},
+        ]
+    },
 }
 
 
