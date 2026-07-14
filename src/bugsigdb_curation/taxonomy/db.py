@@ -35,7 +35,10 @@ GENUS_RANK = "genus"
 
 #: Tables a completed build always has (see `build.py::_build_from_files`,
 #: which writes `meta` last so its presence/non-emptiness signals a build
-#: that ran to completion).
+#: that ran to completion). `merged` is deliberately NOT required here: a
+#: DB built before merged.dmp ingestion was added has no `merged` table at
+#: all (not just an empty one), and must still open -- `canonical_taxid`
+#: degrades to an identity mapping for such a DB (see `_validate`).
 _REQUIRED_TABLES = ("names", "nodes", "meta")
 
 
@@ -73,8 +76,16 @@ class TaxonomyDB:
         every name -- indistinguishable from "unknown name" (see module
         docstring's "never guess" contract). `meta` is written last by a
         successful build, so a missing `meta` table (or `names`/`nodes`) or
-        an empty `meta` table both mean the build never finished."""
+        an empty `meta` table both mean the build never finished.
+
+        Also records whether this DB has a `merged` table at all (distinct
+        from an empty-but-present one): `canonical_taxid` needs this to
+        degrade to an identity mapping for a DB built before merged.dmp
+        ingestion existed, rather than erroring on a `SELECT ... FROM
+        merged` against a table that was never created.
+        """
         existing_tables = {row[0] for row in self._con.execute("SHOW TABLES").fetchall()}
+        self._has_merged_table = "merged" in existing_tables
         missing = [t for t in _REQUIRED_TABLES if t not in existing_tables]
         if missing:
             raise ValueError(
@@ -147,6 +158,26 @@ class TaxonomyDB:
             candidates=candidate_tax_ids,
         )
 
+    # -- merged.dmp canonicalization -----------------------------------------
+
+    def canonical_taxid(self, taxid: int) -> int:
+        """Map a possibly-retired `taxid` to its current successor via
+        NCBI's `merged.dmp` (loaded into the `merged` table by `build.py`).
+
+        A single hop: NCBI's `merged.dmp` already maps a retired id directly
+        to its *current* id (never to another retired id), so no chained
+        lookups are needed. Returns `taxid` unchanged if it's not a
+        `merged.old_tax_id` -- which covers both an already-current id and a
+        genuinely *deleted* id (in `delnodes.dmp`, with no successor at
+        all -- deliberately out of scope here, see `build.py`'s module
+        docstring) -- and also if this DB predates merged.dmp ingestion
+        (no `merged` table at all; rebuild to get canonicalization).
+        """
+        if not self._has_merged_table:
+            return taxid
+        row = self._con.execute("SELECT new_tax_id FROM merged WHERE old_tax_id = ?", [taxid]).fetchone()
+        return row[0] if row is not None else taxid
+
     # -- lineage / rank -----------------------------------------------------
 
     def rank(self, tax_id: int) -> str | None:
@@ -155,7 +186,13 @@ class TaxonomyDB:
         return row[0] if row is not None else None
 
     def scientific_name(self, tax_id: int) -> str | None:
-        """The `"scientific name"`-class name for `tax_id`, or `None` if unknown."""
+        """The `"scientific name"`-class name for `tax_id`, or `None` if unknown.
+
+        `tax_id` is canonicalized first (`canonical_taxid`), so a retired id
+        NCBI has since merged into a successor yields the successor's name
+        rather than `None`.
+        """
+        tax_id = self.canonical_taxid(tax_id)
         row = self._con.execute(
             "SELECT name_txt FROM names WHERE tax_id = ? AND name_class = ? ORDER BY name_txt LIMIT 1",
             [tax_id, SCIENTIFIC_NAME_CLASS],
@@ -184,14 +221,24 @@ class TaxonomyDB:
 
     def lineage(self, tax_id: int) -> list[tuple[int, str | None, str | None]]:
         """The full ancestry of `tax_id`, root-first and the queried taxon last:
-        `[(tax_id, rank, name), ...]`. Empty if `tax_id` isn't in `nodes`."""
+        `[(tax_id, rank, name), ...]`. Empty if `tax_id` isn't in `nodes`.
+
+        `tax_id` is canonicalized first (`canonical_taxid`), so a retired id
+        yields the current node's lineage rather than an empty list.
+        """
+        tax_id = self.canonical_taxid(tax_id)
         chain = list(self._ancestor_chain(tax_id))
         chain.reverse()
         return [(t, r, self.scientific_name(t)) for t, r in chain]
 
     def genus_of(self, tax_id: int) -> int | None:
         """The nearest ancestor of `tax_id` (inclusive of `tax_id` itself) with
-        rank `"genus"`, or `None` if none is found walking up to the root."""
+        rank `"genus"`, or `None` if none is found walking up to the root.
+
+        `tax_id` is canonicalized first (`canonical_taxid`), so a retired id
+        yields its current node's genus rather than `None`.
+        """
+        tax_id = self.canonical_taxid(tax_id)
         for node_tax_id, node_rank in self._ancestor_chain(tax_id):
             if node_rank == GENUS_RANK:
                 return node_tax_id
