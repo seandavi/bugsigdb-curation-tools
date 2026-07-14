@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from loguru import logger
+
 from bugsigdb_curation.curator.evidence import EvidenceBundle
 from bugsigdb_curation.curator.model import Model, build_text_content
 from bugsigdb_curation.curator.segment import ExperimentStub
@@ -94,7 +96,7 @@ def extract_experiment(bundle: EvidenceBundle, stub: ExperimentStub, *, model: M
     host_species = response.get("host_species")
     host_species = str(host_species).strip() if host_species else None
 
-    return ExperimentFields(
+    fields = ExperimentFields(
         host_species=host_species,
         body_site=_as_str_list(response.get("body_site")),
         condition=_as_str_list(response.get("condition")),
@@ -104,3 +106,10 @@ def extract_experiment(bundle: EvidenceBundle, stub: ExperimentStub, *, model: M
         statistical_test=statistical_test,
         mht_correction=_as_optional_bool(response.get("mht_correction")),
     )
+    logger.bind(stage="S4").debug(
+        "experiment metadata extracted",
+        experiment_index=stub.index,
+        host_species=fields.host_species,
+        sequencing_type=fields.sequencing_type,
+    )
+    return fields

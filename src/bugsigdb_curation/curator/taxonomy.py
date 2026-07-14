@@ -52,6 +52,7 @@ from pathlib import Path
 import duckdb
 import httpx
 from dotenv import load_dotenv
+from loguru import logger
 
 from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL
 from bugsigdb_curation.taxonomy.db import TaxonomyDB
@@ -329,6 +330,9 @@ class NcbiTaxonomyResolver:
         for attempt in range(self.max_attempts):
             await self.rate_limiter.acquire()
             response = await client.get(NCBI_ESEARCH_URL, params=full_params)
+            logger.bind(stage="S6").debug(
+                "ncbi esearch", http_status=response.status_code, attempt=attempt + 1, max_attempts=self.max_attempts
+            )
             if response.status_code in _RETRYABLE_STATUSES:
                 if attempt < self.max_attempts - 1:
                     wait = delay
@@ -339,6 +343,9 @@ class NcbiTaxonomyResolver:
                     await self.rate_limiter.sleep(wait)
                     delay *= 2
                     continue
+                logger.bind(stage="S6").warning(
+                    "ncbi esearch retries exhausted", http_status=response.status_code, attempts=attempt + 1
+                )
                 return None
             response.raise_for_status()
             return response
@@ -375,6 +382,9 @@ class NcbiTaxonomyResolver:
             if resolution is not None:
                 self.cache[norm] = resolution.tax_id
                 self.unresolved.discard(norm)
+                logger.bind(stage="S6").debug(
+                    "resolved", source="local", taxon_name=name, ncbi_id=resolution.tax_id
+                )
                 return resolution.tax_id
             # Local DB has no hit for this name -- fall through to a live
             # esearch gap-fill below rather than caching "unresolved" yet;
@@ -385,6 +395,10 @@ class NcbiTaxonomyResolver:
             {"db": "taxonomy", "term": norm, "retmode": "json"}, client=client
         )
         if response is None:
+            # Retries exhausted (`_get_with_retry` already logged the
+            # exhaustion at WARNING with the final http_status/attempts) --
+            # a transient failure, never cached as "unresolved" (see
+            # docstring above).
             return None
 
         data = response.json()
@@ -396,6 +410,9 @@ class NcbiTaxonomyResolver:
             self.unresolved.add(norm)
         else:
             self.unresolved.discard(norm)
+        logger.bind(stage="S6").info(
+            "resolved", source="gapfill", taxon_name=name, ncbi_id=taxid, http_status=response.status_code
+        )
         return taxid
 
     async def verify_id(self, name: str, proposed_id: int | str, *, client: httpx.AsyncClient) -> bool:

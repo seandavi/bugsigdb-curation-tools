@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from loguru import logger
+
 from bugsigdb_curation.curator.evidence import EvidenceBundle
 from bugsigdb_curation.curator.model import Model, build_text_content
 
@@ -53,4 +55,5 @@ def segment_experiments(bundle: EvidenceBundle, *, model: Model) -> list[Experim
         else:
             index, description = fallback_index, str(item)
         stubs.append(ExperimentStub(index=index, description=description))
+    logger.bind(stage="S3").info("segmented", n_experiments=len(stubs))
     return stubs

@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 import httpx
+from loguru import logger
 
 from bugsigdb_curation.curator.locate import LocatedArtifact
 from bugsigdb_curation.curator.model import Model, build_image_content, build_text_content
@@ -142,8 +143,14 @@ async def extract_signatures(
             ExtractedTaxon(taxon_name=str(name), direction=direction, ncbi_id=ncbi_id)
         )
 
-    return [
+    signatures = [
         ExtractedSignature(direction=direction, taxa=tuple(_dedup_taxa(taxa)))
         for direction, taxa in by_direction.items()
         if taxa
     ]
+    n_taxa = sum(len(sig.taxa) for sig in signatures)
+    n_resolved = sum(1 for sig in signatures for taxon in sig.taxa if taxon.ncbi_id is not None)
+    logger.bind(stage="S5b").info(
+        "signatures extracted", n_taxa=n_taxa, n_resolved=n_resolved, n_unresolved=n_taxa - n_resolved
+    )
+    return signatures
