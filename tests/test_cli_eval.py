@@ -345,6 +345,99 @@ def test_eval_score_writes_unresolved_taxa_diagnostic_file(tmp_path):
     assert "some unresolvable organism" in unresolved_path.read_text()
 
 
+def test_eval_score_warns_prominently_when_no_local_taxonomy_db(tmp_path):
+    """Fix 2: `eval score`'s offline scoring path has no live-network
+    fallback (unlike `curate`), so a missing local taxonomy DB must be
+    surfaced loudly -- a console note AND a line in the written report --
+    not just the one-time `RuntimeWarning` `TaxonomyResolver.load()` emits
+    (easy to miss in a batch/CI run). conftest.py's autouse
+    `BUGSIGDB_CACHE_DIR` isolation means there's no local DB found here by
+    default."""
+    relational_dir, pmc_map = _build_gold_fixture(tmp_path)
+    pred_dir = tmp_path / "predictions"
+    pred_dir.mkdir()
+    _write_prediction(pred_dir / "111.json")
+
+    out_dir = tmp_path / "out"
+    result = runner.invoke(
+        app,
+        [
+            "eval", "score",
+            "--pred", str(pred_dir),
+            "--relational", str(relational_dir),
+            "--pmc-map", str(pmc_map),
+            "--out", str(out_dir),
+            "--taxonomy-cache", str(tmp_path / "cache.json"),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "no local taxonomy DB" in result.output
+
+    md = (out_dir / "report.md").read_text()
+    assert "no local taxonomy db" in md.lower()
+
+    html = (out_dir / "report.html").read_text()
+    assert "no local taxonomy db" in html.lower()
+
+
+def test_eval_score_reports_resolution_coverage_counts(tmp_path):
+    """Fix 2b: predicted-name and gold-tax_id resolution failures must be
+    counted and surfaced in the per-study JSONL and the aggregate report,
+    not silently dropped from the genus-lenient/name->ID sub-scores."""
+    relational_dir, pmc_map = _build_gold_fixture(tmp_path)
+    pred_dir = tmp_path / "predictions"
+    pred_dir.mkdir()
+    prediction = {
+        "study_id": "111",
+        "experiments": [
+            {
+                "experiment_id": "111/Experiment 1",
+                "body_site": ["Feces"],
+                "condition": ["CRC"],
+                "group_0_name": "healthy",
+                "group_1_name": "CRC",
+                "sequencing_type": "16S",
+                "signatures": [
+                    {
+                        "abundance_in_group_1": "increased",
+                        # 561 resolves via ncbi_id; the second taxon is only a
+                        # name with no local DB/cache to resolve it.
+                        "taxa": [{"ncbi_id": 561}, {"taxon_name": "Some Unresolvable Organism"}],
+                    },
+                ],
+            }
+        ],
+    }
+    (pred_dir / "111.json").write_text(json.dumps(prediction))
+
+    out_dir = tmp_path / "out"
+    result = runner.invoke(
+        app,
+        [
+            "eval", "score",
+            "--pred", str(pred_dir),
+            "--relational", str(relational_dir),
+            "--pmc-map", str(pmc_map),
+            "--out", str(out_dir),
+            "--taxonomy-cache", str(tmp_path / "cache.json"),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    records = [json.loads(line) for line in (out_dir / "scores.jsonl").read_text().strip().splitlines()]
+    study_111 = next(r for r in records if r.get("record_type") == "study_score" and r["study_id"] == "111")
+    assert study_111["n_unresolved_pred_taxa"] >= 1
+    # No local DB -> gold ncbi_ids (561/620/816) never resolve to a name either.
+    assert study_111["n_unresolved_gold_taxa"] >= 1
+
+    md = (out_dir / "report.md").read_text()
+    assert "resolution coverage" in md.lower()
+
+    html = (out_dir / "report.html").read_text()
+    assert "unresolved predicted taxon names" in html
+    assert "unresolved gold tax_ids" in html
+
+
 def test_eval_gold_dumps_nested_shape(tmp_path):
     relational_dir, pmc_map = _build_gold_fixture(tmp_path)
     output_file = tmp_path / "gold.yaml"

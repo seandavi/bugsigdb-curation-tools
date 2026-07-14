@@ -688,6 +688,7 @@ async def _run_curate_smoke(
                 n_valid += 1
 
     resolver.save_cache()
+    resolver.close()  # this loop owns the shared resolver's TaxonomyDB handle; close it once, here.
     console.print(
         f"[green]Curated {len(ids)} studies -> {out_dir}[/green] ({n_valid} valid, {n_errors} error(s))"
     )
@@ -804,6 +805,23 @@ def eval_score_command(
     # PR-2: predicted taxon names resolve through the general NCBI TaxonomyDB,
     # not a taxa.csv seed built from gold -- see bugsigdb_curation.eval.taxonomy.
     resolver = TaxonomyResolver.load(cache_path=taxonomy_cache, db_path=taxonomy_db, db_release=taxonomy_release)
+    # Fix 2: unlike the curator (which falls back to live NCBI E-utilities),
+    # `eval score`'s offline scoring path has NO network fallback -- a
+    # missing/broken local DB silently disables every name-based
+    # sub-score (genus-lenient P/R/F1, name->ID accuracy) for the whole
+    # run. `TaxonomyResolver.load()` already emits a one-time
+    # `RuntimeWarning` for this (mirroring the curator); surface it loudly
+    # here too, since a warning is easy to miss in a batch/CI run, and
+    # again in the written report (`write_reports(local_taxonomy_db_available=...)`
+    # below) so it's visible after the fact, not just in this run's console.
+    local_taxonomy_db_available = resolver.db is not None
+    if not local_taxonomy_db_available:
+        error_console.print(
+            "[red]WARNING: no local taxonomy DB found.[/red] Name-based taxon resolution "
+            "(genus-lenient P/R/F1 and name→ID sub-scores) is disabled/degraded for this "
+            "run -- only predictions that already carry a numeric ncbi_id resolve at all. "
+            "Build one with `bugsigdb taxonomy build`, or pass --taxonomy-db/BUGSIGDB_TAXONOMY_DB."
+        )
 
     # Score every selected gold study, not just the ones with a prediction
     # (Blocker 2 / §4d "same corpus, same split"): a study the pipeline
@@ -831,8 +849,10 @@ def eval_score_command(
         out,
         missing_prediction_ids=missing_prediction_ids,
         scoring_errors=scoring_errors,
+        local_taxonomy_db_available=local_taxonomy_db_available,
     )
     resolver.save_cache()
+    resolver.close()
 
     # Diagnostic dump of predicted taxon names the resolver could never map
     # to a taxid -- useful to distinguish a hallucinated taxon from a gap in
@@ -858,6 +878,15 @@ def eval_score_command(
         f"  micro taxa F1: {aggregate.micro_taxa.f1:.3f}   "
         f"macro taxa F1: {aggregate.macro_taxa_f1:.3f}   "
         f"direction acc: {aggregate.direction_accuracy:.1%}"
+    )
+    if not local_taxonomy_db_available:
+        console.print(
+            "[red]  no local taxonomy DB -- name-based sub-scores above are disabled/degraded[/red]"
+        )
+    console.print(
+        f"  resolution coverage: {aggregate.n_unresolved_pred_taxa} predicted taxon name(s) "
+        f"unresolved, {aggregate.n_unresolved_gold_taxa} gold tax_id(s) unresolved to a name "
+        "(Fix 2b; see report)"
     )
     console.print(f"  wrote {paths['jsonl']}, {paths['md']}, {paths['html']}")
 

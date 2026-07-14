@@ -65,12 +65,31 @@ def render_markdown(
     *,
     missing_prediction_ids: Sequence[str] = (),
     scoring_errors: Sequence[ScoringError] = (),
+    local_taxonomy_db_available: bool = True,
 ) -> str:
     """Render the aggregate markdown report (headline stats + stratified
-    breakdowns + a per-study table)."""
+    breakdowns + a per-study table).
+
+    `local_taxonomy_db_available=False` (Fix 2) prepends a loud warning
+    line: with no local `TaxonomyDB`, `eval score` has no offline
+    name-based resolution at all (no network fallback on this side, unlike
+    the curator) -- every name-based sub-score below (genus-lenient P/R/F1,
+    name->ID accuracy) is silently degraded unless this is surfaced.
+    """
     lines = [
         "# BugSigDB Eval Harness Report",
         "",
+    ]
+    if not local_taxonomy_db_available:
+        lines += [
+            "> **WARNING: no local taxonomy DB found.** Name-based taxon resolution "
+            "(genus-lenient P/R/F1 and name→ID sub-scores below) is disabled/degraded for "
+            "this run -- only predictions that already carry a numeric `ncbi_id` resolve at "
+            "all. Build one with `bugsigdb taxonomy build`, or pass `--taxonomy-db`/"
+            "`BUGSIGDB_TAXONOMY_DB`.",
+            "",
+        ]
+    lines += [
         f"- Studies scored: **{aggregate.n_studies}**",
         f"- Missing predictions (gold study, no prediction -- scored as a full miss): "
         f"**{len(missing_prediction_ids)}**",
@@ -84,6 +103,11 @@ def render_markdown(
         f"- Name→ID accuracy (of gold taxa the prediction also named): **{_pct(aggregate.name_to_id_accuracy)}**",
         f"- Over-segmentation (corpus total, §4b): **{aggregate.over_segmentation}**",
         f"- Under-segmentation (corpus total, §4b): **{aggregate.under_segmentation}**",
+        f"- Resolution coverage (Fix 2b -- see notes in `eval/score.py`/`eval/taxonomy.py`): "
+        f"**{aggregate.n_unresolved_pred_taxa}** predicted taxon name(s) never resolved to a "
+        f"tax_id, **{aggregate.n_unresolved_gold_taxa}** gold tax_id(s) never resolved to a "
+        f"name (both excluded from the corresponding name-based sub-scores above, not counted "
+        f"as a wrong answer -- merged/retired-id canonicalization is a follow-up PR).",
         "",
         "## By source type",
         "",
@@ -178,8 +202,26 @@ def render_html(
     *,
     missing_prediction_ids: Sequence[str] = (),
     scoring_errors: Sequence[ScoringError] = (),
+    local_taxonomy_db_available: bool = True,
 ) -> str:
-    """Render a self-contained HTML report (inline CSS, no external assets)."""
+    """Render a self-contained HTML report (inline CSS, no external assets).
+
+    `local_taxonomy_db_available=False` (Fix 2) renders a banner: see
+    `render_markdown`'s docstring for why this needs to be loud.
+    """
+    no_db_banner = (
+        ""
+        if local_taxonomy_db_available
+        else (
+            '<p style="background:rgba(220,50,50,.15);border:1px solid rgba(220,50,50,.5);'
+            'border-radius:8px;padding:.75rem 1rem;font-weight:600;">'
+            "WARNING: no local taxonomy DB found. Name-based taxon resolution (genus-lenient "
+            "P/R/F1 and name&rarr;ID sub-scores) is disabled/degraded for this run &mdash; only "
+            "predictions that already carry a numeric <code>ncbi_id</code> resolve at all. "
+            "Build one with <code>bugsigdb taxonomy build</code>, or pass "
+            "<code>--taxonomy-db</code>/<code>BUGSIGDB_TAXONOMY_DB</code>.</p>"
+        )
+    )
     source_rows = "".join(
         _prf1_row(st, aggregate.by_source_type[st].tp + aggregate.by_source_type[st].fn, aggregate.by_source_type[st])
         for st in _SOURCE_TYPES
@@ -228,6 +270,7 @@ def render_html(
 </head>
 <body>
 <h1>BugSigDB Eval Harness Report</h1>
+{no_db_banner}
 <div class="headline">
   <div class="stat"><span class="n">{aggregate.n_studies}</span><span class="l">studies scored</span></div>
   <div class="stat"><span class="n">{len(missing_prediction_ids)}</span><span class="l">missing predictions</span></div>
@@ -238,6 +281,8 @@ def render_html(
   <div class="stat"><span class="n">{_pct(aggregate.name_to_id_accuracy)}</span><span class="l">name&rarr;ID accuracy</span></div>
   <div class="stat"><span class="n">{aggregate.over_segmentation}</span><span class="l">over-segmentation (corpus)</span></div>
   <div class="stat"><span class="n">{aggregate.under_segmentation}</span><span class="l">under-segmentation (corpus)</span></div>
+  <div class="stat"><span class="n">{aggregate.n_unresolved_pred_taxa}</span><span class="l">unresolved predicted taxon names</span></div>
+  <div class="stat"><span class="n">{aggregate.n_unresolved_gold_taxa}</span><span class="l">unresolved gold tax_ids (Fix 2b)</span></div>
 </div>
 
 <h2>By source type</h2>
@@ -287,6 +332,7 @@ def write_reports(
     *,
     missing_prediction_ids: Sequence[str] = (),
     scoring_errors: Sequence[ScoringError] = (),
+    local_taxonomy_db_available: bool = True,
 ) -> dict[str, Path]:
     """Write JSONL + markdown + HTML reports into `out_dir`; returns their paths.
 
@@ -294,6 +340,9 @@ def write_reports(
     for) and `scoring_errors` (predictions that raised while scoring) are
     surfaced as their own buckets in every report rather than silently
     folded into or dropped from the aggregate -- see `cli.py`'s scoring loop.
+    `local_taxonomy_db_available=False` (Fix 2) surfaces a loud warning in
+    the markdown/HTML reports: with no local `TaxonomyDB`, name-based
+    resolution is disabled/degraded for the whole run.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -309,13 +358,21 @@ def write_reports(
     }
     paths["md"].write_text(
         render_markdown(
-            study_scores, aggregate, missing_prediction_ids=missing_prediction_ids, scoring_errors=scoring_errors
+            study_scores,
+            aggregate,
+            missing_prediction_ids=missing_prediction_ids,
+            scoring_errors=scoring_errors,
+            local_taxonomy_db_available=local_taxonomy_db_available,
         ),
         encoding="utf-8",
     )
     paths["html"].write_text(
         render_html(
-            study_scores, aggregate, missing_prediction_ids=missing_prediction_ids, scoring_errors=scoring_errors
+            study_scores,
+            aggregate,
+            missing_prediction_ids=missing_prediction_ids,
+            scoring_errors=scoring_errors,
+            local_taxonomy_db_available=local_taxonomy_db_available,
         ),
         encoding="utf-8",
     )
