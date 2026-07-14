@@ -13,7 +13,14 @@ covering every case the taxonomy subpackage's tests need:
   predicted taxon label would);
 - a homonym: two distinct tax_ids (500, 600) both carrying the scientific
   name `Morganella`, to exercise "ambiguous -> deterministic pick +
-  candidates exposed".
+  candidates exposed" for the SAME-class (`scientific name`/`scientific
+  name`) collision;
+- a cross-class homonym: tax_id 850 (`Alcaligenes`, scientific name) also
+  carries a *synonym* `Providencia`, which collides with tax_id 860's
+  *scientific name* `Providencia`. 850 < 860, so a naive
+  smallest-tax_id-wins tie-break would (wrongly) pick 850's synonym row;
+  the scientific-name-preferred policy must still pick 860. This is the
+  case a same-class-only homonym fixture can't catch.
 
 Not a test module itself (no `test_` prefix) -- pytest won't collect it.
 """
@@ -31,6 +38,8 @@ NODES: list[tuple[int, int, str]] = [
     (817, 816, "species"),  # Bacteroides fragilis
     (500, 2, "genus"),  # Morganella (homonym A)
     (600, 2, "genus"),  # Morganella (homonym B -- contrived duplicate name)
+    (850, 2, "genus"),  # Alcaligenes (cross-class homonym A: has a synonym "Providencia")
+    (860, 2, "genus"),  # Providencia (cross-class homonym B: scientific name "Providencia")
 ]
 
 # -- names: (tax_id, name_txt, unique_name, name_class) ----------------------
@@ -43,6 +52,9 @@ NAMES: list[tuple[int, str, str, str]] = [
     (817, "Bacteroides fragilis", "", "scientific name"),
     (500, "Morganella", "", "scientific name"),
     (600, "Morganella", "", "scientific name"),
+    (850, "Alcaligenes", "", "scientific name"),
+    (850, "Providencia", "", "synonym"),  # cross-class collision with 860's scientific name below
+    (860, "Providencia", "", "scientific name"),
 ]
 
 EXPECTED_NAMES_ROWS = len(NAMES)
@@ -54,6 +66,8 @@ TAXID_BACTEROIDES_GENUS = 816
 TAXID_BACTEROIDES_FRAGILIS = 817
 TAXID_MORGANELLA_A = 500
 TAXID_MORGANELLA_B = 600
+TAXID_ALCALIGENES_WITH_PROVIDENCIA_SYNONYM = 850
+TAXID_PROVIDENCIA_SCIENTIFIC = 860
 
 
 def _write_names_dmp(path: Path) -> None:

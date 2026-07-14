@@ -15,10 +15,12 @@ import pytest
 from bugsigdb_curation.taxonomy.build import build_taxonomy_db
 from bugsigdb_curation.taxonomy.db import TaxonomyDB
 from taxonomy_test_support import (
+    TAXID_ALCALIGENES_WITH_PROVIDENCIA_SYNONYM,
     TAXID_BACTEROIDES_FRAGILIS,
     TAXID_BACTEROIDES_GENUS,
     TAXID_MORGANELLA_A,
     TAXID_MORGANELLA_B,
+    TAXID_PROVIDENCIA_SCIENTIFIC,
     TAXID_ROOT,
     write_synthetic_taxdump,
 )
@@ -99,6 +101,25 @@ def test_resolve_homonym_is_ambiguous_with_deterministic_pick_and_candidates(tax
 def test_resolve_homonym_pick_is_deterministic_across_repeated_calls(taxonomy_db: TaxonomyDB):
     picks = {taxonomy_db.resolve("Morganella").tax_id for _ in range(5)}
     assert picks == {TAXID_MORGANELLA_A}
+
+
+def test_resolve_cross_class_homonym_prefers_the_scientific_name_row(taxonomy_db: TaxonomyDB):
+    """The crux ambiguity case a same-class-only homonym fixture can't catch:
+    "Providencia" is both a *synonym* of tax_id 850 (`Alcaligenes`) and the
+    *scientific name* of tax_id 860. 850 < 860, so a naive
+    smallest-tax_id-wins tie-break would (wrongly) return 850's synonym row.
+    `resolve()` must still pick 860 -- the scientific-name-class row --
+    while still surfacing both tax_ids as ambiguous candidates."""
+    resolution = taxonomy_db.resolve("Providencia")
+    assert resolution is not None
+    assert resolution.ambiguous is True
+    assert resolution.candidates == (
+        TAXID_ALCALIGENES_WITH_PROVIDENCIA_SYNONYM,
+        TAXID_PROVIDENCIA_SCIENTIFIC,
+    )
+    assert resolution.tax_id == TAXID_PROVIDENCIA_SCIENTIFIC
+    assert resolution.name_class == "scientific name"
+    assert resolution.matched_name_txt == "Providencia"
 
 
 def test_resolve_unknown_name_returns_none(taxonomy_db: TaxonomyDB):
