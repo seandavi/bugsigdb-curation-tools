@@ -5,8 +5,9 @@ A Typer sub-app wired into the top-level `bugsigdb` CLI (see
 parsing + `rich` rendering here, all real logic in `build.py`/`db.py`/
 `paths.py` so it's unit-testable without a CLI in the loop.
 
-Not yet wired into the curator or eval scorer (see the package docstring) --
-this is only the standalone `build`/`lookup` surface.
+This is only the standalone `build`/`lookup` surface; the curator and eval
+scorer resolve through `TaxonomyDB` directly (see the package docstring),
+not through this CLI.
 """
 
 from __future__ import annotations

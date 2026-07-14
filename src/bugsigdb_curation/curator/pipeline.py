@@ -78,6 +78,8 @@ async def curate_async(
     client: httpx.AsyncClient | None = None,
     email: str = DEFAULT_EMAIL,
     taxonomy_cache_path: Path | None = DEFAULT_CACHE_PATH,
+    taxonomy_db_path: Path | None = None,
+    taxonomy_db_release: str | None = None,
     resolver: NcbiTaxonomyResolver | None = None,
 ) -> CurationResult:
     """S0-S9: turn a bare PMID into a validated nested prediction record.
@@ -86,14 +88,19 @@ async def curate_async(
     connection pool or a warm taxonomy cache across many PMIDs, e.g.
     `--smoke` batch mode); a fresh short-lived `httpx.AsyncClient` and an
     on-disk-cached `NcbiTaxonomyResolver` are created and torn down/persisted
-    automatically when not given.
+    automatically when not given. `taxonomy_db_path`/`taxonomy_db_release`
+    (ignored once `resolver` is given directly) are forwarded to
+    `NcbiTaxonomyResolver.load()`'s own `db_path`/`db_release` resolution
+    (CLI flag -> `BUGSIGDB_TAXONOMY_DB` -> newest cached DB -> live-only).
     """
     owns_client = client is None
     if client is None:
         client = httpx.AsyncClient(timeout=30.0)
     owns_resolver = resolver is None
     if resolver is None:
-        resolver = NcbiTaxonomyResolver.load(cache_path=taxonomy_cache_path)
+        resolver = NcbiTaxonomyResolver.load(
+            cache_path=taxonomy_cache_path, db_path=taxonomy_db_path, db_release=taxonomy_db_release
+        )
 
     try:
         resolved = await resolve(pmid, client=client, email=email)
@@ -151,6 +158,13 @@ async def curate_async(
     finally:
         if owns_resolver:
             resolver.save_cache()
+            # Close the resolver's local TaxonomyDB handle (if any) --
+            # only when this call built the resolver itself; a caller-
+            # supplied resolver (e.g. the CLI's `--smoke` batch loop, which
+            # shares one resolver across many `curate_async` calls) owns
+            # its own DB lifecycle and closes it once, after the whole
+            # batch, not here.
+            resolver.close()
         if owns_client:
             await client.aclose()
 

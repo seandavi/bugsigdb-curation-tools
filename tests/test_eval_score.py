@@ -14,10 +14,6 @@ from bugsigdb_curation.eval.score import (
 from bugsigdb_curation.eval.taxonomy import TaxonomyResolver
 
 
-def _resolver(**seed: int) -> TaxonomyResolver:
-    return TaxonomyResolver(seed={k.replace("_", " "): v for k, v in seed.items()})
-
-
 def _experiment(
     experiment_id: str = "1/Experiment 1",
     *,
@@ -344,10 +340,10 @@ def test_score_study_direction_correctness_with_systematic_flip():
 def test_name_to_id_subscore_counts_found_and_correct():
     exp = _experiment(signatures=(_signature("s1", taxa=frozenset({561})),))
     gold = _study([exp])
-    resolver = TaxonomyResolver(seed={"escherichia coli": 561, "shigella": 620})
+    resolver = TaxonomyResolver(cache={"escherichia coli": 561, "shigella": 620})
     resolver.id_to_name[561] = "escherichia coli"
 
-    # Predicted the right name but resolves (via seed) to the right id.
+    # Predicted the right name but resolves (via the cache) to the right id.
     pred = {"experiments": [_pred_exp(signatures=[_pred_sig(taxon_names=["Escherichia coli"])])]}
     result = score_study(gold, pred, resolver)
     assert result.name_to_id_found == 1
@@ -363,7 +359,7 @@ def test_name_to_id_subscore_wrong_mapping_not_counted_correct():
     # exercise.
     exp = _experiment(signatures=(_signature("s1", taxa=frozenset({561, 620})),))
     gold = _study([exp])
-    resolver = TaxonomyResolver(seed={"escherichia coli": 561, "shigella": 620})
+    resolver = TaxonomyResolver(cache={"escherichia coli": 561, "shigella": 620})
     resolver.id_to_name[561] = "escherichia coli"
     resolver.id_to_name[620] = "shigella"
 
@@ -502,6 +498,64 @@ def test_aggregate_scores_direction_accuracy_and_name_to_id_accuracy():
     aggregate = aggregate_scores(scores)
     assert aggregate.direction_accuracy == 1.0
     assert aggregate.n_studies == 1
+
+
+# --- resolution-coverage counters (Fix 2b) ---------------------------------------------------
+
+
+def test_n_unresolved_pred_taxa_counts_unresolvable_names():
+    exp = _experiment(signatures=(_signature("s1", taxa=frozenset({1})),))
+    gold = _study([exp])
+    resolver = TaxonomyResolver()  # no db, no cache -- nothing resolves
+    pred = {"experiments": [_pred_exp(signatures=[_pred_sig(taxon_names=["Some Unresolvable Organism"])])]}
+
+    result = score_study(gold, pred, resolver)
+
+    assert result.n_unresolved_pred_taxa == 1
+
+
+def test_n_unresolved_gold_taxa_counts_ids_with_no_name():
+    exp = _experiment(signatures=(_signature("s1", taxa=frozenset({1, 2})),))
+    gold = _study([exp])
+    resolver = TaxonomyResolver()
+    resolver.id_to_name[1] = "known organism"  # only id 1 has a name; id 2 doesn't
+    pred = to_nested_dict(gold)
+
+    result = score_study(gold, pred, resolver)
+
+    assert result.n_unresolved_gold_taxa == 1
+
+
+def test_n_unresolved_gold_taxa_counts_unmatched_gold_experiments_too():
+    """The "every gold taxon is a full FN" branch for an unmatched gold
+    experiment (score_study's `alignment.unmatched_gold` loop) must count
+    resolution failures too, not just the matched-experiment path through
+    `score_experiment_signatures`."""
+    exp = _experiment(signatures=(_signature("s1", taxa=frozenset({1, 2})),))
+    gold = _study([exp])
+    resolver = TaxonomyResolver()
+    resolver.id_to_name[1] = "known organism"
+
+    result = score_study(gold, None, resolver)  # no prediction -> gold experiment unmatched
+
+    assert result.n_unresolved_gold_taxa == 1
+
+
+def test_aggregate_scores_rolls_up_resolution_coverage_counts():
+    exp1 = _experiment("1/Experiment 1", signatures=(_signature("s1", "1/Experiment 1", taxa=frozenset({1})),))
+    study1 = _study([exp1], study_id="1")
+    pred1 = {"experiments": [_pred_exp(signatures=[_pred_sig(taxon_names=["Unresolvable One"])])]}
+
+    exp2 = _experiment("2/Experiment 1", signatures=(_signature("s2", "2/Experiment 1", taxa=frozenset({2})),))
+    study2 = _study([exp2], study_id="2")
+    pred2 = {"experiments": [_pred_exp(signatures=[_pred_sig(taxon_names=["Unresolvable Two"])])]}
+
+    resolver = TaxonomyResolver()
+    scores = [score_study(study1, pred1, resolver), score_study(study2, pred2, resolver)]
+    aggregate = aggregate_scores(scores)
+
+    assert aggregate.n_unresolved_pred_taxa == 2
+    assert aggregate.n_unresolved_gold_taxa == 2  # taxa 1 and 2, neither has a name
 
 
 def test_aggregate_scores_rolls_up_segmentation_totals_across_studies():

@@ -1,9 +1,14 @@
-"""Unit tests for bugsigdb_curation.eval.taxonomy -- the name->taxid resolver."""
+"""Unit tests for bugsigdb_curation.eval.taxonomy -- the name->taxid resolver.
+
+PR-2: the resolver's local-hit source is the general NCBI `TaxonomyDB`
+(`bugsigdb_curation.taxonomy`), not a `taxa.csv`-derived seed map -- most
+tests here build one from the shared synthetic-taxdump fixture in
+`taxonomy_test_support.py` (also used by `test_taxonomy_db.py` et al.).
+"""
 
 from __future__ import annotations
 
 import asyncio
-import csv
 import json
 from pathlib import Path
 
@@ -17,13 +22,25 @@ from bugsigdb_curation.eval.taxonomy import (
     genus_token,
     normalize_taxon_name,
 )
+from bugsigdb_curation.taxonomy.build import build_taxonomy_db
+from bugsigdb_curation.taxonomy.db import TaxonomyDB
+from bugsigdb_curation.taxonomy.normalize import normalize_taxon_name as taxonomy_normalize_taxon_name
+from taxonomy_test_support import (
+    TAXID_BACTEROIDES_FRAGILIS,
+    TAXID_BACTEROIDES_GENUS,
+    write_synthetic_taxdump,
+)
 
 
-def _write_taxa_csv(path: Path, rows: list[tuple[str, str]]) -> None:
-    with path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["ncbi_id", "taxon_name"])
-        writer.writerows(rows)
+@pytest.fixture()
+def taxonomy_db(tmp_path: Path) -> TaxonomyDB:
+    taxdump_dir = write_synthetic_taxdump(tmp_path / "taxdump")
+    out_path = tmp_path / "taxonomy.duckdb"
+    build_taxonomy_db(
+        taxdump_dir, out_path, release="test", source="fixture", build_timestamp="2026-07-14T00:00:00+00:00"
+    )
+    with TaxonomyDB(out_path) as db:
+        yield db
 
 
 # --- normalize_taxon_name / genus_token ---------------------------------------------------
@@ -53,26 +70,72 @@ def test_genus_token_empty_string():
     assert genus_token("") == ""
 
 
-# --- TaxonomyResolver.load / seed map -----------------------------------------------------
+# --- Fix 5: normalize_taxon_name parity with bugsigdb_curation.taxonomy.normalize ------------
+
+#: Rank prefixes (double/single-underscored, plus a case-sensitivity probe
+#: that must NOT be stripped), underscores, leading/trailing/internal
+#: whitespace runs, mixed case, and the empty/whitespace-only strings --
+#: mirrors `test_taxonomy_normalize.py::_PARITY_SAMPLE`.
+_NORMALIZE_PARITY_SAMPLE = [
+    "Faecalibacterium",
+    "g__Faecalibacterium",
+    "g_Faecalibacterium",
+    "s__Escherichia_coli",
+    "s_Escherichia coli",
+    "k__Bacteria",
+    "  Bacteroides   fragilis  ",
+    "Escherichia_coli",
+    "MiXeD_CaSe",
+    "G__Uppercase",  # case-sensitive prefix regex: uppercase G is NOT a prefix
+    "t__strain_xyz",
+    "no_prefix_here",
+    "",
+    "   ",
+]
 
 
-def test_load_builds_seed_map_from_taxa_csv(tmp_path):
-    taxa_csv = tmp_path / "taxa.csv"
-    _write_taxa_csv(taxa_csv, [("561", "Escherichia coli"), ("620", "Shigella")])
+@pytest.mark.parametrize("name", _NORMALIZE_PARITY_SAMPLE)
+def test_normalize_taxon_name_matches_shared_taxonomy_normalize(name: str):
+    """`eval.taxonomy.normalize_taxon_name` is a deliberate duplicate of
+    `taxonomy.normalize.normalize_taxon_name` (kept separate, not imported,
+    for the data-firewall reasons this module's docstring and
+    `taxonomy/normalize.py`'s docstring both explain) -- assert the two stay
+    byte-for-byte identical over a shared sample so they can't silently
+    desync."""
+    assert normalize_taxon_name(name) == taxonomy_normalize_taxon_name(name)
 
-    resolver = TaxonomyResolver.load(taxa_csv=taxa_csv, cache_path=None)
 
-    assert resolver.resolve_name("Escherichia coli") == 561
-    assert resolver.resolve_name("g__Shigella") == 620  # normalization applies
+# --- TaxonomyResolver.load / local TaxonomyDB ----------------------------------------------
 
 
-def test_load_with_missing_taxa_csv_yields_empty_seed(tmp_path):
-    resolver = TaxonomyResolver.load(taxa_csv=tmp_path / "nope.csv", cache_path=None)
-    assert resolver.seed == {}
+def test_load_resolves_db_path_and_reads_it(tmp_path, monkeypatch):
+    """`.load()`'s real construction path: no `db` given directly, so it
+    resolves one via `db_path` (mirrors `NcbiTaxonomyResolver.load`)."""
+    monkeypatch.delenv("BUGSIGDB_TAXONOMY_DB", raising=False)
+    taxdump_dir = write_synthetic_taxdump(tmp_path / "taxdump")
+    out_path = tmp_path / "taxonomy.duckdb"
+    build_taxonomy_db(
+        taxdump_dir, out_path, release="test", source="fixture", build_timestamp="2026-07-14T00:00:00+00:00"
+    )
+
+    resolver = TaxonomyResolver.load(db_path=out_path, cache_path=None)
+
+    assert resolver.resolve_name("Bacteroides") == TAXID_BACTEROIDES_GENUS
+    assert resolver.resolve_name("g__Bacteroides") == TAXID_BACTEROIDES_GENUS  # normalization applies
+
+
+def test_load_with_no_db_found_yields_no_local_resolution(monkeypatch):
+    # BUGSIGDB_CACHE_DIR is isolated per-test by conftest.py's autouse
+    # fixture, so with no explicit db_path/BUGSIGDB_TAXONOMY_DB there's
+    # nothing to find.
+    monkeypatch.delenv("BUGSIGDB_TAXONOMY_DB", raising=False)
+    resolver = TaxonomyResolver.load(cache_path=None)
+    assert resolver.db is None
+    assert resolver.resolve_name("Bacteroides") is None
 
 
 def test_load_with_no_cache_path_yields_empty_cache():
-    resolver = TaxonomyResolver.load(taxa_csv=None, cache_path=None)
+    resolver = TaxonomyResolver.load(cache_path=None)
     assert resolver.cache == {}
     assert resolver.cache_path is None
 
@@ -80,14 +143,16 @@ def test_load_with_no_cache_path_yields_empty_cache():
 # --- resolve_name: cache priority + unresolved tracking ------------------------------------
 
 
-def test_resolve_name_cache_hit_before_seed():
-    resolver = TaxonomyResolver(seed={"lactobacillus": 100}, cache={"lactobacillus": 999})
-    assert resolver.resolve_name("Lactobacillus") == 999
+def test_resolve_name_cache_hit_before_local_db(taxonomy_db: TaxonomyDB):
+    resolver = TaxonomyResolver(db=taxonomy_db, cache={"bacteroides": 999})
+    assert resolver.resolve_name("Bacteroides") == 999  # cache wins over the DB's own 816
 
 
-def test_resolve_name_falls_back_to_seed():
-    resolver = TaxonomyResolver(seed={"lactobacillus": 100}, cache={})
-    assert resolver.resolve_name("Lactobacillus") == 100
+def test_resolve_name_falls_back_to_local_db(taxonomy_db: TaxonomyDB):
+    resolver = TaxonomyResolver(db=taxonomy_db, cache={})
+    assert resolver.resolve_name("Bacteroides") == TAXID_BACTEROIDES_GENUS
+    # A DB hit is cached, so a repeat lookup doesn't need the DB again.
+    assert resolver.cache["bacteroides"] == TAXID_BACTEROIDES_GENUS
 
 
 def test_resolve_name_unresolved_is_tracked_and_none_returned():
@@ -135,9 +200,9 @@ def test_resolve_taxon_passes_through_numeric_string_ncbi_id():
     assert resolver.resolve_taxon({"ncbi_id": "561"}) == 561
 
 
-def test_resolve_taxon_resolves_taxon_name_when_no_id():
-    resolver = TaxonomyResolver(seed={"escherichia coli": 561})
-    assert resolver.resolve_taxon({"taxon_name": "Escherichia coli"}) == 561
+def test_resolve_taxon_resolves_taxon_name_when_no_id(taxonomy_db: TaxonomyDB):
+    resolver = TaxonomyResolver(db=taxonomy_db)
+    assert resolver.resolve_taxon({"taxon_name": "Bacteroides"}) == TAXID_BACTEROIDES_GENUS
 
 
 def test_resolve_taxon_returns_none_when_nothing_to_resolve():
@@ -163,6 +228,25 @@ def test_genus_of_id_uses_reverse_name_lookup():
 def test_genus_of_id_unknown_id_returns_none():
     resolver = TaxonomyResolver()
     assert resolver.genus_of_id(999999) is None
+
+
+def test_genus_of_id_falls_back_to_local_db_scientific_name(taxonomy_db: TaxonomyDB):
+    """PR-2: `genus_of_id` no longer needs a bulk `taxa.csv` reverse map --
+    it falls back to the local `TaxonomyDB`'s own scientific name for ANY
+    tax_id the DB knows, even one this resolver never resolved a prediction
+    against."""
+    resolver = TaxonomyResolver(db=taxonomy_db)
+    assert resolver.genus_of_id(TAXID_BACTEROIDES_FRAGILIS) == "bacteroides"
+    # Backfilled into id_to_name as a side effect, so a repeat call is free.
+    assert resolver.id_to_name[TAXID_BACTEROIDES_FRAGILIS] == "bacteroides fragilis"
+
+
+def test_name_of_id_prefers_id_to_name_over_db(taxonomy_db: TaxonomyDB):
+    """A manually-seeded/previously-resolved `id_to_name` entry wins over
+    the DB's own name for the same id (mirrors cache-over-DB priority in
+    `resolve_name`)."""
+    resolver = TaxonomyResolver(db=taxonomy_db, id_to_name={TAXID_BACTEROIDES_GENUS: "overridden name"})
+    assert resolver.name_of_id(TAXID_BACTEROIDES_GENUS) == "overridden name"
 
 
 # --- add_resolution / save_cache -----------------------------------------------------------
@@ -195,7 +279,7 @@ def test_load_then_save_cache_round_trip(tmp_path):
     cache_path = tmp_path / "cache.json"
     cache_path.write_text(json.dumps({"prevotella": 838, "unknown thing": None}))
 
-    resolver = TaxonomyResolver.load(taxa_csv=None, cache_path=cache_path)
+    resolver = TaxonomyResolver.load(cache_path=cache_path)
     assert resolver.cache == {"prevotella": 838, "unknown thing": None}
     assert resolver.resolve_name("Prevotella") == 838
     assert resolver.resolve_name("unknown thing") is None

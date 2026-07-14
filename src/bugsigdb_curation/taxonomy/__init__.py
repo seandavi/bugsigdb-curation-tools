@@ -2,10 +2,12 @@
 
 Standalone from `bugsigdb_curation.curator`/`bugsigdb_curation.eval` -- this
 subpackage only ever reads the general NCBI taxdump (authoritative, not gold;
-workflow plan §6e) and never imports the eval package. It is **not** wired
-into the curator or the eval scorer yet; that rewiring (swapping
-`curator.taxonomy.NcbiTaxonomyResolver`'s live E-utilities calls for this
-local DB) is a deliberately separate follow-up PR.
+workflow plan §6e) and never imports the eval package (nor `curator`/`eval`
+import anything from each other through it). PR-2 wires this local DB into
+both consumers as a fast local-first lookup ahead of their existing live
+paths: `curator.taxonomy.NcbiTaxonomyResolver` (cache -> this DB -> live
+E-utilities gap-fill -> unresolved) and `eval.taxonomy.TaxonomyResolver`
+(cache -> this DB -> unresolved, replacing its old `taxa.csv`-derived seed).
 
 Public surface:
 

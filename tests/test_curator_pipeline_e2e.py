@@ -24,10 +24,13 @@ from pytest_httpx import HTTPXMock
 from bugsigdb_curation.curator.model import MockModel
 from bugsigdb_curation.curator.pipeline import curate_async
 from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL
-from bugsigdb_curation.curator.taxonomy import NCBI_ESEARCH_URL
+from bugsigdb_curation.curator.taxonomy import NCBI_ESEARCH_URL, NcbiTaxonomyResolver
 from bugsigdb_curation.pmc_map import IDCONV_URL
 from bugsigdb_curation.retrieval import EUROPEPMC_FULLTEXT_URL, PMC_ARTICLE_URL
+from bugsigdb_curation.taxonomy.build import build_taxonomy_db
+from bugsigdb_curation.taxonomy.db import TaxonomyDB
 from bugsigdb_curation.validate import default_schema_path, validate_instance
+from taxonomy_test_support import write_synthetic_taxdump
 
 PMID = "21850056"
 PMCID = "PMC1234567"
@@ -259,3 +262,83 @@ def _assert_eval_score_can_consume_this_record(record: dict) -> None:
     assert score.micro_taxa.fn == 0
     assert score.direction_correct == 2
     assert score.direction_total == 2
+
+
+# --- close(): curate_async owns and closes a resolver it built itself, but never one
+# a caller supplied (Fix 4) -------------------------------------------------------------------
+
+
+def test_curate_async_closes_the_taxonomy_db_it_built(tmp_path, httpx_mock: HTTPXMock, monkeypatch) -> None:
+    """`curate_async` with no `resolver=` kwarg builds its own
+    `NcbiTaxonomyResolver` (`owns_resolver=True`) -- it must close that
+    resolver's local `TaxonomyDB` once the study is done, not leak the
+    DuckDB connection. Spies on `NcbiTaxonomyResolver.load` (the actual
+    construction path) to capture the resolver `curate_async` built, since
+    it isn't otherwise exposed to the caller."""
+    _mock_idconv(httpx_mock)
+    _mock_fulltext(httpx_mock)
+    _mock_taxonomy(httpx_mock)
+
+    taxdump_dir = write_synthetic_taxdump(tmp_path / "taxdump")
+    db_path = tmp_path / "taxonomy.duckdb"
+    build_taxonomy_db(
+        taxdump_dir, db_path, release="test", source="fixture", build_timestamp="2026-07-14T00:00:00+00:00"
+    )
+
+    built_resolvers: list[NcbiTaxonomyResolver] = []
+    real_load = NcbiTaxonomyResolver.load.__func__  # unwrap the classmethod
+
+    def _spy_load(cls, **kwargs):
+        resolver = real_load(cls, **kwargs)
+        built_resolvers.append(resolver)
+        return resolver
+
+    monkeypatch.setattr(NcbiTaxonomyResolver, "load", classmethod(_spy_load))
+
+    model = MockModel()
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await curate_async(
+                PMID,
+                model=model,
+                client=client,
+                taxonomy_cache_path=tmp_path / "ncbi_cache.json",
+                taxonomy_db_path=db_path,
+            )
+
+    asyncio.run(run())
+
+    assert len(built_resolvers) == 1
+    resolver = built_resolvers[0]
+    assert resolver.db is not None
+    assert resolver.db._closed is True
+
+
+def test_curate_async_does_not_close_a_caller_supplied_resolver(tmp_path, httpx_mock: HTTPXMock) -> None:
+    """The `--smoke` batch loop (and any other caller) that passes its own
+    `resolver=` shares it across many `curate_async` calls -- `curate_async`
+    must NOT close its `TaxonomyDB` (`owns_resolver=False`); the caller
+    closes it once, after the whole batch."""
+    _mock_idconv(httpx_mock)
+    _mock_fulltext(httpx_mock)
+    _mock_taxonomy(httpx_mock)
+
+    taxdump_dir = write_synthetic_taxdump(tmp_path / "taxdump")
+    db_path = tmp_path / "taxonomy.duckdb"
+    build_taxonomy_db(
+        taxdump_dir, db_path, release="test", source="fixture", build_timestamp="2026-07-14T00:00:00+00:00"
+    )
+    db = TaxonomyDB(db_path)
+    resolver = NcbiTaxonomyResolver(cache_path=None, db=db)
+
+    model = MockModel()
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await curate_async(PMID, model=model, client=client, resolver=resolver)
+
+    asyncio.run(run())
+
+    assert db._closed is False  # curate_async doesn't own this resolver
+    db.close()

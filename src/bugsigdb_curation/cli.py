@@ -530,6 +530,19 @@ def curate_command(
         "--taxonomy-cache",
         help="The curator's own NCBI-taxonomy resolver cache (distinct from the eval harness's cache).",
     ),
+    taxonomy_db: Path | None = typer.Option(
+        None,
+        "--taxonomy-db",
+        help=(
+            "Local taxonomy .duckdb path, tried before live NCBI E-utilities (default: "
+            "BUGSIGDB_TAXONOMY_DB > newest cached ncbi-taxdump-*.duckdb > none, i.e. live-only)."
+        ),
+    ),
+    taxonomy_release: str | None = typer.Option(
+        None,
+        "--taxonomy-release",
+        help="Release label for locating the default cached taxonomy DB (ignored once --taxonomy-db/BUGSIGDB_TAXONOMY_DB apply).",
+    ),
 ) -> None:
     """Curate a PMID into a schema-checked de-novo prediction record (Design-1, Fused-Lean).
 
@@ -550,11 +563,29 @@ def curate_command(
         if out is None:
             error_console.print("[red]Error:[/red] --smoke requires --out (a directory).")
             raise typer.Exit(code=2)
-        asyncio.run(_run_curate_smoke(model, config, email, taxonomy_cache, out, console, error_console))
+        asyncio.run(
+            _run_curate_smoke(
+                model, config, email, taxonomy_cache, taxonomy_db, taxonomy_release, out, console, error_console
+            )
+        )
         return
 
     assert pmid is not None  # guaranteed by the exactly-one-of check above
-    asyncio.run(_run_curate_one(pmid, model, config, email, taxonomy_cache, out, output_format, console, error_console))
+    asyncio.run(
+        _run_curate_one(
+            pmid,
+            model,
+            config,
+            email,
+            taxonomy_cache,
+            taxonomy_db,
+            taxonomy_release,
+            out,
+            output_format,
+            console,
+            error_console,
+        )
+    )
 
 
 async def _run_curate_one(
@@ -563,13 +594,23 @@ async def _run_curate_one(
     config: str,
     email: str,
     taxonomy_cache: Path,
+    taxonomy_db: Path | None,
+    taxonomy_release: str | None,
     out: Path | None,
     output_format: LoadFormat,
     console: Console,
     error_console: Console,
 ) -> None:
     try:
-        result = await curate_async(pmid, model=model, config=config, email=email, taxonomy_cache_path=taxonomy_cache)
+        result = await curate_async(
+            pmid,
+            model=model,
+            config=config,
+            email=email,
+            taxonomy_cache_path=taxonomy_cache,
+            taxonomy_db_path=taxonomy_db,
+            taxonomy_db_release=taxonomy_release,
+        )
     except Exception as exc:  # noqa: BLE001 -- surface any stage failure as a clean CLI error, not a traceback
         error_console.print(f"[red]Error curating PMID {pmid}:[/red] {escape(str(exc))}")
         raise typer.Exit(code=1) from None
@@ -594,6 +635,8 @@ async def _run_curate_smoke(
     config: str,
     email: str,
     taxonomy_cache: Path,
+    taxonomy_db: Path | None,
+    taxonomy_release: str | None,
     out_dir: Path,
     console: Console,
     error_console: Console,
@@ -617,7 +660,7 @@ async def _run_curate_smoke(
     # across a --smoke run and are the actual cause of the 429 storm this
     # loop otherwise still risks. save_cache() runs once after the loop
     # instead of once per study.
-    resolver = NcbiTaxonomyResolver.load(cache_path=taxonomy_cache)
+    resolver = NcbiTaxonomyResolver.load(cache_path=taxonomy_cache, db_path=taxonomy_db, db_release=taxonomy_release)
     async with httpx.AsyncClient(timeout=30.0) as client:
         for study_id in ids:
             try:
@@ -645,6 +688,7 @@ async def _run_curate_smoke(
                 n_valid += 1
 
     resolver.save_cache()
+    resolver.close()  # this loop owns the shared resolver's TaxonomyDB handle; close it once, here.
     console.print(
         f"[green]Curated {len(ids)} studies -> {out_dir}[/green] ({n_valid} valid, {n_errors} error(s))"
     )
@@ -658,9 +702,9 @@ eval_app = typer.Typer(help="Score de-novo curator predictions against the BugSi
 app.add_typer(eval_app, name="eval")
 
 # `taxonomy build`/`taxonomy lookup` -- the standalone local NCBI taxonomy DB
-# subpackage (build.py/db.py/paths.py). Not yet wired into `curate`/`eval
-# score`'s live E-utilities resolvers; see bugsigdb_curation.taxonomy's
-# package docstring.
+# subpackage (build.py/db.py/paths.py), also wired (PR-2) into `curate`'s and
+# `eval score`'s own resolvers via `--taxonomy-db`/`--taxonomy-release`
+# below; see bugsigdb_curation.taxonomy's package docstring.
 app.add_typer(taxonomy_app, name="taxonomy")
 
 DEFAULT_RELATIONAL_DIR = Path("data/exports/relational")
@@ -728,6 +772,19 @@ def eval_score_command(
     taxonomy_cache: Path = typer.Option(
         DEFAULT_TAXONOMY_CACHE_PATH, "--taxonomy-cache", help="Taxonomy resolver JSON cache path."
     ),
+    taxonomy_db: Path | None = typer.Option(
+        None,
+        "--taxonomy-db",
+        help=(
+            "Local taxonomy .duckdb path for resolving predicted taxon names (default: "
+            "BUGSIGDB_TAXONOMY_DB > newest cached ncbi-taxdump-*.duckdb > none)."
+        ),
+    ),
+    taxonomy_release: str | None = typer.Option(
+        None,
+        "--taxonomy-release",
+        help="Release label for locating the default cached taxonomy DB (ignored once --taxonomy-db/BUGSIGDB_TAXONOMY_DB apply).",
+    ),
 ) -> None:
     """Score predictions (loader nested-shape) against the gold corpus."""
     console = Console()
@@ -745,7 +802,26 @@ def eval_score_command(
         gold = select_smoke(gold)
 
     predictions = _load_predictions(pred)
-    resolver = TaxonomyResolver.load(taxa_csv=relational / "taxa.csv", cache_path=taxonomy_cache)
+    # PR-2: predicted taxon names resolve through the general NCBI TaxonomyDB,
+    # not a taxa.csv seed built from gold -- see bugsigdb_curation.eval.taxonomy.
+    resolver = TaxonomyResolver.load(cache_path=taxonomy_cache, db_path=taxonomy_db, db_release=taxonomy_release)
+    # Fix 2: unlike the curator (which falls back to live NCBI E-utilities),
+    # `eval score`'s offline scoring path has NO network fallback -- a
+    # missing/broken local DB silently disables every name-based
+    # sub-score (genus-lenient P/R/F1, name->ID accuracy) for the whole
+    # run. `TaxonomyResolver.load()` already emits a one-time
+    # `RuntimeWarning` for this (mirroring the curator); surface it loudly
+    # here too, since a warning is easy to miss in a batch/CI run, and
+    # again in the written report (`write_reports(local_taxonomy_db_available=...)`
+    # below) so it's visible after the fact, not just in this run's console.
+    local_taxonomy_db_available = resolver.db is not None
+    if not local_taxonomy_db_available:
+        error_console.print(
+            "[red]WARNING: no local taxonomy DB found.[/red] Name-based taxon resolution "
+            "(genus-lenient P/R/F1 and name→ID sub-scores) is disabled/degraded for this "
+            "run -- only predictions that already carry a numeric ncbi_id resolve at all. "
+            "Build one with `bugsigdb taxonomy build`, or pass --taxonomy-db/BUGSIGDB_TAXONOMY_DB."
+        )
 
     # Score every selected gold study, not just the ones with a prediction
     # (Blocker 2 / §4d "same corpus, same split"): a study the pipeline
@@ -773,8 +849,10 @@ def eval_score_command(
         out,
         missing_prediction_ids=missing_prediction_ids,
         scoring_errors=scoring_errors,
+        local_taxonomy_db_available=local_taxonomy_db_available,
     )
     resolver.save_cache()
+    resolver.close()
 
     # Diagnostic dump of predicted taxon names the resolver could never map
     # to a taxid -- useful to distinguish a hallucinated taxon from a gap in
@@ -800,6 +878,15 @@ def eval_score_command(
         f"  micro taxa F1: {aggregate.micro_taxa.f1:.3f}   "
         f"macro taxa F1: {aggregate.macro_taxa_f1:.3f}   "
         f"direction acc: {aggregate.direction_accuracy:.1%}"
+    )
+    if not local_taxonomy_db_available:
+        console.print(
+            "[red]  no local taxonomy DB -- name-based sub-scores above are disabled/degraded[/red]"
+        )
+    console.print(
+        f"  resolution coverage: {aggregate.n_unresolved_pred_taxa} predicted taxon name(s) "
+        f"unresolved, {aggregate.n_unresolved_gold_taxa} gold tax_id(s) unresolved to a name "
+        "(Fix 2b; see report)"
     )
     console.print(f"  wrote {paths['jsonl']}, {paths['md']}, {paths['html']}")
 
