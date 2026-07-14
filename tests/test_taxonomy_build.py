@@ -27,6 +27,7 @@ from taxonomy_test_support import (
     EXPECTED_NAMES_ROWS,
     EXPECTED_NODES_ROWS,
     TAXID_BACTEROIDES_GENUS,
+    write_malformed_taxdump_duplicate_node_pk,
     write_synthetic_taxdump,
 )
 
@@ -115,6 +116,49 @@ def test_build_taxonomy_db_overwrites_existing_out_path(tmp_path: Path):
         taxdump_dir, out_path, release="r1", source="fixture", build_timestamp=BUILD_TIMESTAMP
     )
     assert stats.names_rows == EXPECTED_NAMES_ROWS
+
+
+def test_build_taxonomy_db_mid_build_failure_leaves_no_out_path_or_tmp_file(tmp_path: Path):
+    """No pre-existing `out_path`: a mid-build failure (PRIMARY KEY violation
+    on `nodes`) must leave `out_path` absent -- never a corrupt/empty DB --
+    and must not leave any `.tmp-*` staging file behind."""
+    taxdump_dir = write_malformed_taxdump_duplicate_node_pk(tmp_path / "taxdump")
+    out_path = tmp_path / "out.duckdb"
+
+    with pytest.raises(duckdb.Error):
+        build_taxonomy_db(
+            taxdump_dir, out_path, release="r1", source="fixture", build_timestamp=BUILD_TIMESTAMP
+        )
+
+    assert not out_path.exists()
+    assert list(tmp_path.glob("out.duckdb.tmp-*")) == []
+
+
+def test_build_taxonomy_db_mid_build_failure_preserves_existing_good_db(tmp_path: Path):
+    """A pre-existing good `out_path` must be byte-for-byte unchanged after a
+    mid-build failure targeting the same path -- the old DB is never
+    unlinked/replaced until the new build has fully succeeded."""
+    good_taxdump_dir = write_synthetic_taxdump(tmp_path / "good_taxdump")
+    out_path = tmp_path / "out.duckdb"
+    build_taxonomy_db(
+        good_taxdump_dir, out_path, release="good-release", source="good-fixture", build_timestamp=BUILD_TIMESTAMP
+    )
+    good_bytes = out_path.read_bytes()
+
+    bad_taxdump_dir = write_malformed_taxdump_duplicate_node_pk(tmp_path / "bad_taxdump")
+    with pytest.raises(duckdb.Error):
+        build_taxonomy_db(
+            bad_taxdump_dir, out_path, release="bad-release", source="bad-fixture", build_timestamp=BUILD_TIMESTAMP
+        )
+
+    assert out_path.read_bytes() == good_bytes
+    con = duckdb.connect(str(out_path), read_only=True)
+    try:
+        meta = dict(con.execute("SELECT key, value FROM meta").fetchall())
+        assert meta["release"] == "good-release"
+    finally:
+        con.close()
+    assert list(tmp_path.glob("out.duckdb.tmp-*")) == []
 
 
 def test_build_taxonomy_db_from_tar_gz_archive(tmp_path: Path):

@@ -77,3 +77,18 @@ def write_synthetic_taxdump(root: Path) -> Path:
     _write_names_dmp(root / "names.dmp")
     _write_nodes_dmp(root / "nodes.dmp")
     return root
+
+
+def write_malformed_taxdump_duplicate_node_pk(root: Path) -> Path:
+    """Like `write_synthetic_taxdump`, but `nodes.dmp` has an extra row re-using
+    an already-present `tax_id` -- a `nodes(tax_id PRIMARY KEY, ...)`
+    violation partway through a build, for exercising build-failure/atomicity
+    behavior (`_build_from_files` must not corrupt/replace a good `out_path`
+    when this blows up mid-build)."""
+    root.mkdir(parents=True, exist_ok=True)
+    _write_names_dmp(root / "names.dmp")
+    _write_nodes_dmp(root / "nodes.dmp")
+    with (root / "nodes.dmp").open("a", encoding="utf-8") as fh:
+        # Re-uses TAXID_BACTEROIDES_GENUS (816), already written above.
+        fh.write(f"{TAXID_BACTEROIDES_GENUS}\t|\t2\t|\tgenus\t|\t\t|\t0\t|\n")
+    return root

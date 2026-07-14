@@ -16,6 +16,7 @@ from bugsigdb_curation.cli import app
 from taxonomy_test_support import (
     TAXID_BACTEROIDES_FRAGILIS,
     TAXID_BACTEROIDES_GENUS,
+    write_malformed_taxdump_duplicate_node_pk,
     write_synthetic_taxdump,
 )
 
@@ -63,6 +64,24 @@ def test_build_missing_taxdump_path_errors(tmp_path: Path):
         app, ["taxonomy", "build", "--taxdump", str(tmp_path / "nope"), "--release", "r1"]
     )
     assert result.exit_code == 1
+
+
+def test_build_duckdb_error_reports_clean_message_and_leaves_no_corrupt_file(tmp_path: Path):
+    """A build failure inside DuckDB (PRIMARY KEY violation, not a
+    FileNotFoundError/ValueError) must print a clean `[red]Error:[/red] ...`
+    -- not a bare traceback -- and must not leave a corrupt DB or `.tmp-*`
+    staging file at the default output path."""
+    taxdump_dir = write_malformed_taxdump_duplicate_node_pk(tmp_path / "taxdump")
+
+    result = runner.invoke(app, ["taxonomy", "build", "--taxdump", str(taxdump_dir), "--release", "2026-07-14"])
+
+    assert result.exit_code == 1
+    assert "Error:" in result.output
+    assert "Traceback" not in result.output
+    out_path = tmp_path / "cache" / "taxonomy" / "ncbi-taxdump-2026-07-14.duckdb"
+    assert not out_path.exists()
+    if out_path.parent.exists():
+        assert list(out_path.parent.glob("*.tmp-*")) == []
 
 
 def test_build_then_lookup_round_trip_by_name(tmp_path: Path):

@@ -14,6 +14,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+import duckdb
 import httpx
 import typer
 from rich.console import Console
@@ -102,7 +103,12 @@ def build_command(
                 build_timestamp=build_timestamp,
                 extract_dir=extract_dir,
             )
-    except (FileNotFoundError, ValueError) as exc:
+    except (FileNotFoundError, ValueError, duckdb.Error) as exc:
+        # `_build_from_files` (see build.py) already guarantees a failed
+        # build never touches `out_path` or leaves a `.tmp-*` file behind --
+        # this is purely about turning a `duckdb.Error` (e.g. a PRIMARY KEY
+        # violation from a malformed .dmp) into a clean message instead of a
+        # bare traceback.
         error_console.print(f"[red]Error:[/red] {exc}")
         raise typer.Exit(code=1) from None
 

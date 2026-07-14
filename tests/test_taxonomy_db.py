@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import duckdb
 import pytest
 
 from bugsigdb_curation.taxonomy.build import build_taxonomy_db
@@ -155,3 +156,34 @@ def test_meta_round_trips_provenance(taxonomy_db: TaxonomyDB):
 def test_taxonomy_db_missing_file_raises(tmp_path: Path):
     with pytest.raises(FileNotFoundError):
         TaxonomyDB(tmp_path / "does_not_exist.duckdb")
+
+
+def test_taxonomy_db_missing_meta_table_raises_clear_error(tmp_path: Path):
+    """A DB with `names`/`nodes` but no `meta` table at all (e.g. a build
+    that died before `CREATE TABLE meta`, or any other hand-crafted/corrupt
+    file) must raise a clear error on open -- not open silently-empty and
+    have every `resolve()` call return `None`, indistinguishable from
+    "unknown name"."""
+    out_path = tmp_path / "incomplete.duckdb"
+    con = duckdb.connect(str(out_path))
+    con.execute("CREATE TABLE names (tax_id BIGINT, name_txt VARCHAR, name_class VARCHAR, name_norm VARCHAR)")
+    con.execute("CREATE TABLE nodes (tax_id BIGINT PRIMARY KEY, parent_tax_id BIGINT, rank VARCHAR)")
+    con.close()
+
+    with pytest.raises(ValueError, match="missing table"):
+        TaxonomyDB(out_path)
+
+
+def test_taxonomy_db_empty_meta_table_raises_clear_error(tmp_path: Path):
+    """A DB with a `meta` table present but empty (created but never
+    populated) is just as much an incomplete build as a missing table, and
+    must raise the same kind of clear error."""
+    out_path = tmp_path / "empty_meta.duckdb"
+    con = duckdb.connect(str(out_path))
+    con.execute("CREATE TABLE names (tax_id BIGINT, name_txt VARCHAR, name_class VARCHAR, name_norm VARCHAR)")
+    con.execute("CREATE TABLE nodes (tax_id BIGINT PRIMARY KEY, parent_tax_id BIGINT, rank VARCHAR)")
+    con.execute("CREATE TABLE meta (key VARCHAR, value VARCHAR)")
+    con.close()
+
+    with pytest.raises(ValueError, match="empty meta table"):
+        TaxonomyDB(out_path)

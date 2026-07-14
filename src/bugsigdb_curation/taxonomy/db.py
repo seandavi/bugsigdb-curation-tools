@@ -33,6 +33,11 @@ SCIENTIFIC_NAME_CLASS = "scientific name"
 #: The rank string NCBI's nodes.dmp uses for a genus-level node.
 GENUS_RANK = "genus"
 
+#: Tables a completed build always has (see `build.py::_build_from_files`,
+#: which writes `meta` last so its presence/non-emptiness signals a build
+#: that ran to completion).
+_REQUIRED_TABLES = ("names", "nodes", "meta")
+
 
 @dataclass(frozen=True)
 class Resolution:
@@ -54,6 +59,34 @@ class TaxonomyDB:
         if not self.path.exists():
             raise FileNotFoundError(f"taxonomy DB not found: {self.path}")
         self._con = duckdb.connect(str(self.path), read_only=True)
+        try:
+            self._validate()
+        except Exception:
+            self._con.close()
+            raise
+
+    def _validate(self) -> None:
+        """Raise a clear `ValueError` for an incomplete/corrupt build rather
+        than silently opening a DB where `resolve()` would return `None` for
+        every name -- indistinguishable from "unknown name" (see module
+        docstring's "never guess" contract). `meta` is written last by a
+        successful build, so a missing `meta` table (or `names`/`nodes`) or
+        an empty `meta` table both mean the build never finished."""
+        existing_tables = {row[0] for row in self._con.execute("SHOW TABLES").fetchall()}
+        missing = [t for t in _REQUIRED_TABLES if t not in existing_tables]
+        if missing:
+            raise ValueError(
+                f"taxonomy DB at {self.path} is missing table(s) {missing} -- "
+                "the build that produced it likely failed or was interrupted; rebuild with "
+                "`bugsigdb taxonomy build`."
+            )
+        (meta_row_count,) = self._con.execute("SELECT COUNT(*) FROM meta").fetchone()
+        if meta_row_count == 0:
+            raise ValueError(
+                f"taxonomy DB at {self.path} has an empty meta table -- "
+                "the build that produced it likely failed or was interrupted; rebuild with "
+                "`bugsigdb taxonomy build`."
+            )
 
     def close(self) -> None:
         self._con.close()

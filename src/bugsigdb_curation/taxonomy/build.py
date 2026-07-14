@@ -22,8 +22,10 @@ it" out of library code.
 from __future__ import annotations
 
 import hashlib
+import os
 import tarfile
 import tempfile
+import uuid
 import zipfile
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -159,21 +161,27 @@ def _build_from_files(
     source: str,
     build_timestamp: str,
 ) -> BuildStats:
+    """Build into a temp file next to `out_path` and only `os.replace()` it into
+    place on full success -- `out_path` (pre-existing or absent) is never
+    touched before that. On any exception the temp `.duckdb` is removed and
+    the exception re-raised, so a mid-build failure (malformed `.dmp`,
+    PRIMARY KEY violation, disk full, ...) never leaves a corrupt/empty DB
+    where a good one used to be.
+    """
     names_checksum = _sha256_of(names_path)
     nodes_checksum = _sha256_of(nodes_path)
 
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    if out_path.exists():
-        out_path.unlink()
 
-    con = duckdb.connect(str(out_path))
+    tmp_db_path = out_path.with_name(f"{out_path.name}.tmp-{os.getpid()}-{uuid.uuid4().hex[:8]}")
+
+    con = duckdb.connect(str(tmp_db_path))
     try:
         con.execute(
             "CREATE TABLE names (tax_id BIGINT, name_txt VARCHAR, name_class VARCHAR, name_norm VARCHAR)"
         )
         con.execute("CREATE TABLE nodes (tax_id BIGINT PRIMARY KEY, parent_tax_id BIGINT, rank VARCHAR)")
-        con.execute("CREATE TABLE meta (key VARCHAR, value VARCHAR)")
 
         # Materialize each .dmp into a list of tuples and bulk-load via
         # executemany inside one transaction -- far fewer round trips than
@@ -191,6 +199,10 @@ def _build_from_files(
 
         con.execute("CREATE INDEX idx_names_name_norm ON names(name_norm)")
 
+        # Written last, after everything else has succeeded: an
+        # incomplete/missing `meta` table is exactly what `TaxonomyDB`
+        # treats as a corrupt build (see db.py).
+        con.execute("CREATE TABLE meta (key VARCHAR, value VARCHAR)")
         meta_rows = [
             ("release", release),
             ("source", source),
@@ -203,8 +215,14 @@ def _build_from_files(
             ("nodes_dmp_sha256", nodes_checksum),
         ]
         con.executemany("INSERT INTO meta VALUES (?, ?)", meta_rows)
-    finally:
+    except BaseException:
         con.close()
+        tmp_db_path.unlink(missing_ok=True)
+        raise
+    else:
+        con.close()
+
+    os.replace(tmp_db_path, out_path)
 
     return BuildStats(
         release=release,
