@@ -4,8 +4,25 @@
 **Ledger:** [`docs/LEDGER.md`](../LEDGER.md) is the append-only methods/process log (for the paper's
 Methods section). Keep it current by **appending** new entries (never editing past ones) at milestone
 boundaries — anchor each to its commit hash.
-**As of:** 2026-07-13. `main` @ `0c39fa2`, working tree clean, no open branches/worktrees.
+**As of:** 2026-07-14. `main` @ `65550ea`. See the ledger (L001–L028) for the full trail; the notes
+below are the early-session context.
 
+> **UPDATE 3 (2026-07-14) — current state + authorized program.** Everything through the first real
+> numbers is merged (13 PRs; ledger L001–L028). Shipped: schema + CLIs, the **eval harness**, the
+> **Design-1 (Fused-Lean) curator**, CI + PR/Copilot workflow, an **offline DuckDB NCBI taxonomy
+> backend** (pinned release `2026-07-01`, synonym + `merged.dmp` retired-id canonicalisation; built at
+> `~/.cache/bugsigdb/taxonomy/ncbi-taxdump-2026-07-01.duckdb`), **loguru** logging, and a **Quarto WIP
+> paper** (`paper/bugsigdb-autocuration.qmd`).
+> **First Design-1 numbers (L027):** smoke set, `gemini-3.1-flash-lite`, 19/19 studies, 0 errors —
+> **figure F1 0.43** (P 0.78/R 0.30), main-table 0.17, direction 80.8%; **recall is the bottleneck**
+> (supplements unreachable = 77% of gold; ≥21-experiment papers collapse under linear topology).
+> **Authorized program (Sean, 2026-07-14) — run autonomously, PRs along the way, stop only for a real
+> blocker:** (1) **Designs 2 & 3** (Split-Verify + Split-Panel) → the 3-design comparison at fixed
+> flash-lite → pick winner; (2) **Architecture-B fan-out** on the winner (fixes big-paper recall);
+> (3) **supplement retrieval (S1b)**; (4) **model sweep** on the winner. Re-run the smoke + add a paper
+> Results subsection after each lever. Standing workflow: worktree → review → fix → **commit→PR→merge
+> on green** (autonomous when no concerns; Copilot on gnarly PRs). In flight: `feature/designs-2-3`.
+>
 > **UPDATE 2026-07-13:** the open thread below is **resolved**. Sean answered both questions —
 > the **3 designs as-is** (Fused-Lean / Split-Verify / Split-Panel) and **text+tables+figures**
 > as the first source config. The experiment-design addendum is written and committed as **§6 of
