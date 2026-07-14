@@ -45,3 +45,28 @@ def _no_ambient_ncbi_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("NCBI_EUTILS_API_KEY", raising=False)
     monkeypatch.setattr("bugsigdb_curation.curator.taxonomy.load_dotenv", lambda *a, **k: None)
     monkeypatch.setattr("bugsigdb_curation.curator.model.load_dotenv", lambda *a, **k: None)
+
+
+@pytest.fixture(autouse=True)
+def _isolated_taxonomy_cache_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """PR-2 wired `NcbiTaxonomyResolver.load()` / `TaxonomyResolver.load()` /
+    the `curate`/`eval score` CLI commands to auto-resolve a local taxonomy
+    `.duckdb` via `taxonomy.paths.resolve_optional_db_path`'s cache-dir
+    fallback (`BUGSIGDB_TAXONOMY_DB` -> newest cached `ncbi-taxdump-*.duckdb`
+    under `BUGSIGDB_CACHE_DIR`/XDG default). Left alone, that fallback would
+    silently pick up a real, machine-local taxonomy DB -- e.g. this repo's
+    own `bugsigdb taxonomy build` output on a developer's machine -- making
+    tests depend on host state they never asked for. Point `BUGSIGDB_CACHE_DIR`
+    at a fresh per-test `tmp_path` subdirectory by default so that fallback
+    always finds nothing (-> `None`, live-only/no-DB fallback) unless a test
+    explicitly builds/points at its own fixture DB. Same rationale as
+    `_no_ambient_ncbi_api_key` above, just for the taxonomy DB instead of the
+    API key. Tests that specifically exercise `BUGSIGDB_CACHE_DIR`/
+    `BUGSIGDB_TAXONOMY_DB` resolution (e.g. test_taxonomy_paths.py,
+    test_taxonomy_cli.py) override this via their own monkeypatch afterward
+    -- autouse fixtures defined in a parent conftest run before same-scope
+    ones in a test module, so a later `monkeypatch.setenv`/`delenv` in the
+    test file always wins.
+    """
+    monkeypatch.setenv("BUGSIGDB_CACHE_DIR", str(tmp_path / "isolated-bugsigdb-cache"))
+    monkeypatch.delenv("BUGSIGDB_TAXONOMY_DB", raising=False)

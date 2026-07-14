@@ -14,10 +14,6 @@ from bugsigdb_curation.eval.score import (
 from bugsigdb_curation.eval.taxonomy import TaxonomyResolver
 
 
-def _resolver(**seed: int) -> TaxonomyResolver:
-    return TaxonomyResolver(seed={k.replace("_", " "): v for k, v in seed.items()})
-
-
 def _experiment(
     experiment_id: str = "1/Experiment 1",
     *,
@@ -344,10 +340,10 @@ def test_score_study_direction_correctness_with_systematic_flip():
 def test_name_to_id_subscore_counts_found_and_correct():
     exp = _experiment(signatures=(_signature("s1", taxa=frozenset({561})),))
     gold = _study([exp])
-    resolver = TaxonomyResolver(seed={"escherichia coli": 561, "shigella": 620})
+    resolver = TaxonomyResolver(cache={"escherichia coli": 561, "shigella": 620})
     resolver.id_to_name[561] = "escherichia coli"
 
-    # Predicted the right name but resolves (via seed) to the right id.
+    # Predicted the right name but resolves (via the cache) to the right id.
     pred = {"experiments": [_pred_exp(signatures=[_pred_sig(taxon_names=["Escherichia coli"])])]}
     result = score_study(gold, pred, resolver)
     assert result.name_to_id_found == 1
@@ -363,7 +359,7 @@ def test_name_to_id_subscore_wrong_mapping_not_counted_correct():
     # exercise.
     exp = _experiment(signatures=(_signature("s1", taxa=frozenset({561, 620})),))
     gold = _study([exp])
-    resolver = TaxonomyResolver(seed={"escherichia coli": 561, "shigella": 620})
+    resolver = TaxonomyResolver(cache={"escherichia coli": 561, "shigella": 620})
     resolver.id_to_name[561] = "escherichia coli"
     resolver.id_to_name[620] = "shigella"
 

@@ -21,6 +21,13 @@ covering every case the taxonomy subpackage's tests need:
   smallest-tax_id-wins tie-break would (wrongly) pick 850's synonym row;
   the scientific-name-preferred policy must still pick 860. This is the
   case a same-class-only homonym fixture can't catch.
+- PR-2's real-world regression set: `Firmicutes` (phylum), `Faecalibacterium`
+  (genus -- also exercised query-side as `g__Faecalibacterium`, a
+  MetaPhlAn-style rank-prefixed label), and `Cutibacterium acnes` (species)
+  carrying the synonym `Propionibacterium acnes` -- the exact taxa a real
+  `curate --smoke` run 429'd on before the local `TaxonomyDB` was wired in
+  (see `tests/test_taxonomy_wiring.py`), plus the reclassification-synonym
+  case the curator's/scorer's caches alone can't unify without this DB.
 
 Not a test module itself (no `test_` prefix) -- pytest won't collect it.
 """
@@ -40,6 +47,10 @@ NODES: list[tuple[int, int, str]] = [
     (600, 2, "genus"),  # Morganella (homonym B -- contrived duplicate name)
     (850, 2, "genus"),  # Alcaligenes (cross-class homonym A: has a synonym "Providencia")
     (860, 2, "genus"),  # Providencia (cross-class homonym B: scientific name "Providencia")
+    (1239, 2, "phylum"),  # Firmicutes
+    (216851, 1239, "genus"),  # Faecalibacterium
+    (1912216, 2, "genus"),  # Cutibacterium
+    (1747, 1912216, "species"),  # Cutibacterium acnes (has synonym "Propionibacterium acnes")
 ]
 
 # -- names: (tax_id, name_txt, unique_name, name_class) ----------------------
@@ -55,6 +66,11 @@ NAMES: list[tuple[int, str, str, str]] = [
     (850, "Alcaligenes", "", "scientific name"),
     (850, "Providencia", "", "synonym"),  # cross-class collision with 860's scientific name below
     (860, "Providencia", "", "scientific name"),
+    (1239, "Firmicutes", "", "scientific name"),
+    (216851, "Faecalibacterium", "", "scientific name"),
+    (1912216, "Cutibacterium", "", "scientific name"),
+    (1747, "Cutibacterium acnes", "", "scientific name"),
+    (1747, "Propionibacterium acnes", "", "synonym"),  # reclassification synonym -> same tax_id as 1747
 ]
 
 EXPECTED_NAMES_ROWS = len(NAMES)
@@ -68,6 +84,10 @@ TAXID_MORGANELLA_A = 500
 TAXID_MORGANELLA_B = 600
 TAXID_ALCALIGENES_WITH_PROVIDENCIA_SYNONYM = 850
 TAXID_PROVIDENCIA_SCIENTIFIC = 860
+TAXID_FIRMICUTES = 1239
+TAXID_FAECALIBACTERIUM = 216851
+TAXID_CUTIBACTERIUM_GENUS = 1912216
+TAXID_CUTIBACTERIUM_ACNES = 1747
 
 
 def _write_names_dmp(path: Path) -> None:
