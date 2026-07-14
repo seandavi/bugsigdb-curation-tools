@@ -7,7 +7,7 @@ import asyncio
 
 import httpx
 
-from bugsigdb_curation.curator.evidence import EvidenceTable
+from bugsigdb_curation.curator.evidence import EvidenceFigure, EvidenceTable
 from bugsigdb_curation.curator.locate import LocatedArtifact
 from bugsigdb_curation.curator.model import MockModel
 from bugsigdb_curation.curator.panel import review_signatures
@@ -20,6 +20,12 @@ _TABLE = EvidenceTable(
 )
 _ARTIFACT = LocatedArtifact(kind="table", table=_TABLE)
 
+_FIGURE = EvidenceFigure(
+    figure_id="F1", number="1", label="Figure 1.", legend="LEfSe cladogram.",
+    graphic_filename="f1.jpg", blob_url="https://cdn/f1.jpg",
+)
+_FIGURE_ARTIFACT = LocatedArtifact(kind="figure", figure=_FIGURE)
+
 
 def _sig(direction, taxa):
     return ExtractedSignature(
@@ -31,19 +37,20 @@ def _run(coro):
     return asyncio.run(coro)
 
 
-def _review(signatures, model, resolver=None, max_repair_rounds=2):
+def _review(signatures, model, resolver=None, max_repair_rounds=2, artifact=_ARTIFACT, image_bytes=None):
     resolver = resolver or NcbiTaxonomyResolver(cache={}, cache_path=None, db=None)
 
     async def run():
         async with httpx.AsyncClient() as client:
             return await review_signatures(
                 signatures,
-                artifact=_ARTIFACT,
+                artifact=artifact,
                 model=model,
                 resolver=resolver,
                 client=client,
                 source_context="",
                 max_repair_rounds=max_repair_rounds,
+                image_bytes=image_bytes,
             )
 
     return _run(run())
@@ -216,3 +223,74 @@ def test_repair_round_cap_is_enforced_no_infinite_loop():
 
     reconcile_calls = [c for c in model.calls if c["stage"] == "review_reconcile_direction"]
     assert len(reconcile_calls) == 3  # capped exactly at max_repair_rounds
+
+
+# --- figure image_bytes threading ------------------------------------------------------------------
+#
+# Regression coverage for the verifier-vision fix: a FIGURE artifact's taxa
+# are extracted from the image via vision, so the reviewer's own
+# re-derivation, the grounding check, and the direction-repair reconciliation
+# must also see the image -- not just the figure legend text. See
+# `curator.verify` module docstring / this module's docstring.
+
+
+def test_review_signatures_figure_with_image_bytes_sends_image_to_reviewer_and_reconcile_calls():
+    signatures = [_sig("increased", [("Bacteroides fragilis", None)])]
+    model = MockModel(
+        responses={
+            "review_signature": {"taxa": [{"name": "Bacteroides fragilis", "direction": "decreased"}]},
+            "review_reconcile_direction": {"direction": "decreased"},
+        }
+    )
+
+    out, flags = _review(signatures, model, artifact=_FIGURE_ARTIFACT, image_bytes=b"fake-png-bytes")
+
+    assert len(out) == 1
+    assert out[0].direction == "decreased"
+
+    reviewer_call = next(c for c in model.calls if c["stage"] == "review_signature")
+    reviewer_content = reviewer_call["messages"][0]["content"]
+    assert len(reviewer_content) == 2
+    assert reviewer_content[1]["type"] == "image_url"
+
+    reconcile_call = next(c for c in model.calls if c["stage"] == "review_reconcile_direction")
+    reconcile_content = reconcile_call["messages"][0]["content"]
+    assert len(reconcile_content) == 2
+    assert reconcile_content[1]["type"] == "image_url"
+
+
+def test_review_signatures_figure_with_image_bytes_sends_image_to_ground_check():
+    """Extractor-only taxon path: the grounding check must also carry the image."""
+    signatures = [_sig("decreased", [("Faecalibacterium prausnitzii", 853)])]
+    model = MockModel(
+        responses={
+            "review_signature": {"taxa": []},
+            "review_ground_check": {"results": [{"name": "Faecalibacterium prausnitzii", "in_source": True}]},
+        }
+    )
+
+    out, flags = _review(signatures, model, artifact=_FIGURE_ARTIFACT, image_bytes=b"fake-png-bytes")
+
+    all_names = {t.taxon_name for sig in out for t in sig.taxa}
+    assert all_names == {"Faecalibacterium prausnitzii"}
+
+    ground_call = next(c for c in model.calls if c["stage"] == "review_ground_check")
+    ground_content = ground_call["messages"][0]["content"]
+    assert len(ground_content) == 2
+    assert ground_content[1]["type"] == "image_url"
+
+
+def test_review_signatures_table_default_has_no_image_block():
+    """Default (`image_bytes=None`, e.g. a table artifact) path stays
+    byte-identical to before this fix -- no image content block anywhere."""
+    signatures = [_sig("decreased", [("Faecalibacterium prausnitzii", 853)])]
+    model = MockModel(
+        responses={"review_signature": {"taxa": [{"name": "Faecalibacterium prausnitzii", "direction": "decreased"}]}}
+    )
+
+    _review(signatures, model)
+
+    for call in model.calls:
+        content = call["messages"][0]["content"]
+        assert len(content) == 1
+        assert content[0]["type"] == "text"

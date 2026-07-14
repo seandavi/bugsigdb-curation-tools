@@ -434,3 +434,19 @@ its "two consecutive rounds agree" docstring; (5) undecidable homonym polluted t
 no-hit-anywhere set. Plus a test-hygiene fix (a reconcile test was making a live NCBI call → mocked).
 **Tests:** 662 passed (+6 regression). **Next:** run the 3-design comparison on the smoke set at fixed
 `gemini-3.1-flash-lite` → pick the winner (then Architecture-B fan-out, supplements, model sweep).
+
+## L030 — 3-design comparison + verifier/panel vision fix — 2026-07-14
+The 3-design smoke comparison (`gemini-3.1-flash-lite`, 19 studies, text+tables+figures, no
+supplements): **fused-lean wins** — micro taxa-set F1 **0.134** (P 0.457 / R 0.078), figure F1
+**0.520**, direction 63.6%; **split-panel** F1 0.031 (P 0.148 / R 0.018), figure F1 0.117;
+**split-verify** F1 0.018 (P 0.250 / R 0.010), figure F1 0.045, direction 100%. fused-lean is also
+the cheapest design. **The finding:** the split A2 stages (verify/panel) were an UNFAIR test on
+figures — they grounded vision-extracted (figure) taxa against legend-text-only evidence,
+structurally guaranteeing they drop nearly all correct figure taxa (the largest reachable gold
+source). A verifier can only prune, never add recall — and recall is the documented bottleneck (L027).
+**Decision (Sean, 2026-07-14):** lock fused-lean as the winner; ship this small fix so the merged
+split designs are correct-if-unused (`verify`/`panel`/`repair` now receive the figure `image_bytes`,
+same multimodal idiom as fused-lean's extractor — `build_signature_messages`/`extract_names`); do NOT
+re-run the comparison. **Next lever: Architecture-B fan-out on fused-lean** (attacks the big-paper
+recall collapse — under-seg 109, the 21+ experiment bucket at R≈0.01). Run outputs live under
+`data/runs/design_compare/` (gitignored).

@@ -3,7 +3,7 @@ adversarial verifier: taxon-in-source grounding + bounded direction repair)."""
 
 from __future__ import annotations
 
-from bugsigdb_curation.curator.evidence import EvidenceTable
+from bugsigdb_curation.curator.evidence import EvidenceFigure, EvidenceTable
 from bugsigdb_curation.curator.locate import LocatedArtifact
 from bugsigdb_curation.curator.model import MockModel
 from bugsigdb_curation.curator.signature import ExtractedSignature, ExtractedTaxon
@@ -14,6 +14,12 @@ _TABLE = EvidenceTable(
     rows=(("Taxon", "Direction"), ("Faecalibacterium prausnitzii", "decreased"), ("Escherichia coli", "increased")),
 )
 _ARTIFACT = LocatedArtifact(kind="table", table=_TABLE)
+
+_FIGURE = EvidenceFigure(
+    figure_id="F1", number="1", label="Figure 1.", legend="LEfSe cladogram.",
+    graphic_filename="f1.jpg", blob_url="https://cdn/f1.jpg",
+)
+_FIGURE_ARTIFACT = LocatedArtifact(kind="figure", figure=_FIGURE)
 
 
 def _sig(direction, taxa):
@@ -126,3 +132,55 @@ def test_verify_signatures_empty_input_short_circuits():
     assert out == []
     assert flags == ()
     assert model.calls == []
+
+
+# --- figure image_bytes threading ------------------------------------------------------------------
+#
+# Regression coverage for the verifier-vision fix: a FIGURE artifact's taxa
+# are extracted from the image via vision, so the taxon-in-source grounding
+# check and the direction re-derivation must also see the image -- not just
+# the figure legend text -- or they structurally can't confirm most figure
+# taxa. See module docstring.
+
+
+def test_verify_signatures_figure_with_image_bytes_sends_image_to_grounding_and_direction_calls():
+    signatures = [_sig("increased", [("Bacteroides fragilis", None)])]
+    model = MockModel(
+        responses={
+            "verify_taxon_in_source": {"results": [{"name": "Bacteroides fragilis", "in_source": True}]},
+            "verify_direction": {"direction": "increased"},
+        }
+    )
+
+    out, flags = verify_signatures(signatures, artifact=_FIGURE_ARTIFACT, model=model, image_bytes=b"fake-png-bytes")
+
+    assert {t.taxon_name for sig in out for t in sig.taxa} == {"Bacteroides fragilis"}
+
+    in_source_call = next(c for c in model.calls if c["stage"] == "verify_taxon_in_source")
+    in_source_content = in_source_call["messages"][0]["content"]
+    assert len(in_source_content) == 2
+    assert in_source_content[1]["type"] == "image_url"
+
+    direction_call = next(c for c in model.calls if c["stage"] == "verify_direction")
+    direction_content = direction_call["messages"][0]["content"]
+    assert len(direction_content) == 2
+    assert direction_content[1]["type"] == "image_url"
+
+
+def test_verify_signatures_table_default_has_no_image_block():
+    """Default (`image_bytes=None`, e.g. a table artifact) path stays
+    byte-identical to before this fix -- no image content block anywhere."""
+    signatures = [_sig("decreased", [("Faecalibacterium prausnitzii", 853)])]
+    model = MockModel(
+        responses={
+            "verify_taxon_in_source": {"results": [{"name": "Faecalibacterium prausnitzii", "in_source": True}]},
+            "verify_direction": {"direction": "decreased"},
+        }
+    )
+
+    verify_signatures(signatures, artifact=_ARTIFACT, model=model)
+
+    for call in model.calls:
+        content = call["messages"][0]["content"]
+        assert len(content) == 1
+        assert content[0]["type"] == "text"

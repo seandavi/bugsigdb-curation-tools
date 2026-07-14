@@ -66,15 +66,22 @@ async def review_signatures(
     client: httpx.AsyncClient,
     source_context: str,
     max_repair_rounds: int = DEFAULT_MAX_REPAIR_ROUNDS,
+    image_bytes: bytes | None = None,
 ) -> tuple[list[ExtractedSignature], tuple[str, ...]]:
     """S10 (split-panel): independent reviewer + arbitration + recall path.
+
+    `image_bytes` (a figure artifact's decoded image, or None for a table)
+    is forwarded to the reviewer's own re-derivation call, the grounding
+    check, and every direction-repair call below -- same rationale as
+    `curator.verify.verify_signatures`: figure-sourced taxa come from vision,
+    not the legend text alone.
 
     Returns `(reviewed_signatures, flags)` -- see `curator.verify.
     verify_signatures` for the same `flags` contract (provenance-only, never
     written into the schema record).
     """
     _, source_text = artifact_kind_and_text(artifact)
-    reviewer_names = extract_names(artifact, model=model, stage=REVIEW_SIGNATURE_STAGE)
+    reviewer_names = extract_names(artifact, model=model, stage=REVIEW_SIGNATURE_STAGE, image_bytes=image_bytes)
 
     # CURATOR: keyed by normalized name -> a *list* of (entry, direction)
     # pairs, not a single entry. A taxon can legitimately appear in BOTH
@@ -109,7 +116,9 @@ async def review_signatures(
     one_sided_names = [extractor_by_norm[n][0][0].taxon_name for n in extractor_only] + [
         reviewer_by_norm[n][0][0] for n in reviewer_only
     ]
-    grounded = check_taxa_in_source(one_sided_names, source_text, model=model, stage=GROUND_CHECK_STAGE)
+    grounded = check_taxa_in_source(
+        one_sided_names, source_text, model=model, stage=GROUND_CHECK_STAGE, image_bytes=image_bytes
+    )
 
     flags: list[str] = []
     n_reconciled = 0
@@ -143,6 +152,7 @@ async def review_signatures(
                 model=model,
                 stage=RECONCILE_DIRECTION_STAGE,
                 max_rounds=max_repair_rounds,
+                image_bytes=image_bytes,
             )
             if final_direction is None:
                 n_dropped += 1
