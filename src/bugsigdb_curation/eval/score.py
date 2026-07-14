@@ -558,7 +558,7 @@ def score_experiment_signatures(
                 if pred_direction == gold_sig.direction:
                     direction_correct += 1
 
-            gold_name_to_id = {resolver.id_to_name[t]: t for t in gold_ids if t in resolver.id_to_name}
+            gold_name_to_id = {name: t for t in gold_ids if (name := resolver.name_of_id(t)) is not None}
             for taxon in pred_taxa_list:
                 raw_name = taxon.get("taxon_name")
                 if not raw_name:

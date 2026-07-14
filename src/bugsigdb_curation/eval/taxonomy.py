@@ -6,8 +6,11 @@ Resolution order (never guesses -- unresolved is tracked, not invented):
 1. an exact/normalized-name hit in the on-disk JSON cache (persists across
    runs, so expensive/manual resolutions are paid once and reused -- mirrors
    the plan's "resolved once, cached, reused across the corpus" design);
-2. the bundled seed map built from `taxa.csv` (name -> ncbi_id), so the
-   corpus's own ~9k curated taxa resolve fully offline;
+2. the local, general NCBI `TaxonomyDB` (`bugsigdb_curation.taxonomy`, built
+   from the public taxdump -- **not** gold), tried offline before any
+   network call (PR-2: replaces the old `taxa.csv`-derived seed map -- a
+   firewall-cleanliness win, since gold is no longer read to resolve a
+   *prediction's* taxon names, only to load the gold taxid sets themselves);
 3. optional NCBI E-utilities gap-fill (`resolve_name_online`), which is never
    required for the offline scoring path and is only exercised by
    `@pytest.mark.network` tests / an explicit opt-in CLI pass.
@@ -19,7 +22,6 @@ S6 (the authority-verified normalization stage) is meant to produce.
 
 from __future__ import annotations
 
-import csv
 import json
 import re
 from dataclasses import dataclass, field
@@ -28,9 +30,17 @@ from typing import Any
 
 import httpx
 
+from bugsigdb_curation.taxonomy.db import TaxonomyDB
+from bugsigdb_curation.taxonomy.paths import resolve_optional_db_path
+
 #: Rank prefixes appear double-underscored (MetaPhlAn, "g__Bacillus") or
 #: single-underscored (LEfSe figure labels, "g_Bacillus"); strip either form.
-#: Mirrors `benchmarks/figure-extraction/score.py::normalize`.
+#: Mirrors `benchmarks/figure-extraction/score.py::normalize`. Deliberately
+#: duplicated from `bugsigdb_curation.taxonomy.normalize` rather than
+#: imported (unlike `curator.taxonomy`, PR-2 scoped that dedup to the
+#: curator side only) -- this module is the gold-aware side of the data
+#: firewall (§6e) and keeps its own normalization self-contained rather than
+#: adding a shared runtime dependency across that boundary.
 _RANK_PREFIX = re.compile(r"^[kdpcofgst]__?")
 _WHITESPACE_OR_UNDERSCORE = re.compile(r"[\s_]+")
 
@@ -60,53 +70,61 @@ def genus_token(normalized_name: str) -> str:
 
 @dataclass
 class TaxonomyResolver:
-    """A name->taxid resolver backed by a corpus seed map and a persistent cache.
+    """A name->taxid resolver backed by the local `TaxonomyDB` and a persistent cache.
 
-    `seed` (built from `taxa.csv`) and `cache` (the on-disk JSON file) are
-    both keyed by `normalize_taxon_name(...)`. `cache` takes priority so a
-    manually-corrected or network-gap-filled resolution can override the
-    seed map's value for the same normalized name -- this is also how two
-    synonyms (e.g. "Propionibacterium acnes" / "Cutibacterium acnes", which
-    the seed map alone cannot unify since it only knows the corpus's own
-    curated spelling) get reconciled to one taxid once seeded into the cache.
+    `db` (PR-2, general NCBI taxdump -- not gold) and `cache` (the on-disk
+    JSON file) are both consulted by normalized name; `cache` takes priority
+    so a manually-corrected or network-gap-filled resolution can override the
+    DB's value for the same normalized name -- this is also how two synonyms
+    (e.g. "Propionibacterium acnes" / "Cutibacterium acnes", which the local
+    DB itself already unifies via NCBI's own synonym rows, but a corpus
+    export might still spell either way) get reconciled to one taxid once
+    seeded into the cache.
     """
 
-    seed: dict[str, int] = field(default_factory=dict)
+    #: A local, offline NCBI taxonomy DB (general taxdump, not gold);
+    #: `None` means offline resolution never has a local hit (falls straight
+    #: to `.unresolved`, same as an empty seed map did pre-PR-2).
+    db: TaxonomyDB | None = None
     cache: dict[str, int | None] = field(default_factory=dict)
     cache_path: Path | None = None
     #: Normalized names that failed to resolve via `resolve_name` (offline).
     unresolved: set[str] = field(default_factory=set)
-    #: normalized name -> normalized name, built from `taxa.csv`, letting
-    #: predicted/gold ncbi_ids be turned back into a display/genus-lenient
-    #: name even when the prediction only supplied an id.
+    #: normalized-name reverse lookup, keyed by tax_id -- lets a resolved
+    #: taxid be turned back into a display/genus-lenient name even when a
+    #: prediction only supplied an id. Populated lazily from `db` (PR-2:
+    #: no longer bulk-preloaded from `taxa.csv`); tests may also seed it
+    #: directly for a resolver built with no `db` at all.
     id_to_name: dict[int, str] = field(default_factory=dict)
 
     @classmethod
     def load(
         cls,
         *,
-        taxa_csv: Path | None = None,
         cache_path: Path | None = DEFAULT_CACHE_PATH,
+        db_path: Path | str | None = None,
+        db_release: str | None = None,
+        db: TaxonomyDB | None = None,
     ) -> TaxonomyResolver:
-        """Build a resolver from `taxa.csv` (the seed map) and a JSON cache file.
+        """Build a resolver from a local `TaxonomyDB` and a JSON cache file.
 
-        Both sources are optional: a missing `taxa_csv` yields an empty seed
-        (fine for tests), and a missing/absent `cache_path` yields an empty
+        Both sources are optional: `db`, if not given, is resolved via
+        `db_path`/`db_release` (CLI flag -> `BUGSIGDB_TAXONOMY_DB` ->
+        `db_release`'s default cache path (if given) -> newest cached
+        `ncbi-taxdump-*.duckdb` -> none, mirroring
+        `curator.taxonomy.NcbiTaxonomyResolver.load`'s resolution) and stays
+        `None` (fine for tests / a machine with no DB built yet -- offline
+        resolution then always misses) if nothing resolves or the resolved
+        path fails to open. A missing/absent `cache_path` yields an empty
         cache (nothing has been resolved yet).
         """
-        seed: dict[str, int] = {}
-        id_to_name: dict[int, str] = {}
-        if taxa_csv is not None and Path(taxa_csv).exists():
-            with Path(taxa_csv).open(newline="", encoding="utf-8") as f:
-                for row in csv.DictReader(f):
-                    name = (row.get("taxon_name") or "").strip()
-                    ncbi_raw = (row.get("ncbi_id") or "").strip()
-                    if not name or not ncbi_raw.isdigit():
-                        continue
-                    ncbi_id = int(ncbi_raw)
-                    norm = normalize_taxon_name(name)
-                    seed[norm] = ncbi_id
-                    id_to_name.setdefault(ncbi_id, norm)
+        if db is None:
+            resolved_path = resolve_optional_db_path(db_path, db_release)
+            if resolved_path is not None and resolved_path.exists():
+                try:
+                    db = TaxonomyDB(resolved_path)
+                except (FileNotFoundError, ValueError):
+                    db = None
 
         cache: dict[str, int | None] = {}
         if cache_path is not None and Path(cache_path).exists():
@@ -114,19 +132,20 @@ class TaxonomyResolver:
             cache = {k: (int(v) if v is not None else None) for k, v in raw_cache.items()}
 
         return cls(
-            seed=seed,
+            db=db,
             cache=cache,
             cache_path=Path(cache_path) if cache_path is not None else None,
-            id_to_name=id_to_name,
         )
 
     def resolve_name(self, name: str) -> int | None:
         """Resolve a bare taxon-name string to an NCBI taxid, offline only.
 
         Cache hit (including a cached "confirmed unresolved" `None`) wins
-        over the seed map. Returns `None` and records the normalized name in
-        `.unresolved` if neither has it -- this method never touches the
-        network; see `resolve_name_online` for the gap-fill path.
+        over the local `TaxonomyDB`. A DB hit is cached (so a repeat lookup
+        is free) and also backfills `id_to_name`. Returns `None` and records
+        the normalized name in `.unresolved` if neither has it -- this
+        method never touches the network; see `resolve_name_online` for the
+        gap-fill path.
         """
         norm = normalize_taxon_name(name)
         if norm in self.cache:
@@ -134,8 +153,13 @@ class TaxonomyResolver:
             if hit is None:
                 self.unresolved.add(norm)
             return hit
-        if norm in self.seed:
-            return self.seed[norm]
+        if self.db is not None:
+            resolution = self.db.resolve(name)
+            if resolution is not None:
+                self.cache[norm] = resolution.tax_id
+                self.id_to_name.setdefault(resolution.tax_id, norm)
+                self.unresolved.discard(norm)
+                return resolution.tax_id
         self.unresolved.add(norm)
         return None
 
@@ -159,17 +183,34 @@ class TaxonomyResolver:
             return None
         return self.resolve_name(name)
 
-    def genus_of_id(self, ncbi_id: int) -> str | None:
-        """Genus token for a taxid, via the reverse `taxa.csv` name lookup.
+    def name_of_id(self, ncbi_id: int) -> str | None:
+        """Normalized name for a resolved taxid, via `id_to_name` (populated
+        by a prior `resolve_name` hit, or seeded directly e.g. by a test),
+        falling back to the local `TaxonomyDB`'s scientific name (PR-2:
+        replaces the old bulk `taxa.csv` reverse map -- this now works for
+        *any* tax_id the local DB knows, not just the corpus's own curated
+        set). Returns `None` if neither has it (e.g. no `db` configured and
+        this id was never resolved/seeded)."""
+        if ncbi_id in self.id_to_name:
+            return self.id_to_name[ncbi_id]
+        if self.db is not None:
+            scientific_name = self.db.scientific_name(ncbi_id)
+            if scientific_name is not None:
+                norm = normalize_taxon_name(scientific_name)
+                self.id_to_name[ncbi_id] = norm
+                return norm
+        return None
 
-        This is a *string* genus token (first word of the corpus's own name
-        for that id), not a true taxonomic-rank lookup -- the corpus export
-        carries no rank field, so this mirrors the same limitation
+    def genus_of_id(self, ncbi_id: int) -> str | None:
+        """Genus token for a taxid, via `name_of_id`'s reverse name lookup.
+
+        This is a *string* genus token (first word of the resolved name),
+        not a true taxonomic-rank lookup -- mirrors the same limitation
         `benchmarks/figure-extraction/score.py::genus_of` documents. Returns
-        `None` for an id this resolver has never seen a name for (e.g. an
-        id-only prediction outside the corpus's ~9k seed taxa).
+        `None` for an id this resolver can't find a name for at all (e.g. no
+        `db` configured and the id was never resolved/seeded).
         """
-        name = self.id_to_name.get(ncbi_id)
+        name = self.name_of_id(ncbi_id)
         return genus_token(name) if name else None
 
     def add_resolution(self, name: str, ncbi_id: int | None) -> None:
