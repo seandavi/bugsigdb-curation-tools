@@ -5,6 +5,7 @@ description = "LinkML schema for the BugSigDB curation data model, foundation fo
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "duckdb>=1.5.4",
     "httpx>=0.28.1",
     "linkml>=1.11.1",
     "litellm>=1.92.0",
