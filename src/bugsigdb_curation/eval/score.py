@@ -145,7 +145,15 @@ class StudyScore:
     direction_total: int
     name_to_id_correct: int
     name_to_id_found: int
-    n_unresolved_pred_taxa: int
+    #: Resolution-coverage counters (Fix 2b): the local `TaxonomyResolver`
+    #: silently drops a name/id it can't resolve out of every name-based
+    #: sub-score (genus-lenient P/R/F1, name->ID accuracy) rather than
+    #: failing loudly -- dropping the `taxa.csv` seed (PR-2) means a gold
+    #: `tax_id` NCBI has since merged/deleted (see `eval/taxonomy.py`'s
+    #: `# NOTE:`) now silently falls out too. These counts make that
+    #: shrinkage observable instead of silent; see `eval/report.py`.
+    n_unresolved_pred_taxa: int  #: (a) predicted taxon names that never resolved to a tax_id.
+    n_unresolved_gold_taxa: int  #: (b) gold tax_ids that never resolved to a name (feeds genus/name sub-scores).
     source_type_counts: dict[str, int]
     #: (gold source_type or None, PRF1) for every scored signature pair --
     #: the raw material `aggregate_scores` regroups by source type globally.
@@ -168,6 +176,10 @@ class AggregateScore:
     #: just per-study).
     over_segmentation: int
     under_segmentation: int
+    #: Corpus-level roll-up of `StudyScore.n_unresolved_pred_taxa` /
+    #: `.n_unresolved_gold_taxa` (Fix 2b resolution-coverage counters).
+    n_unresolved_pred_taxa: int
+    n_unresolved_gold_taxa: int
 
 
 EXPERIMENT_COUNT_BUCKETS = ("1", "2-5", "6-20", "21+")
@@ -501,6 +513,7 @@ class _SignatureScoreDetail:
     name_to_id_found: int
     name_to_id_correct: int
     n_unresolved_pred_taxa: int
+    n_unresolved_gold_taxa: int
 
 
 def score_experiment_signatures(
@@ -519,6 +532,7 @@ def score_experiment_signatures(
     name_to_id_found = 0
     name_to_id_correct = 0
     n_unresolved = 0
+    n_unresolved_gold = 0
 
     for gold_idx, pred_idx in alignment:
         gold_sig = gold_signatures[gold_idx] if gold_idx is not None else None
@@ -528,6 +542,12 @@ def score_experiment_signatures(
         pred_taxa_list = (pred_sig.get("taxa", []) or []) if pred_sig is not None else []
         pred_ids, unresolved = _resolve_pred_taxa(pred_taxa_list, resolver)
         n_unresolved += unresolved
+        # Fix 2b: a gold tax_id that fails `name_of_id` (e.g. merged/retired
+        # since curation -- see `eval/taxonomy.py`'s `# NOTE:`, or simply no
+        # local DB configured) silently drops out of `gold_genus` below AND
+        # out of `gold_name_to_id`'s keys further down -- count it here so
+        # that silent shrinkage is visible in the report.
+        n_unresolved_gold += sum(1 for i in gold_ids if resolver.name_of_id(i) is None)
 
         tp = len(gold_ids & pred_ids)
         fp = len(pred_ids - gold_ids)
@@ -576,6 +596,7 @@ def score_experiment_signatures(
         name_to_id_found=name_to_id_found,
         name_to_id_correct=name_to_id_correct,
         n_unresolved_pred_taxa=n_unresolved,
+        n_unresolved_gold_taxa=n_unresolved_gold,
     )
 
 
@@ -602,6 +623,7 @@ def score_study(
     name_to_id_found = 0
     name_to_id_correct = 0
     n_unresolved = 0
+    n_unresolved_gold = 0
 
     for pred_idx, gold_idx in alignment.matched:
         detail = score_experiment_signatures(
@@ -616,10 +638,12 @@ def score_study(
         name_to_id_found += detail.name_to_id_found
         name_to_id_correct += detail.name_to_id_correct
         n_unresolved += detail.n_unresolved_pred_taxa
+        n_unresolved_gold += detail.n_unresolved_gold_taxa
 
     # Unmatched gold experiments: every gold taxon is a full miss (FN only).
     for gold_idx in alignment.unmatched_gold:
         for sig in gold_experiments[gold_idx].signatures:
+            n_unresolved_gold += sum(1 for i in sig.taxa if resolver.name_of_id(i) is None)
             genus = frozenset(g for g in (resolver.genus_of_id(i) for i in sig.taxa) if g)
             all_pairs.append((sig.source_type, prf1(0, 0, len(sig.taxa)), prf1(0, 0, len(genus))))
 
@@ -655,6 +679,7 @@ def score_study(
         name_to_id_correct=name_to_id_correct,
         name_to_id_found=name_to_id_found,
         n_unresolved_pred_taxa=n_unresolved,
+        n_unresolved_gold_taxa=n_unresolved_gold,
         source_type_counts=source_type_counts,
         signature_pairs=tuple((st, p) for st, p, _ in all_pairs),
     )
@@ -695,4 +720,6 @@ def aggregate_scores(study_scores: list[StudyScore]) -> AggregateScore:
         by_experiment_bucket=by_experiment_bucket,
         over_segmentation=sum(s.experiment_alignment.over_segmentation for s in study_scores),
         under_segmentation=sum(s.experiment_alignment.under_segmentation for s in study_scores),
+        n_unresolved_pred_taxa=sum(s.n_unresolved_pred_taxa for s in study_scores),
+        n_unresolved_gold_taxa=sum(s.n_unresolved_gold_taxa for s in study_scores),
     )

@@ -17,6 +17,19 @@ trailing columns -- embl code, division id, etc. -- are ignored).
 Does not read the current time itself: `build_timestamp` is always supplied
 by the caller (the CLI), per this repo's convention of keeping "what time is
 it" out of library code.
+
+NOTE: this build only ever reads `names.dmp`/`nodes.dmp` -- it does not
+ingest NCBI's `merged.dmp` (tax_id -> successor tax_id, for a taxon NCBI has
+since reclassified/merged) or `delnodes.dmp` (tax_ids deleted outright). A
+gold `tax_id` that falls in either bucket simply has no row in `names`/
+`nodes` here, even though it was valid when the corpus was curated, and so
+fails every lookup against the resulting `.duckdb` (`TaxonomyDB.resolve`/
+`scientific_name`/`rank`/`lineage` all return `None`/empty for it). Full
+merged/delnodes canonicalization (mapping a retired gold id to its
+successor on both the gold and predicted sides of scoring) is deferred to a
+follow-up PR; `bugsigdb_curation.eval.score`'s `n_unresolved_gold_taxa`
+counter (Fix 2b) makes the resulting sub-score shrinkage observable in the
+meantime rather than silent.
 """
 
 from __future__ import annotations
