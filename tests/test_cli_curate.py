@@ -55,16 +55,29 @@ def _mock_all(httpx_mock: HTTPXMock, *, pmid: str = PMID, pmcid: str = PMCID) ->
     httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid=pmcid), text=XML_FIXTURE)
     httpx_mock.add_response(url=PMC_ARTICLE_URL.format(pmcid=pmcid), text="<html><body></body></html>")
     # esearch is queried with the *normalized* (lowercased) name -- see
-    # taxonomy.py's resolve_name / normalize_taxon_name.
+    # taxonomy.py's resolve_name / normalize_taxon_name -- plus the
+    # etiquette params (tool/email) every E-utilities call now carries.
     httpx_mock.add_response(
         url=httpx.URL(NCBI_ESEARCH_URL).copy_merge_params(
-            {"db": "taxonomy", "term": "faecalibacterium prausnitzii", "retmode": "json"}
+            {
+                "db": "taxonomy",
+                "term": "faecalibacterium prausnitzii",
+                "retmode": "json",
+                "tool": "bugsigdb-curation",
+                "email": DEFAULT_EMAIL,
+            }
         ),
         json={"esearchresult": {"idlist": ["853"]}},
     )
     httpx_mock.add_response(
         url=httpx.URL(NCBI_ESEARCH_URL).copy_merge_params(
-            {"db": "taxonomy", "term": "escherichia coli", "retmode": "json"}
+            {
+                "db": "taxonomy",
+                "term": "escherichia coli",
+                "retmode": "json",
+                "tool": "bugsigdb-curation",
+                "email": DEFAULT_EMAIL,
+            }
         ),
         json={"esearchresult": {"idlist": ["562"]}},
     )
