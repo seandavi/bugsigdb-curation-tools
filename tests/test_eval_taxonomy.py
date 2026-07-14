@@ -24,6 +24,7 @@ from bugsigdb_curation.eval.taxonomy import (
 )
 from bugsigdb_curation.taxonomy.build import build_taxonomy_db
 from bugsigdb_curation.taxonomy.db import TaxonomyDB
+from bugsigdb_curation.taxonomy.normalize import normalize_taxon_name as taxonomy_normalize_taxon_name
 from taxonomy_test_support import (
     TAXID_BACTEROIDES_FRAGILIS,
     TAXID_BACTEROIDES_GENUS,
@@ -67,6 +68,41 @@ def test_genus_token_first_word():
 
 def test_genus_token_empty_string():
     assert genus_token("") == ""
+
+
+# --- Fix 5: normalize_taxon_name parity with bugsigdb_curation.taxonomy.normalize ------------
+
+#: Rank prefixes (double/single-underscored, plus a case-sensitivity probe
+#: that must NOT be stripped), underscores, leading/trailing/internal
+#: whitespace runs, mixed case, and the empty/whitespace-only strings --
+#: mirrors `test_taxonomy_normalize.py::_PARITY_SAMPLE`.
+_NORMALIZE_PARITY_SAMPLE = [
+    "Faecalibacterium",
+    "g__Faecalibacterium",
+    "g_Faecalibacterium",
+    "s__Escherichia_coli",
+    "s_Escherichia coli",
+    "k__Bacteria",
+    "  Bacteroides   fragilis  ",
+    "Escherichia_coli",
+    "MiXeD_CaSe",
+    "G__Uppercase",  # case-sensitive prefix regex: uppercase G is NOT a prefix
+    "t__strain_xyz",
+    "no_prefix_here",
+    "",
+    "   ",
+]
+
+
+@pytest.mark.parametrize("name", _NORMALIZE_PARITY_SAMPLE)
+def test_normalize_taxon_name_matches_shared_taxonomy_normalize(name: str):
+    """`eval.taxonomy.normalize_taxon_name` is a deliberate duplicate of
+    `taxonomy.normalize.normalize_taxon_name` (kept separate, not imported,
+    for the data-firewall reasons this module's docstring and
+    `taxonomy/normalize.py`'s docstring both explain) -- assert the two stay
+    byte-for-byte identical over a shared sample so they can't silently
+    desync."""
+    assert normalize_taxon_name(name) == taxonomy_normalize_taxon_name(name)
 
 
 # --- TaxonomyResolver.load / local TaxonomyDB ----------------------------------------------
