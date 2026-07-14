@@ -36,6 +36,7 @@ from bugsigdb_curation.curator.pipeline import DEFAULT_CONFIG as CURATE_DEFAULT_
 from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL as CURATE_DEFAULT_EMAIL
 from bugsigdb_curation.curator.smoke import smoke_study_ids
 from bugsigdb_curation.curator.taxonomy import DEFAULT_CACHE_PATH as CURATE_DEFAULT_TAXONOMY_CACHE
+from bugsigdb_curation.curator.taxonomy import NcbiTaxonomyResolver
 from bugsigdb_curation.eval.gold import load_gold, to_nested_dict
 from bugsigdb_curation.eval.report import ScoringError, write_reports
 from bugsigdb_curation.eval.score import StudyScore, aggregate_scores, score_study
@@ -606,6 +607,16 @@ async def _run_curate_smoke(
     # client per study -- fewer connections churned, less NCBI/PMC
     # rate-limit exposure. Per-study error isolation stays intact: a bad
     # study is caught and skipped without closing the shared client.
+    #
+    # Likewise, one shared NcbiTaxonomyResolver for the whole batch instead
+    # of curate_async building a fresh one (fresh _RateLimiter + empty
+    # cache) per study: a resolver built per-study only throttles calls
+    # *within* one study, and taxa resolved for an earlier study aren't
+    # cached for a later one -- both defeat the point of throttling/caching
+    # across a --smoke run and are the actual cause of the 429 storm this
+    # loop otherwise still risks. save_cache() runs once after the loop
+    # instead of once per study.
+    resolver = NcbiTaxonomyResolver.load(cache_path=taxonomy_cache)
     async with httpx.AsyncClient(timeout=30.0) as client:
         for study_id in ids:
             try:
@@ -616,6 +627,7 @@ async def _run_curate_smoke(
                     client=client,
                     email=email,
                     taxonomy_cache_path=taxonomy_cache,
+                    resolver=resolver,
                 )
             except Exception as exc:  # noqa: BLE001 -- one bad study must not abort the whole batch
                 n_errors += 1
@@ -631,6 +643,7 @@ async def _run_curate_smoke(
             if result.valid:
                 n_valid += 1
 
+    resolver.save_cache()
     console.print(
         f"[green]Curated {len(ids)} studies -> {out_dir}[/green] ({n_valid} valid, {n_errors} error(s))"
     )
