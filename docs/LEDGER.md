@@ -306,3 +306,79 @@ isolation; sync model call in async) — deferred to Architecture-B, per plan.
 verified against live NCBI. **Tests: 413 passed, 7 deselected** (+122 over the pre-curator 291).
 **Next after merge:** the first real Design-1 numbers — `curate` the smoke set with Gemini →
 `bugsigdb eval score` → report (a future ledger entry). A closing note will record the merge commit.
+
+## L019 — Curator skeleton merged + hermetic-`.env` test fix — 2026-07-13 — closes L018
+**PRs:** #2 (curator skeleton, merge `5d4072a`), #3 (`5ba07fe` / merge `382cbd9`).
+L018's curator merged via **PR #2** (the first CI-gated PR; see L020's process note). Immediately
+after, a latent test-isolation bug surfaced: `resolve_google_api_key()` calls `load_dotenv()`, whose
+`find_dotenv` walks up from the *module file* (not CWD), so the key-priority test loaded the
+developer's real repo-root `.env` and went red **locally** while passing on CI (which has no `.env`).
+Fixed by neutralizing `load_dotenv` in the autouse test fixture. Recurring lesson (see also L022):
+**CI's clean environment hides env-dependent bugs the maintainer hits locally, and vice-versa.**
+
+## L020 — Process: CI + PR workflow + Copilot; workflow diagram — 2026-07-13
+**PRs:** #1 (CI), #8 (`docs/workflow.md`). **Memory:** `agent-workflow` (updated).
+GitHub Actions CI (`uv sync` + `uv run pytest`, Python 3.11 & 3.12; network tests deselected, no
+secrets). Standing workflow set by the PI: worktree agent pipeline (implement → independent review →
+fix) then **commit → PR → merge on green**, autonomous when no concerns; an optional **GitHub Copilot
+review** on gnarly/high-stakes PRs (it caught two real recall bugs on the curator, and 4 polish items
+on the wiring). Added `docs/workflow.md` — Mermaid diagrams of the CLI/data-flow (with the firewall)
+and the S0–S9 stage DAG.
+
+## L021 — Curator NCBI etiquette: throttle, backoff, key, 404-robustness — 2026-07-13
+**PR:** #4 (merge `52cfd51`). **Module:** `curator/taxonomy.py`, `curator/evidence.py`.
+Added an async rate limiter (~3 req/s, ~10 with `NCBI_API_KEY`), 429/5xx exponential backoff honoring
+`Retry-After`, `.env`-resolved `NCBI_API_KEY`, and `tool`/`email` etiquette params to the S6 resolver;
+one shared resolver across the `--smoke` batch (so throttle + cache persist across studies). A
+EuropePMC `fullTextXML` 404 now degrades to an empty bundle instead of aborting the study.
+
+## L022 — First real Design-1 smoke run (shakedown) — 2026-07-13 — findings, not numbers
+**Command:** `bugsigdb curate --smoke --model gemini/gemini-3.1-flash-lite` → `bugsigdb eval score`.
+The first end-to-end run against live Gemini + NCBI + EuropePMC. **Not a valid measurement** — it
+surfaced two things a first run is meant to catch:
+1. **NCBI E-utilities rate-limited us (HTTP 429):** the S6 resolver fired one esearch per taxon name
+   unthrottled → **14 of 19 studies errored** mid-resolution. (Fixed structurally in L023 by moving
+   resolution to a local DB; L021's throttle is now gap-fill-only insurance.)
+2. **The smoke set's gold is supplement-dominated** — by source type **supplement 1056 / figure 260 /
+   main-table 51** gold taxa. Design-1 deliberately does not fetch supplements (deferred), so ~77% of
+   this set's gold is structurally unreachable; report Design-1 performance off the **main-table +
+   figure** source-type rows, not the supplement-capped aggregate.
+The pipeline mechanics were sound (schema-valid records produced end-to-end). The harness's
+missing-prediction bucket + per-source-type cross-tab (L015 fixes) made the diagnosis clean rather
+than a misleading 0.0. This run motivated the local-taxonomy work (L023–L025).
+
+## L023 — Local DuckDB taxonomy backend (build + lookup) — 2026-07-13
+**PRs:** #5 (build+resolver+CLI), #6 (simplify to direct `read_csv`, plain-SQL `name_norm`, drop
+numpy), #7 (fix real-`nodes.dmp` 26-column parsing). **Package:** `src/bugsigdb_curation/taxonomy/`.
+**Decision (vs `taxoniq`):** build a `.duckdb` from a **pinned NCBI taxdump** rather than use taxoniq
+— taxoniq keys name lookup on the scientific name (no synonym→taxid), and we need full synonym
+coverage (`name_class` incl. `synonym`), a **pinned/citable release** for reproducibility, and SQL
+rank/lineage. `TaxonomyDB.resolve` is offline, ms-latency, synonym- and rank-prefix-aware, with a
+scientific-name-preferred ambiguity policy exposing homonyms. `name_norm` is one shared SQL expression
+used at build AND query time (drift-proof; parity-tested vs the Python normalizer). Cache config:
+`--db`/`--out` > `BUGSIGDB_TAXONOMY_DB`/`BUGSIGDB_CACHE_DIR` > `${XDG_CACHE_HOME:-~/.cache}/bugsigdb/`
+(machine-global, shared across worktrees). **Real build (release `2026-07-01`):** 4.81M names / 2.85M
+nodes in ~9 s → 581 MB. Two bugs caught by *real-data* runs that the synthetic fixture missed (per
+L019's lesson): the `read_csv` positional column names zero-pad to 2 digits once a row tab-splits into
+≥10 columns (real `nodes.dmp` = 26) — fixed by reading whole lines and `str_split`-ing on `"\t|\t"`.
+
+## L024 — Wire TaxonomyDB into curator S6 + eval scorer — 2026-07-13
+**PR:** #9 (merge `8ab0494`). Curator S6 resolution is now **cache → local `TaxonomyDB` → live
+E-utilities gap-fill → unresolved** (the 429 wall from L022 removed); the eval scorer resolves
+predicted names via `TaxonomyDB` and the gold-derived **`taxa.csv` seed is dropped** (firewall-clean).
+DB path via the L023 precedence; no/broken DB → graceful fallback (curator warns + goes live-only;
+review-hardened to catch `duckdb.Error`, not just `ValueError`). The report now surfaces
+**resolution-coverage counters** so name-based sub-scores can't silently shrink. Normalization
+consolidated to one Python source.
+
+## L025 — merged.dmp tax_id canonicalization (metric integrity) — 2026-07-13
+**PR:** #10 (merge `70e15ea`). BugSigDB's gold records NCBI tax_ids curated over years; NCBI merges
+retired ids into successors (the `2026-07-01` release has **99,687** such mappings). The curator
+resolves names → *current* ids, so a retired gold id never matched a current prediction — silently
+depressing the headline taxid-set F1 **and** the name/genus sub-scores. Added a `merged(old→new)`
+table and `TaxonomyDB.canonical_taxid` (single-hop); the scorer canonicalizes **gold and predicted
+ids symmetrically at every comparison/alignment site**. Proof: a retired gold id scores **F1=1.0** vs
+a current predicted id with merged data, **F1=0.0** without. Backward-compatible (pre-feature DBs open
+via a `_has_merged_table` flag). This is the last correctness gate before trustworthy numbers; the
+real DB was rebuilt to populate `merged`. **Next:** structured logging (loguru), then the smoke re-run
+for the first genuine Design-1 numbers.
