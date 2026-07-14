@@ -85,16 +85,29 @@ def _mock_fulltext(httpx_mock: HTTPXMock) -> None:
 
 def _mock_taxonomy(httpx_mock: HTTPXMock) -> None:
     # esearch is queried with the *normalized* (lowercased) name -- see
-    # taxonomy.py's resolve_name / normalize_taxon_name.
+    # taxonomy.py's resolve_name / normalize_taxon_name -- plus the
+    # etiquette params (tool/email) every E-utilities call now carries.
     httpx_mock.add_response(
         url=httpx.URL(NCBI_ESEARCH_URL).copy_merge_params(
-            {"db": "taxonomy", "term": "faecalibacterium prausnitzii", "retmode": "json"}
+            {
+                "db": "taxonomy",
+                "term": "faecalibacterium prausnitzii",
+                "retmode": "json",
+                "tool": "bugsigdb-curation",
+                "email": DEFAULT_EMAIL,
+            }
         ),
         json={"esearchresult": {"idlist": ["853"]}},
     )
     httpx_mock.add_response(
         url=httpx.URL(NCBI_ESEARCH_URL).copy_merge_params(
-            {"db": "taxonomy", "term": "escherichia coli", "retmode": "json"}
+            {
+                "db": "taxonomy",
+                "term": "escherichia coli",
+                "retmode": "json",
+                "tool": "bugsigdb-curation",
+                "email": DEFAULT_EMAIL,
+            }
         ),
         json={"esearchresult": {"idlist": ["562"]}},
     )
@@ -138,6 +151,41 @@ def test_curate_end_to_end_offline_produces_valid_scoreable_record(httpx_mock: H
     assert taxon_ids == {853, 562}  # both S6-verified against the (mocked) live authority
 
     _assert_eval_score_can_consume_this_record(result.record)
+
+
+def test_curate_survives_fulltext_404_without_aborting_the_study(httpx_mock: HTTPXMock, tmp_path):
+    """S0 (idconv) resolves a PMCID -- the study IS in PMC -- but EuropePMC
+    has no `fullTextXML` record for it (404). Pre-fix, that 404 propagated
+    out of `assemble_evidence` and aborted `curate_async` entirely; now it
+    degrades to an empty evidence bundle and the pipeline still produces a
+    (structurally valid, if signature-less) record instead of raising. No
+    article-HTML or esearch mocks are registered -- if the pipeline tried
+    either of those calls on an empty bundle, this test would fail on an
+    unmocked request rather than a wrong assertion.
+    """
+    _mock_idconv(httpx_mock)
+    httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid=PMCID), status_code=404)
+
+    model = MockModel()
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await curate_async(
+                PMID, model=model, client=client, taxonomy_cache_path=tmp_path / "ncbi_cache.json"
+            )
+
+    result = asyncio.run(run())
+
+    assert result.pmid == PMID
+    assert result.pmcid == PMCID
+    assert result.has_pmc is True
+    # No table/figure evidence at all -> S5a has nothing to locate -> no
+    # signatures for the (still-segmented, per MockModel's canned response)
+    # experiment -- degraded, not crashed. An empty `signatures` list is
+    # never emitted (`assemble._set` omits empty/None fields, mirroring the
+    # loader), so "absent" is the correctly-degraded shape here.
+    assert "signatures" not in result.record["experiments"][0]
+    assert result.valid, result.problems
 
 
 def _assert_eval_score_can_consume_this_record(record: dict) -> None:

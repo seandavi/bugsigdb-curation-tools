@@ -55,16 +55,29 @@ def _mock_all(httpx_mock: HTTPXMock, *, pmid: str = PMID, pmcid: str = PMCID) ->
     httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid=pmcid), text=XML_FIXTURE)
     httpx_mock.add_response(url=PMC_ARTICLE_URL.format(pmcid=pmcid), text="<html><body></body></html>")
     # esearch is queried with the *normalized* (lowercased) name -- see
-    # taxonomy.py's resolve_name / normalize_taxon_name.
+    # taxonomy.py's resolve_name / normalize_taxon_name -- plus the
+    # etiquette params (tool/email) every E-utilities call now carries.
     httpx_mock.add_response(
         url=httpx.URL(NCBI_ESEARCH_URL).copy_merge_params(
-            {"db": "taxonomy", "term": "faecalibacterium prausnitzii", "retmode": "json"}
+            {
+                "db": "taxonomy",
+                "term": "faecalibacterium prausnitzii",
+                "retmode": "json",
+                "tool": "bugsigdb-curation",
+                "email": DEFAULT_EMAIL,
+            }
         ),
         json={"esearchresult": {"idlist": ["853"]}},
     )
     httpx_mock.add_response(
         url=httpx.URL(NCBI_ESEARCH_URL).copy_merge_params(
-            {"db": "taxonomy", "term": "escherichia coli", "retmode": "json"}
+            {
+                "db": "taxonomy",
+                "term": "escherichia coli",
+                "retmode": "json",
+                "tool": "bugsigdb-curation",
+                "email": DEFAULT_EMAIL,
+            }
         ),
         json={"esearchresult": {"idlist": ["562"]}},
     )
@@ -145,7 +158,7 @@ def test_curate_smoke_reuses_one_client_across_studies(tmp_path: Path, monkeypat
 
     seen_clients: list[object] = []
 
-    async def fake_curate_async(pmid, *, model, config, client=None, email, taxonomy_cache_path):
+    async def fake_curate_async(pmid, *, model, config, client=None, email, taxonomy_cache_path, resolver=None):
         seen_clients.append(client)
         return CurationResult(pmid=pmid, pmcid=None, has_pmc=False, record={}, valid=True, problems=())
 
@@ -162,6 +175,41 @@ def test_curate_smoke_reuses_one_client_across_studies(tmp_path: Path, monkeypat
     assert len(seen_clients) == len(study_ids)
     assert all(c is not None for c in seen_clients)
     assert len(set(id(c) for c in seen_clients)) == 1  # same client object every call
+
+
+def test_curate_smoke_reuses_one_resolver_across_studies(tmp_path: Path, monkeypatch):
+    """The --smoke loop must build ONE NcbiTaxonomyResolver for the whole run
+    and pass it into every curate_async call, rather than letting each
+    curate_async call build its own (fresh _RateLimiter + empty cache) --
+    that only throttles calls *within* one study and never lets a taxon
+    resolved for one study warm the cache for the next, which is the actual
+    cause of the 429 storm a real --smoke run hit. Pre-fix, curate_async was
+    called with no `resolver` kwarg at all, so each call built its own."""
+    import bugsigdb_curation.cli as cli_module
+    from bugsigdb_curation.curator.pipeline import CurationResult
+
+    study_ids = ["111", "222", "333"]
+    monkeypatch.setattr(cli_module, "smoke_study_ids", lambda: study_ids)
+
+    seen_resolvers: list[object] = []
+
+    async def fake_curate_async(pmid, *, model, config, client=None, email, taxonomy_cache_path, resolver=None):
+        seen_resolvers.append(resolver)
+        return CurationResult(pmid=pmid, pmcid=None, has_pmc=False, record={}, valid=True, problems=())
+
+    monkeypatch.setattr(cli_module, "curate_async", fake_curate_async)
+
+    out_dir = tmp_path / "smoke_out"
+    cache_path = tmp_path / "cache.json"
+
+    result = runner.invoke(
+        app, ["curate", "--smoke", "--mock", "--out", str(out_dir), "--taxonomy-cache", str(cache_path)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert len(seen_resolvers) == len(study_ids)
+    assert all(r is not None for r in seen_resolvers)
+    assert len(set(id(r) for r in seen_resolvers)) == 1  # same resolver object every call
 
 
 def test_curate_network_failure_exits_nonzero_with_clean_error(httpx_mock: HTTPXMock, tmp_path: Path):
