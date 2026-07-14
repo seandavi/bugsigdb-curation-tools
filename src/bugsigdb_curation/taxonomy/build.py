@@ -21,6 +21,7 @@ it" out of library code.
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import os
 import tarfile
@@ -93,6 +94,43 @@ def parse_nodes(path: Path) -> Iterator[tuple[int, int, str]]:
         yield tax_id, parent_tax_id, rank
 
 
+#: DuckDB `read_csv` column spec for the staged `names.tsv` (must match
+#: `_write_names_tsv`'s column order and the `names` table's DDL).
+_NAMES_CSV_COLUMNS = "{'tax_id':'BIGINT','name_txt':'VARCHAR','name_class':'VARCHAR','name_norm':'VARCHAR'}"
+
+#: Same, for the staged `nodes.tsv` / `nodes` table.
+_NODES_CSV_COLUMNS = "{'tax_id':'BIGINT','parent_tax_id':'BIGINT','rank':'VARCHAR'}"
+
+
+def _write_names_tsv(names_path: Path, tsv_path: Path) -> int:
+    """Parse `names_path` and write a clean, quoted TSV staging file for bulk load.
+
+    Returns the row count. `csv.QUOTE_ALL` + DuckDB's default `quote='"'`
+    round-trips any name containing a literal tab, double quote, or comma
+    (rare in real taxdump data, but the escaping is nearly free) without
+    ambiguity against `read_csv`'s NULL handling of unquoted empty fields.
+    """
+    count = 0
+    with tsv_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh, delimiter="\t", quoting=csv.QUOTE_ALL, lineterminator="\n")
+        for tax_id, name_txt, name_class, name_norm in parse_names(names_path):
+            writer.writerow((tax_id, name_txt, name_class, name_norm))
+            count += 1
+    return count
+
+
+def _write_nodes_tsv(nodes_path: Path, tsv_path: Path) -> int:
+    """Parse `nodes_path` and write a clean, quoted TSV staging file for bulk load.
+    Returns the row count. See `_write_names_tsv` for the quoting rationale."""
+    count = 0
+    with tsv_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh, delimiter="\t", quoting=csv.QUOTE_ALL, lineterminator="\n")
+        for tax_id, parent_tax_id, rank in parse_nodes(nodes_path):
+            writer.writerow((tax_id, parent_tax_id, rank))
+            count += 1
+    return count
+
+
 def find_dmp_files(root: Path) -> tuple[Path, Path]:
     """Locate `names.dmp` and `nodes.dmp` under `root` (searched recursively,
     since archives sometimes extract into a nested subdirectory)."""
@@ -163,10 +201,9 @@ def _build_from_files(
 ) -> BuildStats:
     """Build into a temp file next to `out_path` and only `os.replace()` it into
     place on full success -- `out_path` (pre-existing or absent) is never
-    touched before that. On any exception the temp `.duckdb` is removed and
-    the exception re-raised, so a mid-build failure (malformed `.dmp`,
-    PRIMARY KEY violation, disk full, ...) never leaves a corrupt/empty DB
-    where a good one used to be.
+    touched before that. On any exception the temp `.duckdb` (and its TSV
+    staging dir) are removed and the exception re-raised, so a mid-build
+    failure never leaves a corrupt/empty DB where a good one used to be.
     """
     names_checksum = _sha256_of(names_path)
     nodes_checksum = _sha256_of(nodes_path)
@@ -176,51 +213,64 @@ def _build_from_files(
 
     tmp_db_path = out_path.with_name(f"{out_path.name}.tmp-{os.getpid()}-{uuid.uuid4().hex[:8]}")
 
-    con = duckdb.connect(str(tmp_db_path))
     try:
-        con.execute(
-            "CREATE TABLE names (tax_id BIGINT, name_txt VARCHAR, name_class VARCHAR, name_norm VARCHAR)"
-        )
-        con.execute("CREATE TABLE nodes (tax_id BIGINT PRIMARY KEY, parent_tax_id BIGINT, rank VARCHAR)")
+        with tempfile.TemporaryDirectory(prefix="bugsigdb-taxbuild-", dir=out_path.parent) as staging_dir:
+            staging = Path(staging_dir)
+            names_tsv = staging / "names.tsv"
+            nodes_tsv = staging / "nodes.tsv"
 
-        # Materialize each .dmp into a list of tuples and bulk-load via
-        # executemany inside one transaction -- far fewer round trips than
-        # one INSERT per row, and avoids taking a pandas/pyarrow dependency
-        # just to use DuckDB's DataFrame-based Appender.
-        con.execute("BEGIN TRANSACTION")
-        names_rows_data = list(parse_names(names_path))
-        con.executemany("INSERT INTO names VALUES (?, ?, ?, ?)", names_rows_data)
-        names_rows = len(names_rows_data)
+            # Stream each .dmp through the existing (tested) Python parser
+            # into a clean, quoted TSV, then bulk-load it via DuckDB's
+            # native `read_csv` -- an order of magnitude+ faster than
+            # `executemany`'s row-at-a-time round trips over NCBI's
+            # multi-million-row files, and dependency-free (no pandas/
+            # pyarrow needed for DuckDB's DataFrame-based Appender).
+            names_rows = _write_names_tsv(names_path, names_tsv)
+            nodes_rows = _write_nodes_tsv(nodes_path, nodes_tsv)
 
-        nodes_rows_data = list(parse_nodes(nodes_path))
-        con.executemany("INSERT INTO nodes VALUES (?, ?, ?)", nodes_rows_data)
-        nodes_rows = len(nodes_rows_data)
-        con.execute("COMMIT")
+            con = duckdb.connect(str(tmp_db_path))
+            try:
+                con.execute(
+                    "CREATE TABLE names (tax_id BIGINT, name_txt VARCHAR, name_class VARCHAR, name_norm VARCHAR)"
+                )
+                con.execute(
+                    "CREATE TABLE nodes (tax_id BIGINT PRIMARY KEY, parent_tax_id BIGINT, rank VARCHAR)"
+                )
 
-        con.execute("CREATE INDEX idx_names_name_norm ON names(name_norm)")
+                con.execute(
+                    f"INSERT INTO names SELECT * FROM read_csv(?, delim='\t', header=false, quote='\"', "
+                    f"columns={_NAMES_CSV_COLUMNS})",
+                    [str(names_tsv)],
+                )
+                con.execute(
+                    f"INSERT INTO nodes SELECT * FROM read_csv(?, delim='\t', header=false, quote='\"', "
+                    f"columns={_NODES_CSV_COLUMNS})",
+                    [str(nodes_tsv)],
+                )
 
-        # Written last, after everything else has succeeded: an
-        # incomplete/missing `meta` table is exactly what `TaxonomyDB`
-        # treats as a corrupt build (see db.py).
-        con.execute("CREATE TABLE meta (key VARCHAR, value VARCHAR)")
-        meta_rows = [
-            ("release", release),
-            ("source", source),
-            ("build_timestamp", build_timestamp),
-            ("names_rows", str(names_rows)),
-            ("nodes_rows", str(nodes_rows)),
-            ("names_dmp_filename", names_path.name),
-            ("nodes_dmp_filename", nodes_path.name),
-            ("names_dmp_sha256", names_checksum),
-            ("nodes_dmp_sha256", nodes_checksum),
-        ]
-        con.executemany("INSERT INTO meta VALUES (?, ?)", meta_rows)
+                con.execute("CREATE INDEX idx_names_name_norm ON names(name_norm)")
+
+                # Written last, after everything else has succeeded: an
+                # incomplete/missing `meta` table is exactly what
+                # `TaxonomyDB` treats as a corrupt build (see db.py).
+                con.execute("CREATE TABLE meta (key VARCHAR, value VARCHAR)")
+                meta_rows = [
+                    ("release", release),
+                    ("source", source),
+                    ("build_timestamp", build_timestamp),
+                    ("names_rows", str(names_rows)),
+                    ("nodes_rows", str(nodes_rows)),
+                    ("names_dmp_filename", names_path.name),
+                    ("nodes_dmp_filename", nodes_path.name),
+                    ("names_dmp_sha256", names_checksum),
+                    ("nodes_dmp_sha256", nodes_checksum),
+                ]
+                con.executemany("INSERT INTO meta VALUES (?, ?)", meta_rows)
+            finally:
+                con.close()
     except BaseException:
-        con.close()
         tmp_db_path.unlink(missing_ok=True)
         raise
-    else:
-        con.close()
 
     os.replace(tmp_db_path, out_path)
 
