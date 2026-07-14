@@ -106,3 +106,34 @@ def resolve_db_path(cli_path: Path | str | None, release: str | None = None) -> 
         f"multiple cached .duckdb files found under {taxonomy_cache_root()} ({names}); "
         "disambiguate with --db, --release, or BUGSIGDB_TAXONOMY_DB."
     )
+
+
+def resolve_optional_db_path(cli_path: Path | str | None, release: str | None = None) -> Path | None:
+    """Like :func:`resolve_db_path`, but for a caller that's fine falling back
+    to "no DB" rather than being forced to disambiguate: the curator's
+    `NcbiTaxonomyResolver.load()` and the eval scorer's `TaxonomyResolver.load()`
+    (PR-2) both use this so a machine with no taxonomy DB built yet -- or with
+    several cached releases -- degrades gracefully instead of raising.
+
+    Same precedence as `resolve_db_path` (CLI flag > `BUGSIGDB_TAXONOMY_DB` >
+    cache-dir default), except the two failure modes there both become a
+    quiet `None` here instead of an exception: no candidates found -> `None`
+    (was `FileNotFoundError`), and more than one candidate -> the
+    most-recently-built one by mtime (was an ambiguity `ValueError`) rather
+    than making an automatic fallback path force a caller to pass `--db`.
+    """
+    if cli_path is not None:
+        return Path(cli_path).expanduser()
+
+    env_path = os.environ.get(DB_PATH_ENV_VAR)
+    if env_path:
+        return Path(env_path).expanduser()
+
+    if release is not None:
+        path = default_db_path(release)
+        return path if path.exists() else None
+
+    candidates = sorted(taxonomy_cache_root().glob("ncbi-taxdump-*.duckdb"))
+    if not candidates:
+        return None
+    return max(candidates, key=lambda p: p.stat().st_mtime)
