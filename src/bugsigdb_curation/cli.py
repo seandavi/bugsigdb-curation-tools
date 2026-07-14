@@ -65,6 +65,7 @@ from bugsigdb_curation.pmc_map import (
     write_mapping_csv,
 )
 from bugsigdb_curation.split import split_full_dump
+from bugsigdb_curation.taxonomy.cli import taxonomy_app
 from bugsigdb_curation.validate import (
     InstanceResult,
     ValidationInputError,
@@ -642,6 +643,12 @@ async def _run_curate_smoke(
 
 eval_app = typer.Typer(help="Score de-novo curator predictions against the BugSigDB gold corpus.")
 app.add_typer(eval_app, name="eval")
+
+# `taxonomy build`/`taxonomy lookup` -- the standalone local NCBI taxonomy DB
+# subpackage (build.py/db.py/paths.py). Not yet wired into `curate`/`eval
+# score`'s live E-utilities resolvers; see bugsigdb_curation.taxonomy's
+# package docstring.
+app.add_typer(taxonomy_app, name="taxonomy")
 
 DEFAULT_RELATIONAL_DIR = Path("data/exports/relational")
 DEFAULT_PMC_MAP_PATH = Path("data/eval/pmid_pmcid_map.csv")
