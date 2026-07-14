@@ -450,3 +450,38 @@ same multimodal idiom as fused-lean's extractor — `build_signature_messages`/`
 re-run the comparison. **Next lever: Architecture-B fan-out on fused-lean** (attacks the big-paper
 recall collapse — under-seg 109, the 21+ experiment bucket at R≈0.01). Run outputs live under
 `data/runs/design_compare/` (gitignored).
+
+## L031 — Supplement-retrieval + model-lever demonstration (PMID 34620922) — 2026-07-14
+**Motivation.** L027/L030 showed the headline micro-F1 (~0.13, fused-lean/flash-lite) is dominated by
+gold the walking skeleton structurally cannot reach: ~77% of smoke-set gold taxa live in **supplements**
+(never fetched) and the 21+-experiment papers under-enumerate (R≈0.01). Sean asked the sharp question:
+is this approach useful at all? Ran a one-paper **ceiling test** on the hardest, most supplement-dependent
+smoke paper — 34620922 (48 gold experiments; main-text pipeline scored it **F1 0.000**).
+**Method.** Fed the paper's OWN supplementary PDF (source material, firewall-clean — no gold read to
+build the prediction) to a **strong model** (`gemini/gemini-3.1-pro-preview`) as a native PDF document in
+one `litellm` call, temperature 0. Prompt: emit every **2-group LEfSe** differential-abundance comparison
+as one BugSigDB experiment in the loader contract (experiments→signatures→taxa), genus names only (the
+scorer resolves names→taxids), ignoring diversity/PERMANOVA tables. Scored with `bugsigdb eval score`
+against the held-out 48-experiment gold. (The supplement is 47 pp: pp1–21 are diversity/ordination stats
+— *no* signatures; the DA signatures are LEfSe tables S22–S36.)
+**Result.** 30 experiments / 1050 taxa extracted. Vs gold 48: **30/30 predicted experiments matched a
+distinct gold experiment, 0 over-segmentation, 0 spurious; 18 gold unmatched (under-seg). Taxa-set micro
+F1 = 0.825** (genus 0.826, high precision); **direction accuracy 11.5% (6/52)**. Baseline on this paper
+was 0.000 → **0.00 → 0.83**.
+**Decomposition.** (1) **Extraction is essentially solved when the evidence is in hand** — zero spurious
+experiments, F1 0.83 reading 47 pp of dense multi-column LEfSe tables. (2) **Enumeration partial**: got
+the 30 clean *pairwise* (2-group) tables; missed 18 gold = the **multi-group** "all regions"(S24)/"all
+species"(S33) LEfSe tables that BugSigDB curates as one-vs-rest experiments — the hard decomposition.
+(3) **Direction systematically flipped** (11.5% is *below* a coin flip → a global group_0/group_1
+orientation mismatch, fixable by a convention fix or direction-verifier; taxa-set F1 is orientation-robust
+so 0.83 stands).
+**Interpretation.** The poor headline F1 is overwhelmingly a **retrieval problem, not an intelligence
+problem**: when the curator can see the evidence, a strong model curates a 48-experiment paper at F1 0.83.
+Validates the two highest-value levers (supplement retrieval + the model lever) and keeps the
+curation-assistant thesis alive.
+**Caveats.** n=1; the PDF was hand-fed (supplement **fetch + parse** is unbuilt in the pipeline); some
+SILVA/ASV genus labels ("Ruminococcaceae UCG_010", "Clostridiales Family XIII AD3011") don't map to NCBI
+and drop out of scoring; the multi-group→experiments decomposition is unsolved.
+**Artifacts.** `data/runs/supp_demo/` (predictions + report) and the extraction script (scratchpad) —
+both gitignored/out-of-repo. **Next:** confirm on a second big paper (37864204) once its supplement is
+obtained; then scope supplement retrieval (fetch + PDF/XLSX parse) and a direction-orientation fix.
