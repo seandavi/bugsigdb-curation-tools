@@ -208,3 +208,31 @@ def test_taxonomy_db_empty_meta_table_raises_clear_error(tmp_path: Path):
 
     with pytest.raises(ValueError, match="empty meta table"):
         TaxonomyDB(out_path)
+
+
+def test_taxonomy_db_corrupt_file_raises_duckdb_error(tmp_path: Path):
+    """A non-DuckDB byte blob at the path (a truncated/corrupt build, or a
+    DB built with an incompatible DuckDB version) raises `duckdb.Error`
+    (`duckdb.IOException`) from `duckdb.connect()` itself -- distinct from
+    the `FileNotFoundError`/`ValueError` this module raises directly. Fix 1
+    depends on this being a `duckdb.Error` subclass, not a `ValueError`."""
+    bad_path = tmp_path / "corrupt.duckdb"
+    bad_path.write_bytes(b"not a real duckdb file, just some garbage bytes\x00\x01\x02" * 10)
+
+    with pytest.raises(duckdb.Error):
+        TaxonomyDB(bad_path)
+
+
+def test_taxonomy_db_close_is_idempotent(tmp_path: Path):
+    """Fix 4: `close()` must tolerate being called more than once -- a
+    caller-supplied resolver and a `with`-block `__exit__` (or two
+    independent teardown paths) can both end up calling it on the same
+    handle."""
+    taxdump_dir = write_synthetic_taxdump(tmp_path / "taxdump")
+    out_path = tmp_path / "taxonomy.duckdb"
+    build_taxonomy_db(
+        taxdump_dir, out_path, release="test", source="fixture", build_timestamp="2026-07-14T00:00:00+00:00"
+    )
+    db = TaxonomyDB(out_path)
+    db.close()
+    db.close()  # must not raise

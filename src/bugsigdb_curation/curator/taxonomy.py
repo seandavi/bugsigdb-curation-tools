@@ -49,6 +49,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import duckdb
 import httpx
 from dotenv import load_dotenv
 
@@ -161,8 +162,12 @@ def _load_optional_taxonomy_db(db_path: Path | str | None, db_release: str | Non
     path -- never raises. Returns `None` (with a one-time warning; Python's
     default warning filter dedupes repeats from this same call site) if no
     DB is configured/found, or if the resolved path fails to open (e.g. a
-    corrupt/incomplete build) -- either way the caller falls back to
-    live-only E-utilities resolution instead of crashing.
+    corrupt/incomplete build, a truncated file, or a DB built with an
+    incompatible DuckDB version -- the last two surface as `duckdb.Error`
+    (`duckdb.IOException` et al., NOT a `ValueError`), not just the
+    `FileNotFoundError`/`ValueError` `TaxonomyDB.__init__` itself raises) --
+    either way the caller falls back to live-only E-utilities resolution
+    instead of crashing.
     """
     resolved_path = resolve_optional_db_path(db_path, db_release)
     if resolved_path is None or not resolved_path.exists():
@@ -176,7 +181,7 @@ def _load_optional_taxonomy_db(db_path: Path | str | None, db_release: str | Non
         return None
     try:
         return TaxonomyDB(resolved_path)
-    except (FileNotFoundError, ValueError) as exc:
+    except (FileNotFoundError, ValueError, duckdb.Error) as exc:
         warnings.warn(
             f"failed to open local taxonomy DB at {resolved_path}: {exc} -- "
             "NcbiTaxonomyResolver is falling back to live-only NCBI E-utilities resolution.",
@@ -397,3 +402,17 @@ class NcbiTaxonomyResolver:
             return
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(self.cache, indent=2, sort_keys=True), encoding="utf-8")
+
+    def close(self) -> None:
+        """Close the local `TaxonomyDB` handle, if one is open.
+
+        No-op if `db` is `None` (live-only resolver) -- and safe to call
+        more than once, since `TaxonomyDB.close()` itself guards against a
+        double-close. A caller that owns this resolver's lifecycle (e.g.
+        `curate_async`'s single-PMID path, or the CLI's `--smoke` batch loop
+        that builds one shared resolver up front) should call this once
+        it's done resolving, so the DuckDB connection doesn't outlive the
+        run.
+        """
+        if self.db is not None:
+            self.db.close()

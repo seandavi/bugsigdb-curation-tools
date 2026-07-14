@@ -149,6 +149,33 @@ def test_curator_load_with_no_db_found_warns_once_and_falls_back_to_live(
     assert asyncio.run(run()) == 853
 
 
+def test_curator_load_with_corrupt_db_warns_and_falls_back_to_live(
+    tmp_path: Path, httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Fix 1: a corrupt/truncated `.duckdb` (or one built by an incompatible
+    DuckDB version) raises `duckdb.IOException` from `TaxonomyDB.__init__`'s
+    `duckdb.connect()` -- a `duckdb.Error` subclass, NOT a `ValueError`.
+    Pre-fix, `_load_optional_taxonomy_db` only caught
+    `(FileNotFoundError, ValueError)`, so this propagated and crashed the
+    whole `curate` run instead of degrading gracefully like every other
+    "no usable local DB" case."""
+    bad_db = tmp_path / "corrupt.duckdb"
+    bad_db.write_bytes(b"not a real duckdb file, just some garbage bytes\x00\x01\x02" * 10)
+    monkeypatch.setenv("BUGSIGDB_TAXONOMY_DB", str(bad_db))
+    httpx_mock.add_response(url=_esearch_url("faecalibacterium"), json={"esearchresult": {"idlist": ["853"]}})
+
+    with pytest.warns(RuntimeWarning, match="failed to open local taxonomy DB"):
+        resolver = NcbiTaxonomyResolver.load(cache_path=None)
+
+    assert resolver.db is None  # degraded, not crashed
+
+    async def run() -> int | None:
+        async with httpx.AsyncClient() as client:
+            return await resolver.resolve_name("Faecalibacterium", client=client)
+
+    assert asyncio.run(run()) == 853
+
+
 def test_curator_bare_constructor_with_db_none_resolves_live_only(httpx_mock: HTTPXMock) -> None:
     """A resolver directly constructed with `db=None` (the dataclass
     default) behaves identically to the pre-PR-2 live-only resolver -- no
@@ -259,3 +286,56 @@ def test_scorer_load_with_no_taxa_csv_parameter() -> None:
     params = set(inspect.signature(TaxonomyResolver.load).parameters)
     assert "taxa_csv" not in params
     assert "seed" not in params
+
+
+def test_scorer_load_with_corrupt_db_warns_and_disables_local_resolution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Fix 1, eval side: same corrupt-`.duckdb` scenario as
+    `test_curator_load_with_corrupt_db_warns_and_falls_back_to_live`, but
+    for `TaxonomyResolver.load()` -- pre-fix this raised `duckdb.IOException`
+    (uncaught by the old `except (FileNotFoundError, ValueError)`) and
+    crashed `eval score` outright. There's no live-network fallback on this
+    side (see module docstring), so "graceful" here means offline
+    resolution degrades to always-miss (with a one-time warning) rather
+    than the whole scoring run crashing."""
+    bad_db = tmp_path / "corrupt.duckdb"
+    bad_db.write_bytes(b"not a real duckdb file, just some garbage bytes\x00\x01\x02" * 10)
+    monkeypatch.setenv("BUGSIGDB_TAXONOMY_DB", str(bad_db))
+
+    with pytest.warns(RuntimeWarning, match="failed to open local taxonomy DB"):
+        resolver = TaxonomyResolver.load(cache_path=None)
+
+    assert resolver.db is None  # degraded, not crashed
+    assert resolver.resolve_name("Faecalibacterium") is None
+
+
+# --- close(): a resolver owns and can close its local TaxonomyDB (Fix 4) ---------------------
+
+
+def test_curator_resolver_close_closes_the_local_db(built_db_path: Path) -> None:
+    db = TaxonomyDB(built_db_path)
+    resolver = NcbiTaxonomyResolver(cache_path=None, db=db)
+    resolver.close()
+    assert db._closed is True
+    resolver.close()  # idempotent -- a second close() must not raise
+
+
+def test_curator_resolver_close_is_a_noop_with_no_db() -> None:
+    resolver = NcbiTaxonomyResolver(cache_path=None)
+    assert resolver.db is None
+    resolver.close()  # must not raise
+
+
+def test_scorer_resolver_close_closes_the_local_db(built_db_path: Path) -> None:
+    db = TaxonomyDB(built_db_path)
+    resolver = TaxonomyResolver(db=db)
+    resolver.close()
+    assert db._closed is True
+    resolver.close()  # idempotent -- a second close() must not raise
+
+
+def test_scorer_resolver_close_is_a_noop_with_no_db() -> None:
+    resolver = TaxonomyResolver()
+    assert resolver.db is None
+    resolver.close()  # must not raise

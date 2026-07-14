@@ -24,14 +24,28 @@ from __future__ import annotations
 
 import json
 import re
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import duckdb
 import httpx
 
 from bugsigdb_curation.taxonomy.db import TaxonomyDB
 from bugsigdb_curation.taxonomy.paths import resolve_optional_db_path
+
+# NOTE: this module resolves gold/predicted taxon names against the
+# *current* NCBI taxdump only -- it does not canonicalize a gold tax_id
+# NCBI has since merged into a successor (`merged.dmp`) or deleted outright
+# (`delnodes.dmp`). A gold tax_id in either bucket will fail `name_of_id`/
+# `genus_of_id` here even though it was a valid id when the corpus was
+# curated, which silently shrinks the genus-lenient and name->ID sub-scores
+# for that study. Full merged/delnodes canonicalization (on both the gold
+# and predicted sides) is deferred to a follow-up PR; in the meantime,
+# `bugsigdb_curation.eval.score`'s `n_unresolved_gold_taxa` counter (and its
+# `n_unresolved_pred_taxa` counterpart) makes the resulting shrinkage
+# observable in the per-study/aggregate report rather than silent.
 
 #: Rank prefixes appear double-underscored (MetaPhlAn, "g__Bacillus") or
 #: single-underscored (LEfSe figure labels, "g_Bacillus"); strip either form.
@@ -66,6 +80,49 @@ def normalize_taxon_name(name: str) -> str:
 def genus_token(normalized_name: str) -> str:
     """Genus token of an already-normalized name (its first word)."""
     return normalized_name.split(" ")[0] if normalized_name else ""
+
+
+def _load_optional_taxonomy_db(db_path: Path | str | None, db_release: str | None = None) -> TaxonomyDB | None:
+    """Resolve + open the local taxonomy DB for `TaxonomyResolver.load()` --
+    never raises. Returns `None` (with a one-time `RuntimeWarning`; Python's
+    default warning filter dedupes repeats from this same call site) if no
+    DB is configured/found, or if the resolved path fails to open (e.g. a
+    corrupt/incomplete build, a truncated file, or a DB built with an
+    incompatible DuckDB version -- surfaces as `duckdb.Error`, not just the
+    `FileNotFoundError`/`ValueError` `TaxonomyDB.__init__` itself raises).
+
+    Mirrors `bugsigdb_curation.curator.taxonomy._load_optional_taxonomy_db`
+    exactly, except for the wording (this side has no live-network
+    fallback, so the message says "disabled", not "falling back to
+    live-only") -- unlike the curator, a missing/broken DB here isn't a
+    slow-but-recoverable degradation: `eval score`'s offline scoring path
+    has nothing else to try, so every name-based resolution for this run
+    (genus-lenient scoring, name->ID sub-scores) simply won't happen. See
+    `eval_score_command` in `cli.py` for how that gets surfaced prominently
+    (console note + report line), not just this warning.
+    """
+    resolved_path = resolve_optional_db_path(db_path, db_release)
+    if resolved_path is None or not resolved_path.exists():
+        warnings.warn(
+            "no local taxonomy DB found (no --taxonomy-db/BUGSIGDB_TAXONOMY_DB and no cached "
+            "ncbi-taxdump-*.duckdb) -- TaxonomyResolver has no offline name resolution for this "
+            "run (name-based sub-scores are disabled/degraded). Build one with "
+            "`bugsigdb taxonomy build`.",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+        return None
+    try:
+        return TaxonomyDB(resolved_path)
+    except (FileNotFoundError, ValueError, duckdb.Error) as exc:
+        warnings.warn(
+            f"failed to open local taxonomy DB at {resolved_path}: {exc} -- TaxonomyResolver has "
+            "no offline name resolution for this run (name-based sub-scores are "
+            "disabled/degraded).",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+        return None
 
 
 @dataclass
@@ -114,17 +171,14 @@ class TaxonomyResolver:
         `ncbi-taxdump-*.duckdb` -> none, mirroring
         `curator.taxonomy.NcbiTaxonomyResolver.load`'s resolution) and stays
         `None` (fine for tests / a machine with no DB built yet -- offline
-        resolution then always misses) if nothing resolves or the resolved
-        path fails to open. A missing/absent `cache_path` yields an empty
-        cache (nothing has been resolved yet).
+        resolution then always misses, with a one-time `RuntimeWarning`
+        from `_load_optional_taxonomy_db`) if nothing resolves or the
+        resolved path fails to open (including a corrupt/incompatible
+        `.duckdb` -- see that function's docstring). A missing/absent
+        `cache_path` yields an empty cache (nothing has been resolved yet).
         """
         if db is None:
-            resolved_path = resolve_optional_db_path(db_path, db_release)
-            if resolved_path is not None and resolved_path.exists():
-                try:
-                    db = TaxonomyDB(resolved_path)
-                except (FileNotFoundError, ValueError):
-                    db = None
+            db = _load_optional_taxonomy_db(db_path, db_release)
 
         cache: dict[str, int | None] = {}
         if cache_path is not None and Path(cache_path).exists():
@@ -231,6 +285,18 @@ class TaxonomyResolver:
             return
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(self.cache, indent=2, sort_keys=True), encoding="utf-8")
+
+    def close(self) -> None:
+        """Close the local `TaxonomyDB` handle, if one is open.
+
+        No-op if `db` is `None`, and safe to call more than once --
+        `TaxonomyDB.close()` itself guards against a double-close. Mirrors
+        `NcbiTaxonomyResolver.close()`; `eval_score_command` calls this
+        after scoring completes so the DuckDB connection doesn't outlive
+        the run.
+        """
+        if self.db is not None:
+            self.db.close()
 
     async def resolve_name_online(self, name: str, client: httpx.AsyncClient) -> int | None:
         """NCBI E-utilities gap-fill: `esearch` the taxonomy db for `name`.

@@ -59,10 +59,12 @@ class TaxonomyDB:
         if not self.path.exists():
             raise FileNotFoundError(f"taxonomy DB not found: {self.path}")
         self._con = duckdb.connect(str(self.path), read_only=True)
+        self._closed = False
         try:
             self._validate()
         except Exception:
             self._con.close()
+            self._closed = True
             raise
 
     def _validate(self) -> None:
@@ -89,7 +91,14 @@ class TaxonomyDB:
             )
 
     def close(self) -> None:
-        self._con.close()
+        """Close the underlying DuckDB connection. Idempotent -- a second
+        (or later) call is a no-op rather than raising, so callers on both
+        sides of an owned-vs-shared handle (e.g. a caller that closes
+        explicitly plus a `with`-block `__exit__`) can't trip a
+        double-close error."""
+        if not self._closed:
+            self._con.close()
+            self._closed = True
 
     def __enter__(self) -> TaxonomyDB:
         return self
