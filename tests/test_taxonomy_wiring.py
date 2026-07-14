@@ -26,6 +26,7 @@ from bugsigdb_curation.eval.score import score_study
 from bugsigdb_curation.eval.taxonomy import TaxonomyResolver
 from bugsigdb_curation.taxonomy.build import build_taxonomy_db
 from bugsigdb_curation.taxonomy.db import TaxonomyDB
+from bugsigdb_curation.taxonomy.paths import DB_PATH_ENV_VAR
 from taxonomy_test_support import (
     TAXID_BACTEROIDES_FRAGILIS,
     TAXID_CUTIBACTERIUM_ACNES,
@@ -174,6 +175,33 @@ def test_curator_load_with_corrupt_db_warns_and_falls_back_to_live(
             return await resolver.resolve_name("Faecalibacterium", client=client)
 
     assert asyncio.run(run()) == 853
+
+
+def test_curator_load_with_explicit_missing_db_path_warns_with_actual_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Copilot fix: an explicit `--taxonomy-db`/`BUGSIGDB_TAXONOMY_DB` path
+    that doesn't exist on disk must name that actual path in the warning --
+    a config/typo problem, distinct from "nothing configured at all"."""
+    monkeypatch.delenv("BUGSIGDB_TAXONOMY_DB", raising=False)
+    missing = tmp_path / "does_not_exist.duckdb"
+
+    with pytest.warns(RuntimeWarning, match=r"configured taxonomy DB not found at .*does_not_exist\.duckdb"):
+        resolver = NcbiTaxonomyResolver.load(cache_path=None, db_path=missing)
+
+    assert resolver.db is None
+
+
+def test_curator_load_with_explicit_missing_env_db_path_warns_with_actual_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    missing = tmp_path / "also_missing.duckdb"
+    monkeypatch.setenv(DB_PATH_ENV_VAR, str(missing))
+
+    with pytest.warns(RuntimeWarning, match=r"configured taxonomy DB not found at .*also_missing\.duckdb"):
+        resolver = NcbiTaxonomyResolver.load(cache_path=None)
+
+    assert resolver.db is None
 
 
 def test_curator_bare_constructor_with_db_none_resolves_live_only(httpx_mock: HTTPXMock) -> None:

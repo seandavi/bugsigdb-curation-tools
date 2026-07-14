@@ -56,7 +56,7 @@ from dotenv import load_dotenv
 from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL
 from bugsigdb_curation.taxonomy.db import TaxonomyDB
 from bugsigdb_curation.taxonomy.normalize import normalize_taxon_name
-from bugsigdb_curation.taxonomy.paths import resolve_optional_db_path
+from bugsigdb_curation.taxonomy.paths import DB_PATH_ENV_VAR, resolve_optional_db_path
 
 DEFAULT_CACHE_PATH = Path("data/curator/ncbi_taxonomy_cache.json")
 
@@ -168,16 +168,36 @@ def _load_optional_taxonomy_db(db_path: Path | str | None, db_release: str | Non
     `FileNotFoundError`/`ValueError` `TaxonomyDB.__init__` itself raises) --
     either way the caller falls back to live-only E-utilities resolution
     instead of crashing.
+
+    The "not found" warning is split in two (Copilot fix): an *explicit*
+    `db_path`/`BUGSIGDB_TAXONOMY_DB` that just doesn't exist on disk names
+    the actual path that was tried (a config/typo problem, not "nothing was
+    configured"); only the genuinely-unconfigured case (no explicit path AND
+    no cached `ncbi-taxdump-*.duckdb` found) gets the generic message.
     """
     resolved_path = resolve_optional_db_path(db_path, db_release)
     if resolved_path is None or not resolved_path.exists():
-        warnings.warn(
-            "no local taxonomy DB found (no --taxonomy-db/BUGSIGDB_TAXONOMY_DB and no cached "
-            "ncbi-taxdump-*.duckdb) -- NcbiTaxonomyResolver is falling back to live-only NCBI "
-            "E-utilities resolution (slower). Build one with `bugsigdb taxonomy build`.",
-            RuntimeWarning,
-            stacklevel=3,
-        )
+        explicit = db_path is not None or bool(os.environ.get(DB_PATH_ENV_VAR))
+        if explicit:
+            # `resolve_optional_db_path` always returns a concrete (non-None)
+            # Path when `db_path` or the env var is set, so `resolved_path`
+            # here is exactly the path that was tried.
+            warnings.warn(
+                f"configured taxonomy DB not found at {resolved_path} (from --taxonomy-db/"
+                "BUGSIGDB_TAXONOMY_DB) -- NcbiTaxonomyResolver is falling back to live-only NCBI "
+                "E-utilities resolution (slower). Build one with `bugsigdb taxonomy build`, or "
+                "fix the configured path.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
+        else:
+            warnings.warn(
+                "no local taxonomy DB found (no --taxonomy-db/BUGSIGDB_TAXONOMY_DB and no cached "
+                "ncbi-taxdump-*.duckdb) -- NcbiTaxonomyResolver is falling back to live-only NCBI "
+                "E-utilities resolution (slower). Build one with `bugsigdb taxonomy build`.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
         return None
     try:
         return TaxonomyDB(resolved_path)
