@@ -412,3 +412,25 @@ Methods · Results · Conclusions), compiling to HTML/PDF (verified `quarto rend
 the L028 numbers, the Mermaid stage DAG, and the source-type results figure. Render outputs are
 gitignored; the `.qmd` + figure are tracked. **The ledger is the lab notebook; the paper is what we
 publish** — kept as a living WIP updated as designs/models are swept.
+
+## L029 — Curator Designs 2 & 3 (split-verify / split-panel) — 2026-07-14
+**PR:** #15 (branch `feature/designs-2-3`). Completes the §6b 3-design set behind a `--design`
+selector; `fused-lean` (L020) stays the unchanged default. All three share the **fixed backbone**
+(S0–S4 + S5a locate + S8 assemble + S9 validate) — only **S5b/S6** (extract/reconcile) and **S10**
+(verifier/panel) branch on the design (the two stage-design axes A1/A2 from the plan). New modules:
+`ner` (S5b names+direction only, no id proposal), `reconcile` (S6 deterministic `TaxonomyDB`
+name→taxid — ids come **only** from the authority, model-gated disambiguation on ambiguous homonyms
+using per-experiment source context), `verify` (split-verify A2 adversarial verifier: taxon-in-source
++ direction re-derivation), `panel` (split-panel A2 independent reviewer + arbitration), `repair`
+(shared bounded-repair helper, hard ≤2-round cap → flag/drop on exhaustion, never ship a guess),
+`design`/`artifact_text`. `CurationResult` gains provenance-only `design`+`flags` (never fed back).
+**Firewall (§6e) intact:** no curator module imports `eval` or reads gold; ids only from `TaxonomyDB`.
+Built via the worktree pipeline (implement → review → fix): code review found **5 findings, all fixed
+in-PR** — (1) context-dependent homonym disambiguation was cached into the shared/persisted resolver
+(first experiment's context silently deciding a homonym for the whole run); (2) a taxon in **both**
+directions was silently overwritten in `panel` (dict keyed by name only); (3) design dispatch used
+`is`-identity on a `str`-subclass enum → crash on a bare-string design; (4) `repair` loop didn't match
+its "two consecutive rounds agree" docstring; (5) undecidable homonym polluted the resolver's
+no-hit-anywhere set. Plus a test-hygiene fix (a reconcile test was making a live NCBI call → mocked).
+**Tests:** 662 passed (+6 regression). **Next:** run the 3-design comparison on the smoke set at fixed
+`gemini-3.1-flash-lite` → pick the winner (then Architecture-B fan-out, supplements, model sweep).
