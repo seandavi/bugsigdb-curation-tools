@@ -9,10 +9,12 @@ can do a plain `import retrieve`.
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 
 import pytest
+from loguru import logger
 
 _FIGBENCH_DIR = Path(__file__).parent / "benchmarks" / "figure-extraction"
 if str(_FIGBENCH_DIR) not in sys.path:
@@ -70,3 +72,42 @@ def _isolated_taxonomy_cache_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     """
     monkeypatch.setenv("BUGSIGDB_CACHE_DIR", str(tmp_path / "isolated-bugsigdb-cache"))
     monkeypatch.delenv("BUGSIGDB_TAXONOMY_DB", raising=False)
+
+
+_QUIETED_LOGGER_NAMES = ("litellm", "LiteLLM", "LiteLLM Proxy", "LiteLLM Router", "httpx", "httpcore")
+
+
+@pytest.fixture(autouse=True)
+def _reset_global_logging_state():
+    """Undo `bugsigdb_curation.obs.configure_logging`'s process-wide side effects after each test.
+
+    `configure_logging` (exercised by any `curate`/`eval score` CLI test via
+    `typer.testing.CliRunner`) mutates two global singletons on purpose --
+    loguru's sink registry and the stdlib root logger's handlers -- since
+    that's exactly what a CLI's logging setup is supposed to do for the rest
+    of *that process's* life. Inside one pytest session, though, that
+    leftover state otherwise survives into unrelated later tests: loguru's
+    sink was added pointing at `sys.stderr` as `CliRunner.invoke()` had
+    swapped it in (a buffer that invoke() itself closes on exit), so any log
+    record reaching that stale sink afterward (e.g. a totally unrelated
+    test's own `logging.info(...)` call, now routed through the
+    `InterceptHandler` `configure_logging` installed on the root logger)
+    fails to write -- which loguru handles by printing its own "Logging
+    error" traceback to the *real* stderr, corrupting whatever unrelated
+    `CliRunner` invocation happens to be capturing stderr at that moment
+    (see `tests/test_cli_validate.py`'s pre-fix failures). Reset both
+    after every test, regardless of whether that test touched logging at
+    all, so no test ever depends on run order here.
+    """
+    yield
+    logger.remove()
+    logger.add(sys.stderr)  # loguru's own stock default sink
+
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.setLevel(logging.WARNING)
+    for name in _QUIETED_LOGGER_NAMES:
+        third_party_logger = logging.getLogger(name)
+        third_party_logger.handlers.clear()
+        third_party_logger.setLevel(logging.NOTSET)
+        third_party_logger.propagate = True
