@@ -31,6 +31,8 @@ from rich.progress import (
 )
 from rich.table import Table
 
+from bugsigdb_curation.curator.design import DEFAULT_DESIGN as CURATE_DEFAULT_DESIGN
+from bugsigdb_curation.curator.design import Design
 from bugsigdb_curation.curator.model import DEFAULT_MODEL as CURATE_DEFAULT_MODEL
 from bugsigdb_curation.curator.model import LiteLLMModel, Model, MockModel
 from bugsigdb_curation.curator.pipeline import CurationResult, curate_async
@@ -505,7 +507,8 @@ def load_command(
 
 
 # ---------------------------------------------------------------------------
-# curate: the de-novo curator (Design-1, Fused-Lean, linear single-worker)
+# curate: the de-novo curator (linear single-worker, --design selects one of
+# fused-lean/split-verify/split-panel, see curator.design)
 # ---------------------------------------------------------------------------
 
 
@@ -526,15 +529,19 @@ def _report_result(result: CurationResult) -> None:
     logger.bind(stage="cli", event="curate_result").info(
         "curate result",
         pmid=result.pmid,
+        design=result.design.value,
         valid=result.valid,
         has_pmc=result.has_pmc,
         n_experiments=len(result.record.get("experiments", []) or []),
         n_problems=len(result.problems),
+        n_flags=len(result.flags),
     )
     for problem in result.problems:
         logger.bind(stage="cli").warning(
             "validation problem", pmid=result.pmid, severity=problem.severity, message=problem.message
         )
+    for flag in result.flags:
+        logger.bind(stage="cli").warning("design flag", pmid=result.pmid, design=result.design.value, flag=flag)
 
 
 @app.command("curate")
@@ -547,6 +554,15 @@ def curate_command(
     ),
     config: str = typer.Option(
         CURATE_DEFAULT_CONFIG, "--config", help="Source-config label recorded informationally; not yet switchable."
+    ),
+    design: Design = typer.Option(
+        CURATE_DEFAULT_DESIGN,
+        "--design",
+        help=(
+            "Curator stage-design (workflow plan §6b): fused-lean (default, one fused "
+            "extract+id-propose call), split-verify (split NER/reconcile + adversarial "
+            "verifier), or split-panel (split NER/reconcile + independent reviewer panel)."
+        ),
     ),
     mock: bool = typer.Option(
         False, "--mock", help="Use MockModel: deterministic, fully offline, no API key required."
@@ -587,11 +603,13 @@ def curate_command(
     log_format: LogFormat | None = _LOG_FORMAT_OPTION,
     log_level: str | None = _LOG_LEVEL_OPTION,
 ) -> None:
-    """Curate a PMID into a schema-checked de-novo prediction record (Design-1, Fused-Lean).
+    """Curate a PMID into a schema-checked de-novo prediction record.
 
-    Takes only a PMID (+ model/config) -- no gold path of any kind (see the
-    workflow plan §6e's data firewall). Writes the nested prediction record
-    in exactly the shape `bugsigdb eval score` consumes.
+    Takes only a PMID (+ model/config/`--design`) -- no gold path of any
+    kind (see the workflow plan §6e's data firewall). `--design` selects
+    one of the three §6b stage-designs (default `fused-lean`, the original
+    walking skeleton). Writes the nested prediction record in exactly the
+    shape `bugsigdb eval score` consumes.
     """
     configure_logging(fmt=log_format.value if log_format is not None else None, level=log_level)
 
@@ -611,7 +629,7 @@ def curate_command(
             raise typer.Exit(code=2)
         asyncio.run(
             _run_curate_smoke(
-                model, config, email, taxonomy_cache, taxonomy_db, taxonomy_release, out, console, run_id
+                model, config, design, email, taxonomy_cache, taxonomy_db, taxonomy_release, out, console, run_id
             )
         )
         return
@@ -622,6 +640,7 @@ def curate_command(
             pmid,
             model,
             config,
+            design,
             email,
             taxonomy_cache,
             taxonomy_db,
@@ -639,6 +658,7 @@ async def _run_curate_one(
     pmid: str,
     model: Model,
     config: str,
+    design: Design,
     email: str,
     taxonomy_cache: Path,
     taxonomy_db: Path | None,
@@ -654,6 +674,7 @@ async def _run_curate_one(
             pmid,
             model=model,
             config=config,
+            design=design,
             email=email,
             taxonomy_cache_path=taxonomy_cache,
             taxonomy_db_path=taxonomy_db,
@@ -682,6 +703,7 @@ async def _run_curate_one(
 async def _run_curate_smoke(
     model: Model,
     config: str,
+    design: Design,
     email: str,
     taxonomy_cache: Path,
     taxonomy_db: Path | None,
@@ -718,6 +740,7 @@ async def _run_curate_smoke(
                     study_id,
                     model=model,
                     config=config,
+                    design=design,
                     client=client,
                     email=email,
                     taxonomy_cache_path=taxonomy_cache,
