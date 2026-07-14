@@ -32,6 +32,7 @@ from taxonomy_test_support import (
     TAXID_CUTIBACTERIUM_ACNES,
     TAXID_FAECALIBACTERIUM,
     TAXID_FIRMICUTES,
+    TAXID_RETIRED_MERGED_INTO_FRAGILIS,
     write_synthetic_taxdump,
 )
 
@@ -304,6 +305,40 @@ def test_scorer_resolves_prediction_names_via_taxonomy_db_no_taxa_csv(built_db_p
     assert result.micro_taxa.precision == 1.0
     assert result.micro_taxa.recall == 1.0
     assert result.micro_taxa.f1 == 1.0
+
+
+def test_scorer_canonicalizes_retired_gold_id_end_to_end(built_db_path: Path) -> None:
+    """The full retired-gold-id story, end to end through the real scorer:
+    gold curated a since-retired tax_id (999, merged into Bacteroides
+    fragilis's current 817 -- see `taxonomy_test_support.MERGED`), the
+    de-novo curator predicted the CURRENT id (817, since name resolution
+    against `names.dmp` always lands on the current id) -- without
+    canonicalization these would score as a full miss (FN + FP); with it,
+    `score_study` must canonicalize both sides and score a perfect match."""
+    with TaxonomyDB(built_db_path) as db:
+        resolver = TaxonomyResolver(db=db)
+        gold = _gold_study((_gold_signature(frozenset({TAXID_RETIRED_MERGED_INTO_FRAGILIS})),))
+        pred = {
+            "experiments": [
+                {
+                    "body_site": ["Feces"],
+                    "condition": ["CRC"],
+                    "group_0_name": "healthy",
+                    "group_1_name": "CRC",
+                    "sequencing_type": "16S",
+                    "signatures": [
+                        {"abundance_in_group_1": "increased", "taxa": [{"ncbi_id": TAXID_BACTEROIDES_FRAGILIS}]}
+                    ],
+                }
+            ]
+        }
+
+        result = score_study(gold, pred, resolver)
+
+    assert result.micro_taxa.f1 == 1.0
+    assert result.micro_taxa.tp == 1
+    assert result.micro_taxa.fp == 0
+    assert result.micro_taxa.fn == 0
 
 
 def test_scorer_load_with_no_taxa_csv_parameter() -> None:

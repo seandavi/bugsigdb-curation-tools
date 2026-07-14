@@ -44,7 +44,7 @@ from typing import Any
 
 from bugsigdb_curation.eval.assignment import assign_max_weight
 from bugsigdb_curation.eval.gold import GoldExperiment, GoldSignature, GoldStudy, SourceType
-from bugsigdb_curation.eval.taxonomy import TaxonomyResolver, normalize_taxon_name
+from bugsigdb_curation.eval.taxonomy import TaxonomyResolver, genus_token, normalize_taxon_name
 
 #: Weight of the signature-content tie-breaker added to
 #: `_experiment_field_overlap` (see its docstring). Deliberately tiny: it
@@ -148,9 +148,11 @@ class StudyScore:
     #: Resolution-coverage counters (Fix 2b): the local `TaxonomyResolver`
     #: silently drops a name/id it can't resolve out of every name-based
     #: sub-score (genus-lenient P/R/F1, name->ID accuracy) rather than
-    #: failing loudly -- dropping the `taxa.csv` seed (PR-2) means a gold
-    #: `tax_id` NCBI has since merged/deleted (see `eval/taxonomy.py`'s
-    #: `# NOTE:`) now silently falls out too. These counts make that
+    #: failing loudly. A retired gold `tax_id` is now canonicalized to its
+    #: current successor before this ever matters (`merged.dmp`, see
+    #: `_canonical_ids`/`TaxonomyResolver.canonical_id`); only a genuinely
+    #: *deleted* id (`delnodes.dmp`, no successor -- see `eval/taxonomy.py`'s
+    #: `# NOTE:`) still falls out silently. These counts make that residual
     #: shrinkage observable instead of silent; see `eval/report.py`.
     n_unresolved_pred_taxa: int  #: (a) predicted taxon names that never resolved to a tax_id.
     n_unresolved_gold_taxa: int  #: (b) gold tax_ids that never resolved to a name (feeds genus/name sub-scores).
@@ -305,7 +307,7 @@ def _experiment_field_overlap(
     if resolver is not None:
         gold_taxa: set[int] = set()
         for sig in gold.signatures:
-            gold_taxa |= sig.taxa
+            gold_taxa |= _canonical_ids(sig.taxa, resolver)
         pred_taxa: set[int] = set()
         for sig in pred.get("signatures", []) or []:
             ids, _ = _resolve_pred_taxa(sig.get("taxa", []) or [], resolver)
@@ -440,8 +442,23 @@ def align_experiments(
 # ---------------------------------------------------------------------------
 
 
+def _canonical_ids(ids: frozenset[int], resolver: TaxonomyResolver) -> frozenset[int]:
+    """Canonicalize a set of gold tax_ids via `resolver.canonical_id`
+    (NCBI's `merged.dmp`: a retired tax_id -> its current successor) -- the
+    gold-side counterpart to `_resolve_pred_taxa`'s per-id canonicalization
+    below, so a retired gold id and a current predicted id for the same
+    taxon land on the same int before any set comparison. Identity (no-op)
+    when no local taxonomy DB is configured."""
+    return frozenset(resolver.canonical_id(i) for i in ids)
+
+
 def _resolve_pred_taxa(taxa: list[dict[str, Any]], resolver: TaxonomyResolver) -> tuple[frozenset[int], int]:
-    """Resolve a predicted taxa list to a taxid set; returns (ids, n_unresolved)."""
+    """Resolve a predicted taxa list to a taxid set; returns (ids, n_unresolved).
+
+    Each resolved id is canonicalized (`resolver.canonical_id`) before being
+    added to the set -- the single place a predicted id gets canonicalized,
+    since every predicted-taxa call site in this module routes through here.
+    """
     ids: set[int] = set()
     unresolved = 0
     for taxon in taxa:
@@ -449,7 +466,7 @@ def _resolve_pred_taxa(taxa: list[dict[str, Any]], resolver: TaxonomyResolver) -
         if resolved is None:
             unresolved += 1
         else:
-            ids.add(resolved)
+            ids.add(resolver.canonical_id(resolved))
     return frozenset(ids), unresolved
 
 
@@ -487,8 +504,12 @@ def align_signatures(
     if n_pred == 0:
         return [(i, None) for i in range(n_gold)]
 
+    # Canonicalized once per gold signature (not per pred x gold cell) --
+    # `_taxa_jaccard` runs over these so a retired gold id can align with a
+    # current predicted id, not just score correctly once already aligned.
+    gold_id_sets = [_canonical_ids(g.taxa, resolver) for g in gold_signatures]
     pred_id_sets = [_resolve_pred_taxa(p.get("taxa", []) or [], resolver)[0] for p in pred_signatures]
-    scores = [[_taxa_jaccard(g.taxa, pred_id_sets[i]) for g in gold_signatures] for i in range(n_pred)]
+    scores = [[_taxa_jaccard(gold_id_sets[j], pred_id_sets[i]) for j in range(n_gold)] for i in range(n_pred)]
     assignment = assign_max_weight(scores)  # length n_pred
 
     pairs: list[tuple[int | None, int | None]] = []
@@ -538,16 +559,28 @@ def score_experiment_signatures(
         gold_sig = gold_signatures[gold_idx] if gold_idx is not None else None
         pred_sig = pred_signatures[pred_idx] if pred_idx is not None else None
 
-        gold_ids = gold_sig.taxa if gold_sig is not None else frozenset()
+        # Canonicalized once, here, for every gold-id set operation below
+        # (P/R/F1, genus, name->ID) -- the gold-side counterpart to
+        # `_resolve_pred_taxa`'s per-id canonicalization on the predicted
+        # side, so a retired gold id (NCBI's merged.dmp) matches a current
+        # predicted id for the same taxon instead of scoring as a
+        # false-negative/false-positive pair.
+        gold_ids = _canonical_ids(gold_sig.taxa, resolver) if gold_sig is not None else frozenset()
         pred_taxa_list = (pred_sig.get("taxa", []) or []) if pred_sig is not None else []
         pred_ids, unresolved = _resolve_pred_taxa(pred_taxa_list, resolver)
         n_unresolved += unresolved
-        # Fix 2b: a gold tax_id that fails `name_of_id` (e.g. merged/retired
-        # since curation -- see `eval/taxonomy.py`'s `# NOTE:`, or simply no
-        # local DB configured) silently drops out of `gold_genus` below AND
-        # out of `gold_name_to_id`'s keys further down -- count it here so
-        # that silent shrinkage is visible in the report.
-        n_unresolved_gold += sum(1 for i in gold_ids if resolver.name_of_id(i) is None)
+
+        # Fix 2b + Copilot fix: one `name_of_id` call per (already-
+        # canonicalized) gold id, reused below for both the unresolved
+        # counter and the genus set (was two separate DB round trips per
+        # id). A gold tax_id that still fails `name_of_id` after
+        # canonicalization (a genuinely *deleted* id with no successor --
+        # see `eval/taxonomy.py`'s `# NOTE:` -- or simply no local DB
+        # configured) silently drops out of `gold_genus` below AND out of
+        # `gold_name_to_id`'s keys further down -- count it here so that
+        # shrinkage is visible in the report.
+        gold_names = {i: resolver.name_of_id(i) for i in gold_ids}
+        n_unresolved_gold += sum(1 for name in gold_names.values() if name is None)
 
         tp = len(gold_ids & pred_ids)
         fp = len(pred_ids - gold_ids)
@@ -556,7 +589,7 @@ def score_experiment_signatures(
             fp = 0
         taxa_score = prf1(tp, fp, fn)
 
-        gold_genus = frozenset(g for g in (resolver.genus_of_id(i) for i in gold_ids) if g)
+        gold_genus = frozenset(genus_token(name) for name in gold_names.values() if name)
         pred_genus = frozenset(g for g in (resolver.genus_of_id(i) for i in pred_ids) if g)
         g_tp = len(gold_genus & pred_genus)
         g_fp = len(pred_genus - gold_genus)
@@ -578,7 +611,10 @@ def score_experiment_signatures(
                 if pred_direction == gold_sig.direction:
                     direction_correct += 1
 
-            gold_name_to_id = {name: t for t in gold_ids if (name := resolver.name_of_id(t)) is not None}
+            # Copilot fix: reuse `resolver.id_to_name` (backfilled as a side
+            # effect of the `name_of_id` calls above) instead of calling
+            # `name_of_id` a second time per gold id.
+            gold_name_to_id = {name: t for t in gold_ids if (name := resolver.id_to_name.get(t)) is not None}
             for taxon in pred_taxa_list:
                 raw_name = taxon.get("taxon_name")
                 if not raw_name:
@@ -586,7 +622,12 @@ def score_experiment_signatures(
                 norm = normalize_taxon_name(raw_name)
                 if norm in gold_name_to_id:
                     name_to_id_found += 1
-                    if resolver.resolve_taxon(taxon) == gold_name_to_id[norm]:
+                    resolved = resolver.resolve_taxon(taxon)
+                    # Canonicalize the predicted side of this comparison too
+                    # -- a directly-predicted `ncbi_id` could itself be a
+                    # retired id, and `gold_name_to_id`'s values are now
+                    # canonical (from `gold_ids` above).
+                    if resolved is not None and resolver.canonical_id(resolved) == gold_name_to_id[norm]:
                         name_to_id_correct += 1
 
     return _SignatureScoreDetail(
@@ -641,11 +682,14 @@ def score_study(
         n_unresolved_gold += detail.n_unresolved_gold_taxa
 
     # Unmatched gold experiments: every gold taxon is a full miss (FN only).
+    # Canonicalized (`_canonical_ids`) for the same reason as the matched
+    # path in `score_experiment_signatures` -- consistent counts either way.
     for gold_idx in alignment.unmatched_gold:
         for sig in gold_experiments[gold_idx].signatures:
-            n_unresolved_gold += sum(1 for i in sig.taxa if resolver.name_of_id(i) is None)
-            genus = frozenset(g for g in (resolver.genus_of_id(i) for i in sig.taxa) if g)
-            all_pairs.append((sig.source_type, prf1(0, 0, len(sig.taxa)), prf1(0, 0, len(genus))))
+            gold_ids = _canonical_ids(sig.taxa, resolver)
+            n_unresolved_gold += sum(1 for i in gold_ids if resolver.name_of_id(i) is None)
+            genus = frozenset(g for g in (resolver.genus_of_id(i) for i in gold_ids) if g)
+            all_pairs.append((sig.source_type, prf1(0, 0, len(gold_ids)), prf1(0, 0, len(genus))))
 
     # Unmatched predicted experiments: every predicted taxon is a full FP
     # (there's no gold signature here at all, so no source_type/discount applies).
