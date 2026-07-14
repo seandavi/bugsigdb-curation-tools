@@ -382,3 +382,33 @@ a current predicted id with merged data, **F1=0.0** without. Backward-compatible
 via a `_has_merged_table` flag). This is the last correctness gate before trustworthy numbers; the
 real DB was rebuilt to populate `merged`. **Next:** structured logging (loguru), then the smoke re-run
 for the first genuine Design-1 numbers.
+
+## L026 — Structured logging (loguru) — 2026-07-14
+**PR:** #12 (merge `1f65514`). `obs.configure_logging(fmt, level)` — console or JSON-lines
+(`serialize=True`), env `BUGSIGDB_LOG_FORMAT`/`BUGSIGDB_LOG_LEVEL`, `--log-format`/`--log-level` on
+`curate`/`eval score`. Stdlib intercept routes httpx/litellm through loguru and mutes them to WARNING
+— killing the per-call `LiteLLM temperature/... DeprecationWarning` spam that drowned L022's run.
+Structured S0–S9 stage events with `logger.contextualize(study_id, pmid, run_id, pmcid)` (e.g.
+`event=study_done valid=… n_signatures=… latency_ms=…`). No secrets logged.
+
+## L027 — First genuine Design-1 numbers — 2026-07-14
+**Run:** `curate --smoke --model gemini/gemini-3.1-flash-lite --taxonomy-release 2026-07-01`
+→ `eval score --smoke` (`main` @ `1f65514`). Predictions/report under `data/runs/design1_smoke_v2/`
+(gitignored). **19/19 studies, 0 errors** (vs L022's 14 errors — the 429 wall is gone); 7 valid records.
+**Metrics by reachable gold source type** (micro): **figure F1 0.43** (P 0.78 / R 0.30, n=260);
+**main-table F1 0.17** (P 0.71 / R 0.10, n=51); supplement ~0.01 (n=1056, structurally unreachable —
+Design-1 fetches no supplements). Direction accuracy **80.8%**; name→id accuracy **100%**; **0 gold
+taxids unresolved** (local DB + merged-id canonicalisation cover the gold). Recall is the bottleneck:
+the ≥21-experiment stratum scores recall ≈0.01 (linear-pipeline under-segmentation; corpus
+under-seg total 109). **Interpretation:** at the leanest design × cheapest model × no supplements ×
+one run, this is a precision-good / recall-limited **floor**. Levers (by expected impact): supplements
+(retrieval), Architecture-B fan-out (large papers), stronger models (sweep), Designs 2/3
+(verifier/panel). The taxonomy/scorer/coverage layers that produced these are all trustworthy.
+
+## L028 — Paper started (Quarto WIP) — 2026-07-14
+**Artifact:** `paper/bugsigdb-autocuration.qmd` (+ `paper/figures/f1_by_source.png`).
+Distilled the ledger into a scientific-paper-structured Quarto document (Background · Materials and
+Methods · Results · Conclusions), compiling to HTML/PDF (verified `quarto render`, v1.9.38). Includes
+the L028 numbers, the Mermaid stage DAG, and the source-type results figure. Render outputs are
+gitignored; the `.qmd` + figure are tracked. **The ledger is the lab notebook; the paper is what we
+publish** — kept as a living WIP updated as designs/models are swept.

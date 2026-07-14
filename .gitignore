@@ -16,3 +16,8 @@ venv/
 .env
 .env.*
 !.env.example
+# Quarto render outputs (source .qmd + figures/ are tracked)
+/paper/*.html
+/paper/*.pdf
+/paper/*_files/
+/paper/.quarto/
