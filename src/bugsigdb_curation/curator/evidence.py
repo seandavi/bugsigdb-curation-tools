@@ -21,6 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import httpx
+from loguru import logger
 
 from bugsigdb_curation.retrieval import (
     ArticleMetadata,
@@ -211,7 +212,14 @@ async def assemble_evidence(pmid: str, pmcid: str, *, client: httpx.AsyncClient)
             html_text = await fetch_article_html(client, pmcid)
         except httpx.HTTPError:
             html_text = None
-    return build_bundle(pmid, pmcid, xml_text, html_text)
+    bundle = build_bundle(pmid, pmcid, xml_text, html_text)
+    logger.bind(stage="S1").info(
+        "evidence assembled",
+        n_sections=len(bundle.sections),
+        n_tables=len(bundle.tables),
+        n_figures=len(bundle.figures),
+    )
+    return bundle
 
 
 async def fetch_figure_image(figure: EvidenceFigure, *, client: httpx.AsyncClient) -> bytes | None:

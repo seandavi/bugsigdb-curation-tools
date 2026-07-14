@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import httpx
+from loguru import logger
 
 from bugsigdb_curation.pmc_map import PmcMapError, convert_pmids
 
@@ -47,9 +48,15 @@ async def resolve(pmid: str, *, client: httpx.AsyncClient, email: str = DEFAULT_
     if not records:
         # idconv returned zero records for a well-formed single-PMID request
         # (rare -- e.g. a PMID it doesn't recognize at all); treat as "no PMC".
-        return ResolvedIds(pmid=pmid, pmcid=None, doi=None)
-    record = records[0]
-    return ResolvedIds(pmid=pmid, pmcid=record.pmcid, doi=record.doi)
+        resolved = ResolvedIds(pmid=pmid, pmcid=None, doi=None)
+    else:
+        record = records[0]
+        resolved = ResolvedIds(pmid=pmid, pmcid=record.pmcid, doi=record.doi)
+
+    logger.bind(stage="S0").info(
+        "resolved", pmcid=resolved.pmcid, has_pmc=resolved.has_pmc, has_doi=resolved.doi is not None
+    )
+    return resolved
 
 
 __all__ = ["DEFAULT_EMAIL", "PmcMapError", "ResolvedIds", "resolve"]

@@ -11,12 +11,14 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+import uuid
 from enum import Enum
 from pathlib import Path
 
 import httpx
 import typer
 import yaml
+from loguru import logger
 from rich.console import Console
 from rich.markup import escape
 from rich.progress import (
@@ -53,6 +55,7 @@ from bugsigdb_curation.export import (
     human_size,
 )
 from bugsigdb_curation.loader import load_studies, summarize
+from bugsigdb_curation.obs import configure_logging
 from bugsigdb_curation.pmc_map import (
     DEFAULT_CONCURRENCY as PMC_MAP_DEFAULT_CONCURRENCY,
 )
@@ -94,6 +97,29 @@ class SelectGroup(str, Enum):
     dump = "dump"
     gmt = "gmt"
     all = "all"
+
+
+class LogFormat(str, Enum):
+    """Structured-log sink format for `configure_logging` (`bugsigdb_curation.obs`)."""
+
+    console = "console"
+    json = "json"
+
+
+#: Shared `typer.Option`s for `curate`/`eval score` -- both call
+#: `configure_logging()` at startup; `None` (the default for either) means
+#: "let `configure_logging` fall back to BUGSIGDB_LOG_FORMAT/BUGSIGDB_LOG_LEVEL
+#: env vars, then its own console/INFO defaults" -- see obs.py.
+_LOG_FORMAT_OPTION = typer.Option(
+    None,
+    "--log-format",
+    help="Structured-log sink format: console (default) or json. Overrides BUGSIGDB_LOG_FORMAT.",
+)
+_LOG_LEVEL_OPTION = typer.Option(
+    None,
+    "--log-level",
+    help="Log level, e.g. INFO/DEBUG/WARNING (default INFO). Overrides BUGSIGDB_LOG_LEVEL.",
+)
 
 
 DEFAULT_OUTPUT_DIR = Path("data/exports")
@@ -484,16 +510,31 @@ def load_command(
 
 
 def _build_model(mock: bool, model_name: str) -> Model:
-    return MockModel() if mock else LiteLLMModel(model=model_name)
+    model = MockModel() if mock else LiteLLMModel(model=model_name)
+    logger.bind(stage="init").info("model backend", model="mock" if mock else model_name, mock=mock)
+    return model
 
 
-def _report_result(result: CurationResult, error_console: Console) -> None:
-    status = "[green]valid[/green]" if result.valid else "[yellow]INVALID[/yellow]"
-    channel = "has_pmc" if result.has_pmc else "abstract-only"
-    n_experiments = len(result.record.get("experiments", []) or [])
-    error_console.print(f"PMID {result.pmid}: {status} ({channel}), {n_experiments} experiment(s)")
+def _report_result(result: CurationResult) -> None:
+    """Log a structured curate-result summary for `--pmid` mode.
+
+    The heavier stage-by-stage trail (S0-S9) already came out of
+    `curate_async` itself as it ran (see `curator/pipeline.py` and the
+    individual stage modules) -- this is just the CLI's own final-outcome
+    line, replacing the old ad-hoc `Console.print(f"PMID {pmid}: ...")`.
+    """
+    logger.bind(stage="cli", event="curate_result").info(
+        "curate result",
+        pmid=result.pmid,
+        valid=result.valid,
+        has_pmc=result.has_pmc,
+        n_experiments=len(result.record.get("experiments", []) or []),
+        n_problems=len(result.problems),
+    )
     for problem in result.problems:
-        error_console.print(f"  [yellow]{problem.severity}[/yellow]: {escape(problem.message)}")
+        logger.bind(stage="cli").warning(
+            "validation problem", pmid=result.pmid, severity=problem.severity, message=problem.message
+        )
 
 
 @app.command("curate")
@@ -543,6 +584,8 @@ def curate_command(
         "--taxonomy-release",
         help="Release label for locating the default cached taxonomy DB (ignored once --taxonomy-db/BUGSIGDB_TAXONOMY_DB apply).",
     ),
+    log_format: LogFormat | None = _LOG_FORMAT_OPTION,
+    log_level: str | None = _LOG_LEVEL_OPTION,
 ) -> None:
     """Curate a PMID into a schema-checked de-novo prediction record (Design-1, Fused-Lean).
 
@@ -550,6 +593,8 @@ def curate_command(
     workflow plan §6e's data firewall). Writes the nested prediction record
     in exactly the shape `bugsigdb eval score` consumes.
     """
+    configure_logging(fmt=log_format.value if log_format is not None else None, level=log_level)
+
     console = Console()
     error_console = Console(stderr=True)
 
@@ -558,6 +603,7 @@ def curate_command(
         raise typer.Exit(code=2)
 
     model = _build_model(mock, model_name)
+    run_id = uuid.uuid4().hex[:12]
 
     if smoke:
         if out is None:
@@ -565,7 +611,7 @@ def curate_command(
             raise typer.Exit(code=2)
         asyncio.run(
             _run_curate_smoke(
-                model, config, email, taxonomy_cache, taxonomy_db, taxonomy_release, out, console, error_console
+                model, config, email, taxonomy_cache, taxonomy_db, taxonomy_release, out, console, run_id
             )
         )
         return
@@ -584,6 +630,7 @@ def curate_command(
             output_format,
             console,
             error_console,
+            run_id,
         )
     )
 
@@ -600,6 +647,7 @@ async def _run_curate_one(
     output_format: LoadFormat,
     console: Console,
     error_console: Console,
+    run_id: str | None = None,
 ) -> None:
     try:
         result = await curate_async(
@@ -610,6 +658,7 @@ async def _run_curate_one(
             taxonomy_cache_path=taxonomy_cache,
             taxonomy_db_path=taxonomy_db,
             taxonomy_db_release=taxonomy_release,
+            run_id=run_id,
         )
     except Exception as exc:  # noqa: BLE001 -- surface any stage failure as a clean CLI error, not a traceback
         error_console.print(f"[red]Error curating PMID {pmid}:[/red] {escape(str(exc))}")
@@ -625,7 +674,7 @@ async def _run_curate_one(
     else:
         sys.stdout.write(text)
 
-    _report_result(result, error_console)
+    _report_result(result)
     if not result.valid:
         raise typer.Exit(code=1)
 
@@ -639,10 +688,11 @@ async def _run_curate_smoke(
     taxonomy_release: str | None,
     out_dir: Path,
     console: Console,
-    error_console: Console,
+    run_id: str | None = None,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     ids = smoke_study_ids()
+    logger.bind(stage="cli", run_id=run_id).info("smoke run starting", n_studies=len(ids))
 
     n_valid = 0
     n_errors = 0
@@ -672,23 +722,31 @@ async def _run_curate_smoke(
                     email=email,
                     taxonomy_cache_path=taxonomy_cache,
                     resolver=resolver,
+                    run_id=run_id,
                 )
             except Exception as exc:  # noqa: BLE001 -- one bad study must not abort the whole batch
                 n_errors += 1
-                error_console.print(f"  [red]{study_id}: error:[/red] {escape(str(exc))}")
+                logger.bind(stage="cli", study_id=study_id, run_id=run_id).error(
+                    "study curation failed", error=f"{type(exc).__name__}: {exc}"
+                )
                 continue
 
             (out_dir / f"{study_id}.json").write_text(
                 json.dumps(result.record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
             )
-            status = "[green]valid[/green]" if result.valid else "[yellow]INVALID[/yellow]"
-            channel = "has_pmc" if result.has_pmc else "abstract-only"
-            console.print(f"  {study_id}: {status} ({channel})")
+            # Per-study progress is already in the structured log stream
+            # (curate_async's own S0-S9 events and its final `study_done`,
+            # all bound with this study's study_id/run_id) -- no separate
+            # CLI-side per-study console line needed; only the batch's
+            # concise human summary below stays a `console.print`.
             if result.valid:
                 n_valid += 1
 
     resolver.save_cache()
     resolver.close()  # this loop owns the shared resolver's TaxonomyDB handle; close it once, here.
+    logger.bind(stage="cli", run_id=run_id).info(
+        "smoke run finished", n_studies=len(ids), n_valid=n_valid, n_errors=n_errors
+    )
     console.print(
         f"[green]Curated {len(ids)} studies -> {out_dir}[/green] ({n_valid} valid, {n_errors} error(s))"
     )
@@ -785,8 +843,12 @@ def eval_score_command(
         "--taxonomy-release",
         help="Release label for locating the default cached taxonomy DB (ignored once --taxonomy-db/BUGSIGDB_TAXONOMY_DB apply).",
     ),
+    log_format: LogFormat | None = _LOG_FORMAT_OPTION,
+    log_level: str | None = _LOG_LEVEL_OPTION,
 ) -> None:
     """Score predictions (loader nested-shape) against the gold corpus."""
+    configure_logging(fmt=log_format.value if log_format is not None else None, level=log_level)
+
     console = Console()
     error_console = Console(stderr=True)
 

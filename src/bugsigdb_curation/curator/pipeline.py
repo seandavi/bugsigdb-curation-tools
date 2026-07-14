@@ -18,11 +18,13 @@ See `tests/test_curator_firewall.py`.
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import httpx
+from loguru import logger
 
 from bugsigdb_curation.curator.assemble import assemble_record
 from bugsigdb_curation.curator.evidence import assemble_evidence, fetch_figure_image
@@ -70,6 +72,17 @@ def _empty_study_fields(doi: str | None) -> StudyFields:
     return StudyFields(title=None, journal=None, year=None, authors=(), doi=doi, study_design=())
 
 
+def _log_study_done(*, valid: bool, n_experiments: int, n_signatures: int, start: float) -> None:
+    latency_ms = round((time.monotonic() - start) * 1000)
+    logger.bind(event="study_done").info(
+        "study done",
+        valid=valid,
+        n_experiments=n_experiments,
+        n_signatures=n_signatures,
+        latency_ms=latency_ms,
+    )
+
+
 async def curate_async(
     pmid: str,
     *,
@@ -81,6 +94,7 @@ async def curate_async(
     taxonomy_db_path: Path | None = None,
     taxonomy_db_release: str | None = None,
     resolver: NcbiTaxonomyResolver | None = None,
+    run_id: str | None = None,
 ) -> CurationResult:
     """S0-S9: turn a bare PMID into a validated nested prediction record.
 
@@ -92,6 +106,11 @@ async def curate_async(
     (ignored once `resolver` is given directly) are forwarded to
     `NcbiTaxonomyResolver.load()`'s own `db_path`/`db_release` resolution
     (CLI flag -> `BUGSIGDB_TAXONOMY_DB` -> newest cached DB -> live-only).
+
+    `run_id`, if given (e.g. the CLI's `--smoke` batch loop generates one and
+    passes the same value to every study), is bound into every log record
+    this call emits alongside `study_id`/`pmid`, so a deployed run's whole
+    log stream can be filtered/grouped by `run_id` -- see `obs.py`.
     """
     owns_client = client is None
     if client is None:
@@ -102,71 +121,87 @@ async def curate_async(
             cache_path=taxonomy_cache_path, db_path=taxonomy_db_path, db_release=taxonomy_db_release
         )
 
-    try:
-        resolved = await resolve(pmid, client=client, email=email)
+    start = time.monotonic()
+    with logger.contextualize(study_id=pmid, pmid=pmid, run_id=run_id):
+        try:
+            resolved = await resolve(pmid, client=client, email=email)
 
-        if not resolved.has_pmc:
-            # Abstract-only stratum (plan §4a): S1's text+table+figure channel
-            # has nothing to fetch from PMC. Emit a minimal, still
-            # schema-checked Study-only record (no experiments) rather than
-            # raising -- "do not silently drop invalid/incomplete records."
-            record = assemble_record(resolved, _empty_study_fields(resolved.doi), [])
-            problems = validate_instance(record, "Study", default_schema_path())
-            return CurationResult(
-                pmid=pmid, pmcid=None, has_pmc=False, record=record, valid=not problems, problems=tuple(problems)
-            )
-
-        assert resolved.pmcid is not None  # has_pmc guarantees this
-        bundle = await assemble_evidence(pmid, resolved.pmcid, client=client)
-
-        study_fields = extract_study(bundle, resolved, model=model)
-        stubs = segment_experiments(bundle, model=model)
-        artifact = locate_artifact(bundle)
-
-        experiments: list[tuple[ExperimentFields, list[ExtractedSignature], str | None]] = []
-        # NOTE: no per-experiment error isolation -- one bad ExperimentStub
-        # (a raised exception from S4/S5a/S5b) aborts the whole study here.
-        # Deferred to Architecture-B's fan-out (plan §2/§5), which isolates
-        # each Experiment Worker; out of scope for this Design-1 skeleton.
-        for stub in stubs:
-            experiment_fields = extract_experiment(bundle, stub, model=model)
-
-            signatures: list[ExtractedSignature] = []
-            source: str | None = None
-            if artifact is not None:
-                image_bytes = None
-                if artifact.kind == "figure" and artifact.figure is not None:
-                    image_bytes = await fetch_figure_image(artifact.figure, client=client)
-                signatures = await extract_signatures(
-                    artifact, model=model, resolver=resolver, client=client, image_bytes=image_bytes
+            if not resolved.has_pmc:
+                # Abstract-only stratum (plan §4a): S1's text+table+figure channel
+                # has nothing to fetch from PMC. Emit a minimal, still
+                # schema-checked Study-only record (no experiments) rather than
+                # raising -- "do not silently drop invalid/incomplete records."
+                record = assemble_record(resolved, _empty_study_fields(resolved.doi), [])
+                problems = validate_instance(record, "Study", default_schema_path())
+                logger.bind(stage="S9").info("validated", valid=not problems, n_problems=len(problems))
+                _log_study_done(valid=not problems, n_experiments=0, n_signatures=0, start=start)
+                return CurationResult(
+                    pmid=pmid,
+                    pmcid=None,
+                    has_pmc=False,
+                    record=record,
+                    valid=not problems,
+                    problems=tuple(problems),
                 )
-                source = artifact.provenance
 
-            experiments.append((experiment_fields, signatures, source))
+            assert resolved.pmcid is not None  # has_pmc guarantees this
+            with logger.contextualize(pmcid=resolved.pmcid):
+                bundle = await assemble_evidence(pmid, resolved.pmcid, client=client)
 
-        record = assemble_record(resolved, study_fields, experiments)
-        problems = validate_instance(record, "Study", default_schema_path())
+                study_fields = extract_study(bundle, resolved, model=model)
+                stubs = segment_experiments(bundle, model=model)
+                artifact = locate_artifact(bundle)
 
-        return CurationResult(
-            pmid=pmid,
-            pmcid=resolved.pmcid,
-            has_pmc=True,
-            record=record,
-            valid=not problems,
-            problems=tuple(problems),
-        )
-    finally:
-        if owns_resolver:
-            resolver.save_cache()
-            # Close the resolver's local TaxonomyDB handle (if any) --
-            # only when this call built the resolver itself; a caller-
-            # supplied resolver (e.g. the CLI's `--smoke` batch loop, which
-            # shares one resolver across many `curate_async` calls) owns
-            # its own DB lifecycle and closes it once, after the whole
-            # batch, not here.
-            resolver.close()
-        if owns_client:
-            await client.aclose()
+                experiments: list[tuple[ExperimentFields, list[ExtractedSignature], str | None]] = []
+                # NOTE: no per-experiment error isolation -- one bad ExperimentStub
+                # (a raised exception from S4/S5a/S5b) aborts the whole study here.
+                # Deferred to Architecture-B's fan-out (plan §2/§5), which isolates
+                # each Experiment Worker; out of scope for this Design-1 skeleton.
+                for stub in stubs:
+                    experiment_fields = extract_experiment(bundle, stub, model=model)
+
+                    signatures: list[ExtractedSignature] = []
+                    source: str | None = None
+                    if artifact is not None:
+                        image_bytes = None
+                        if artifact.kind == "figure" and artifact.figure is not None:
+                            image_bytes = await fetch_figure_image(artifact.figure, client=client)
+                        signatures = await extract_signatures(
+                            artifact, model=model, resolver=resolver, client=client, image_bytes=image_bytes
+                        )
+                        source = artifact.provenance
+
+                    experiments.append((experiment_fields, signatures, source))
+
+                record = assemble_record(resolved, study_fields, experiments)
+                problems = validate_instance(record, "Study", default_schema_path())
+                logger.bind(stage="S9").info("validated", valid=not problems, n_problems=len(problems))
+
+                n_signatures = sum(len(sigs) for _, sigs, _ in experiments)
+                _log_study_done(
+                    valid=not problems, n_experiments=len(experiments), n_signatures=n_signatures, start=start
+                )
+
+                return CurationResult(
+                    pmid=pmid,
+                    pmcid=resolved.pmcid,
+                    has_pmc=True,
+                    record=record,
+                    valid=not problems,
+                    problems=tuple(problems),
+                )
+        finally:
+            if owns_resolver:
+                resolver.save_cache()
+                # Close the resolver's local TaxonomyDB handle (if any) --
+                # only when this call built the resolver itself; a caller-
+                # supplied resolver (e.g. the CLI's `--smoke` batch loop, which
+                # shares one resolver across many `curate_async` calls) owns
+                # its own DB lifecycle and closes it once, after the whole
+                # batch, not here.
+                resolver.close()
+            if owns_client:
+                await client.aclose()
 
 
 def curate(pmid: str, *, model: Model, config: str = DEFAULT_CONFIG, **kwargs: Any) -> CurationResult:
