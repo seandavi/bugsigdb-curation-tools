@@ -3,13 +3,22 @@
 Per the workflow plan (§3, §6e): an LLM (S5b) may only *propose* a taxon name
 and an `ncbi_id`; the identifier is only ever kept if this module's authority
 lookup independently confirms it. This is deliberately **not**
-`bugsigdb_curation.eval.taxonomy` -- that resolver seeds itself from the
-gold `taxa.csv` (the curated corpus's own taxa set), which would leak which
-taxa the human curators actually kept. This resolver only ever talks to the
-live NCBI E-utilities taxonomy database and its own cache file
-(`data/curator/ncbi_taxonomy_cache.json` by default, distinct from the eval
-harness's `data/eval/taxonomy_cache.json`) -- never a relational CSV, never
-the eval package.
+`bugsigdb_curation.eval.taxonomy` -- that resolver reads gold (the curated
+corpus's own taxid sets), which would leak which taxa the human curators
+actually kept. This resolver only ever talks to (in order): its own cache
+file (`data/curator/ncbi_taxonomy_cache.json` by default, distinct from the
+eval harness's `data/eval/taxonomy_cache.json`), the local, general NCBI
+`TaxonomyDB` built by `bugsigdb_curation.taxonomy` from the public taxdump
+(not gold -- see that package's docstring), and live NCBI E-utilities as a
+gap-fill for names the local DB doesn't have -- never a relational gold CSV,
+never the eval package.
+
+**Resolution order** (PR-2, "never guess" throughout): an in-memory/JSON
+cache hit short-circuits everything; otherwise the local `TaxonomyDB` (fast,
+offline, full synonym coverage) is tried first; only a local miss falls
+through to a live `esearch.fcgi` call. A resolver with no `TaxonomyDB`
+configured (see `load()`) falls back to live-only, with a one-time warning --
+slower, but it still works with no DB built.
 
 **NCBI E-utilities etiquette (this module's other job).** NCBI asks
 unauthenticated callers to stay at or under ~3 req/s and callers with an
@@ -24,7 +33,9 @@ retries a 429/5xx with exponential backoff before giving up on that one
 taxon -- consistent with the "never guess" contract, a retry-exhausted
 lookup returns `None` for that call without poisoning the cache (a
 transient rate-limit failure is not the same thing as NCBI confirming the
-name doesn't exist).
+name doesn't exist). The local `TaxonomyDB` path (PR-2) is what actually
+keeps most lookups off this rate-limited path in the first place -- live
+E-utilities is now only reached for a genuine local-DB miss.
 """
 
 from __future__ import annotations
@@ -32,8 +43,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import re
 import time
+import warnings
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -42,13 +53,9 @@ import httpx
 from dotenv import load_dotenv
 
 from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL
-
-#: Rank prefixes appear double-underscored (MetaPhlAn, "g__Bacillus") or
-#: single-underscored (LEfSe figure labels, "g_Bacillus"); strip either form.
-#: (Deliberately duplicated from `bugsigdb_curation.eval.taxonomy` rather
-#: than imported -- see this module's docstring on the firewall boundary.)
-_RANK_PREFIX = re.compile(r"^[kdpcofgst]__?")
-_WHITESPACE_OR_UNDERSCORE = re.compile(r"[\s_]+")
+from bugsigdb_curation.taxonomy.db import TaxonomyDB
+from bugsigdb_curation.taxonomy.normalize import normalize_taxon_name
+from bugsigdb_curation.taxonomy.paths import resolve_optional_db_path
 
 DEFAULT_CACHE_PATH = Path("data/curator/ncbi_taxonomy_cache.json")
 
@@ -96,15 +103,6 @@ def _parse_retry_after(value: str | None) -> float | None:
     if seconds < 0:
         return None
     return seconds
-
-
-def normalize_taxon_name(name: str) -> str:
-    """Normalize a taxon label for lookup/comparison (see module docstring)."""
-    n = name.strip()
-    n = _RANK_PREFIX.sub("", n)
-    n = n.replace("_", " ")
-    n = _WHITESPACE_OR_UNDERSCORE.sub(" ", n)
-    return n.strip().lower()
 
 
 def resolve_ncbi_api_key() -> str | None:
@@ -158,26 +156,64 @@ class _RateLimiter:
             self._last_call = now
 
 
+def _load_optional_taxonomy_db(db_path: Path | str | None, db_release: str | None = None) -> TaxonomyDB | None:
+    """Resolve + open the local taxonomy DB for `.load()`'s real construction
+    path -- never raises. Returns `None` (with a one-time warning; Python's
+    default warning filter dedupes repeats from this same call site) if no
+    DB is configured/found, or if the resolved path fails to open (e.g. a
+    corrupt/incomplete build) -- either way the caller falls back to
+    live-only E-utilities resolution instead of crashing.
+    """
+    resolved_path = resolve_optional_db_path(db_path, db_release)
+    if resolved_path is None or not resolved_path.exists():
+        warnings.warn(
+            "no local taxonomy DB found (no --taxonomy-db/BUGSIGDB_TAXONOMY_DB and no cached "
+            "ncbi-taxdump-*.duckdb) -- NcbiTaxonomyResolver is falling back to live-only NCBI "
+            "E-utilities resolution (slower). Build one with `bugsigdb taxonomy build`.",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+        return None
+    try:
+        return TaxonomyDB(resolved_path)
+    except (FileNotFoundError, ValueError) as exc:
+        warnings.warn(
+            f"failed to open local taxonomy DB at {resolved_path}: {exc} -- "
+            "NcbiTaxonomyResolver is falling back to live-only NCBI E-utilities resolution.",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+        return None
+
+
 @dataclass
 class NcbiTaxonomyResolver:
-    """A name -> NCBI taxid resolver backed only by live E-utilities + a cache file.
+    """A name -> NCBI taxid resolver: cache -> local `TaxonomyDB` -> live E-utilities gap-fill.
 
     `cache` is keyed by `normalize_taxon_name(...)`; a cached `None` means
     "confirmed unresolved" (not "never looked up"), so a repeat lookup for a
-    name NCBI doesn't recognize is free rather than re-hitting the network
-    every call. Never seeded from any corpus/gold file -- every entry either
-    came from a live esearch or was persisted from a previous run of this
-    same resolver.
+    name neither the local DB nor NCBI recognizes is free rather than
+    re-querying every call. Never seeded from any corpus/gold file -- every
+    entry came from the local `TaxonomyDB` (the general NCBI taxdump, not
+    gold), a live esearch, or was persisted from a previous run of this same
+    resolver.
 
-    Throttling only applies to actual network calls: a cache hit
-    short-circuits `resolve_name` before `rate_limiter.acquire()` is ever
-    reached, so it never consumes rate budget.
+    `db` (PR-2) is a local, offline `TaxonomyDB` consulted before any network
+    call; `None` means no DB is configured, in which case every lookup falls
+    straight through to live E-utilities (see `load()`'s one-time warning
+    for that case). Throttling only applies to actual network calls: a cache
+    hit or a local-DB hit short-circuits `resolve_name` before
+    `rate_limiter.acquire()` is ever reached, so neither consumes rate
+    budget.
     """
 
     cache: dict[str, int | None] = field(default_factory=dict)
     cache_path: Path | None = DEFAULT_CACHE_PATH
-    #: Normalized names esearch confirmed have no taxonomy-db hit.
+    #: Normalized names confirmed to have no hit anywhere (local DB nor live).
     unresolved: set[str] = field(default_factory=set)
+    #: A local, offline NCBI taxonomy DB (general taxdump, not gold) tried
+    #: before any network call; `None` falls back to live-only resolution.
+    db: TaxonomyDB | None = None
     #: An NCBI E-utilities API key, or None for unauthenticated use. Not
     #: auto-resolved from the environment here -- only `.load()` (the real
     #: construction path used by `curate`) does that; a bare
@@ -207,6 +243,9 @@ class NcbiTaxonomyResolver:
         *,
         cache_path: Path | None = DEFAULT_CACHE_PATH,
         api_key: str | None = None,
+        db_path: Path | str | None = None,
+        db_release: str | None = None,
+        db: TaxonomyDB | None = None,
     ) -> NcbiTaxonomyResolver:
         """Build a resolver from a JSON cache file (missing/absent -> empty cache).
 
@@ -214,16 +253,26 @@ class NcbiTaxonomyResolver:
         the real construction path (`curate`/`curate_async`) always goes
         through here, so a `.env`/env-var `NCBI_API_KEY` is picked up
         automatically without every caller having to thread it through.
+
+        `db`, if not given, is resolved via `db_path`/`db_release` (CLI flag
+        -> `BUGSIGDB_TAXONOMY_DB` -> `db_release`'s default cache path (if
+        given) -> newest cached `ncbi-taxdump-*.duckdb` -> none) -- see
+        `_load_optional_taxonomy_db`. No DB found/configured is not an
+        error: the resolver falls back to live-only, with a one-time
+        warning, rather than crashing a curator run that hasn't built one yet.
         """
         cache: dict[str, int | None] = {}
         if cache_path is not None and Path(cache_path).exists():
             raw = json.loads(Path(cache_path).read_text(encoding="utf-8"))
             cache = {k: (int(v) if v is not None else None) for k, v in raw.items()}
         resolved_key = api_key if api_key is not None else resolve_ncbi_api_key()
+        if db is None:
+            db = _load_optional_taxonomy_db(db_path, db_release)
         return cls(
             cache=cache,
             cache_path=Path(cache_path) if cache_path is not None else None,
             api_key=resolved_key,
+            db=db,
         )
 
     async def _get_with_retry(self, params: dict[str, str], *, client: httpx.AsyncClient) -> httpx.Response | None:
@@ -271,12 +320,16 @@ class NcbiTaxonomyResolver:
         return None  # pragma: no cover -- loop always returns/continues above
 
     async def resolve_name(self, name: str, *, client: httpx.AsyncClient) -> int | None:
-        """Resolve a bare taxon-name string to an NCBI taxid via live esearch.
+        """Resolve a bare taxon-name string to an NCBI taxid: cache -> local
+        `TaxonomyDB` -> live esearch gap-fill.
 
         Cache hit (including a cached "confirmed unresolved" `None`) short-
-        circuits without a network call. Never guesses: returns `None` (and
-        records the normalized name in `.unresolved`) rather than inventing
-        an id when NCBI has no hit.
+        circuits without touching the local DB or the network. A local-DB
+        hit (PR-2) short-circuits before any network call and is cached, so
+        a repeat lookup for the same name is free. Only a local-DB miss (or
+        no DB configured at all) falls through to live esearch. Never
+        guesses: returns `None` (and records the normalized name in
+        `.unresolved`) rather than inventing an id when nothing has a hit.
 
         If NCBI keeps returning 429/5xx through every retry, this also
         returns `None` for this call -- but, unlike a confirmed no-hit, it
@@ -291,6 +344,17 @@ class NcbiTaxonomyResolver:
             if hit is None:
                 self.unresolved.add(norm)
             return hit
+
+        if self.db is not None:
+            resolution = self.db.resolve(name)
+            if resolution is not None:
+                self.cache[norm] = resolution.tax_id
+                self.unresolved.discard(norm)
+                return resolution.tax_id
+            # Local DB has no hit for this name -- fall through to a live
+            # esearch gap-fill below rather than caching "unresolved" yet;
+            # only a live no-hit (or retry-exhaustion, see below) decides
+            # that.
 
         response = await self._get_with_retry(
             {"db": "taxonomy", "term": norm, "retmode": "json"}, client=client

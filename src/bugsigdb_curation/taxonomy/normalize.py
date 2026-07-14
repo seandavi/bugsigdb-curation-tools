@@ -1,13 +1,15 @@
 """Taxon-name normalization, shared by `build.py` (writing `name_norm`) and
 `db.py` (normalizing a query name before the lookup).
 
-Deliberately mirrors `bugsigdb_curation.curator.taxonomy.normalize_taxon_name`
-field-for-field (lowercase, strip a leading rank prefix, underscores -> spaces,
-collapse whitespace, strip) so a name normalizes the same way whether it's
-resolved via the live E-utilities path or this local DB. Duplicated rather
-than imported -- matching this codebase's existing convention (see that
-module's docstring) of keeping each resolver's normalization self-contained
-rather than sharing a runtime dependency across package boundaries.
+`bugsigdb_curation.curator.taxonomy.normalize_taxon_name` (S6) imports this
+function directly (PR-2: single Python source of truth, since `curator.taxonomy`
+now also resolves through this package's local `TaxonomyDB`) -- so a name
+normalizes identically whether it's resolved via the live E-utilities path or
+the local DB. `bugsigdb_curation.eval.taxonomy` keeps its own copy rather than
+importing this one: it's the gold-aware side of the data firewall (§6e), and
+this taxonomy package -- while itself gold-free -- is deliberately kept
+import-agnostic between the curator and eval packages rather than becoming a
+third place either side has to trust not to (someday) grow a gold dependency.
 """
 
 from __future__ import annotations
