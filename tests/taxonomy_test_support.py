@@ -28,6 +28,13 @@ covering every case the taxonomy subpackage's tests need:
   `curate --smoke` run 429'd on before the local `TaxonomyDB` was wired in
   (see `tests/test_taxonomy_wiring.py`), plus the reclassification-synonym
   case the curator's/scorer's caches alone can't unify without this DB.
+- a `merged.dmp` row: retired tax_id 999 -> current tax_id 817 (`Bacteroides
+  fragilis`) -- NCBI's own merge mechanism (distinct from the
+  synonym/reclassification cases above, which are all still-current
+  `names.dmp` rows for one tax_id; a `merged.dmp` row instead retires the
+  OLD tax_id itself, redirecting any lookup by that id to the new one).
+  Exercises `TaxonomyDB.canonical_taxid`/`scientific_name`/`genus_of`/
+  `lineage` and the scorer's gold/predicted tax_id canonicalization.
 
 Not a test module itself (no `test_` prefix) -- pytest won't collect it.
 """
@@ -73,8 +80,14 @@ NAMES: list[tuple[int, str, str, str]] = [
     (1747, "Propionibacterium acnes", "", "synonym"),  # reclassification synonym -> same tax_id as 1747
 ]
 
+# -- merged: (old_tax_id, new_tax_id) ----------------------------------------
+MERGED: list[tuple[int, int]] = [
+    (999, 817),  # retired id -> Bacteroides fragilis's current tax_id
+]
+
 EXPECTED_NAMES_ROWS = len(NAMES)
 EXPECTED_NODES_ROWS = len(NODES)
+EXPECTED_MERGED_ROWS = len(MERGED)
 
 #: tax_id constants, named for readability in test assertions.
 TAXID_ROOT = 1
@@ -88,6 +101,9 @@ TAXID_FIRMICUTES = 1239
 TAXID_FAECALIBACTERIUM = 216851
 TAXID_CUTIBACTERIUM_GENUS = 1912216
 TAXID_CUTIBACTERIUM_ACNES = 1747
+#: A retired tax_id NCBI has since merged into `TAXID_BACTEROIDES_FRAGILIS`
+#: (see `MERGED` above) -- has no row of its own in `names`/`nodes`.
+TAXID_RETIRED_MERGED_INTO_FRAGILIS = 999
 
 
 def _write_names_dmp(path: Path) -> None:
@@ -112,8 +128,25 @@ def _write_nodes_dmp(path: Path) -> None:
     path.write_text("".join(lines), encoding="utf-8")
 
 
+def _write_merged_dmp(path: Path) -> None:
+    lines = [f"{old_tax_id}\t|\t{new_tax_id}\t|\n" for old_tax_id, new_tax_id in MERGED]
+    path.write_text("".join(lines), encoding="utf-8")
+
+
 def write_synthetic_taxdump(root: Path) -> Path:
-    """Write `names.dmp` + `nodes.dmp` into `root` (created if missing); returns `root`."""
+    """Write `names.dmp` + `nodes.dmp` + `merged.dmp` into `root` (created if
+    missing); returns `root`."""
+    root.mkdir(parents=True, exist_ok=True)
+    _write_names_dmp(root / "names.dmp")
+    _write_nodes_dmp(root / "nodes.dmp")
+    _write_merged_dmp(root / "merged.dmp")
+    return root
+
+
+def write_synthetic_taxdump_without_merged_dmp(root: Path) -> Path:
+    """Like `write_synthetic_taxdump`, but omits `merged.dmp` entirely -- a
+    minimal taxdump that lacks it, for exercising the build's "absent
+    merged.dmp -> empty `merged` table" fallback."""
     root.mkdir(parents=True, exist_ok=True)
     _write_names_dmp(root / "names.dmp")
     _write_nodes_dmp(root / "nodes.dmp")

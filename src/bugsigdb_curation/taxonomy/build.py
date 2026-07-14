@@ -18,18 +18,17 @@ Does not read the current time itself: `build_timestamp` is always supplied
 by the caller (the CLI), per this repo's convention of keeping "what time is
 it" out of library code.
 
-NOTE: this build only ever reads `names.dmp`/`nodes.dmp` -- it does not
-ingest NCBI's `merged.dmp` (tax_id -> successor tax_id, for a taxon NCBI has
-since reclassified/merged) or `delnodes.dmp` (tax_ids deleted outright). A
-gold `tax_id` that falls in either bucket simply has no row in `names`/
-`nodes` here, even though it was valid when the corpus was curated, and so
-fails every lookup against the resulting `.duckdb` (`TaxonomyDB.resolve`/
-`scientific_name`/`rank`/`lineage` all return `None`/empty for it). Full
-merged/delnodes canonicalization (mapping a retired gold id to its
-successor on both the gold and predicted sides of scoring) is deferred to a
-follow-up PR; `bugsigdb_curation.eval.score`'s `n_unresolved_gold_taxa`
-counter (Fix 2b) makes the resulting sub-score shrinkage observable in the
-meantime rather than silent.
+This build also reads NCBI's `merged.dmp` (`old_tax_id -> new_tax_id`, for a
+taxon NCBI has since reclassified/merged) into a `merged` table, so a
+retired gold `tax_id` can be canonicalized to its current successor before
+scoring (see `bugsigdb_curation.taxonomy.db.TaxonomyDB.canonical_taxid` and
+`bugsigdb_curation.eval.score`). `merged.dmp` is optional -- a minimal
+taxdump may omit it -- in which case `merged` is built empty rather than
+failing the build. `delnodes.dmp` (tax_ids deleted outright, with no
+successor) is deliberately NOT ingested: a truly deleted id has nothing to
+canonicalize to, so it's out of scope here; `bugsigdb_curation.eval.score`'s
+`n_unresolved_gold_taxa` counter (Fix 2b) still makes that residual
+shrinkage observable rather than silent.
 """
 
 from __future__ import annotations
@@ -65,6 +64,7 @@ class BuildStats:
     out_path: Path
     names_rows: int
     nodes_rows: int
+    merged_rows: int
     names_dmp_sha256: str
     nodes_dmp_sha256: str
 
@@ -96,6 +96,16 @@ def find_dmp_files(root: Path) -> tuple[Path, Path]:
     if not nodes_matches:
         raise FileNotFoundError(f"no nodes.dmp found under {root}")
     return names_matches[0], nodes_matches[0]
+
+
+def find_merged_dmp_file(root: Path) -> Path | None:
+    """Locate `merged.dmp` under `root` (searched recursively, same as
+    `find_dmp_files`), or `None` if absent -- unlike `names.dmp`/`nodes.dmp`,
+    `merged.dmp` is optional (a minimal taxdump may omit it entirely), so a
+    missing file is not an error: the build just gets an empty `merged`
+    table rather than failing."""
+    matches = sorted(root.rglob("merged.dmp"))
+    return matches[0] if matches else None
 
 
 def extract_taxdump(archive_path: Path, dest_dir: Path) -> Path:
@@ -153,6 +163,7 @@ def _build_from_files(
     release: str,
     source: str,
     build_timestamp: str,
+    merged_path: Path | None = None,
 ) -> BuildStats:
     """Build into a temp file next to `out_path` and only `os.replace()` it into
     place on full success -- `out_path` (pre-existing or absent) is never
@@ -175,6 +186,7 @@ def _build_from_files(
                 "CREATE TABLE names (tax_id BIGINT, name_txt VARCHAR, name_class VARCHAR, name_norm VARCHAR)"
             )
             con.execute("CREATE TABLE nodes (tax_id BIGINT PRIMARY KEY, parent_tax_id BIGINT, rank VARCHAR)")
+            con.execute("CREATE TABLE merged (old_tax_id BIGINT PRIMARY KEY, new_tax_id BIGINT)")
 
             # DuckDB reads each .dmp directly, in one pass, no staging file.
             # Each line is read whole (`_DMP_READ_CSV_ARGS`) and split into a
@@ -196,9 +208,21 @@ def _build_from_files(
                 f"FROM (SELECT {_DMP_FIELDS_SQL} AS parts FROM read_csv(?, {_DMP_READ_CSV_ARGS}))",
                 [str(nodes_path)],
             )
+            if merged_path is not None:
+                # merged.dmp columns: old_tax_id, new_tax_id (parts[1], parts[2]) --
+                # read the same whole-line/str_split way as names/nodes, independent
+                # of column count, so it's unaffected by NCBI ever widening the
+                # format the way nodes.dmp already has.
+                con.execute(
+                    f"INSERT INTO merged "
+                    f"SELECT parts[1]::BIGINT, parts[2]::BIGINT "
+                    f"FROM (SELECT {_DMP_FIELDS_SQL} AS parts FROM read_csv(?, {_DMP_READ_CSV_ARGS}))",
+                    [str(merged_path)],
+                )
 
             names_rows = con.execute("SELECT COUNT(*) FROM names").fetchone()[0]
             nodes_rows = con.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+            merged_rows = con.execute("SELECT COUNT(*) FROM merged").fetchone()[0]
 
             con.execute("CREATE INDEX idx_names_name_norm ON names(name_norm)")
 
@@ -212,11 +236,14 @@ def _build_from_files(
                 ("build_timestamp", build_timestamp),
                 ("names_rows", str(names_rows)),
                 ("nodes_rows", str(nodes_rows)),
+                ("merged_rows", str(merged_rows)),
                 ("names_dmp_filename", names_path.name),
                 ("nodes_dmp_filename", nodes_path.name),
                 ("names_dmp_sha256", names_checksum),
                 ("nodes_dmp_sha256", nodes_checksum),
             ]
+            if merged_path is not None:
+                meta_rows.append(("merged_dmp_filename", merged_path.name))
             con.executemany("INSERT INTO meta VALUES (?, ?)", meta_rows)
         finally:
             con.close()
@@ -233,6 +260,7 @@ def _build_from_files(
         out_path=out_path,
         names_rows=names_rows,
         nodes_rows=nodes_rows,
+        merged_rows=merged_rows,
         names_dmp_sha256=names_checksum,
         nodes_dmp_sha256=nodes_checksum,
     )
@@ -255,30 +283,52 @@ def build_taxonomy_db(
     `extract_dir` if given, else a temporary directory that's cleaned up
     before this returns. Never touches the network.
 
-    Writes three tables to `out_path` (overwritten if it already exists):
+    Writes four tables to `out_path` (overwritten if it already exists):
     `names(tax_id, name_txt, name_class, name_norm)` (indexed on
-    `name_norm`), `nodes(tax_id PRIMARY KEY, parent_tax_id, rank)`, and
-    `meta(key, value)` recording `release`, `source`, `build_timestamp`, row
-    counts, and a sha256 checksum of each input `.dmp` file -- enough to
-    reproduce or audit the build later.
+    `name_norm`), `nodes(tax_id PRIMARY KEY, parent_tax_id, rank)`,
+    `merged(old_tax_id PRIMARY KEY, new_tax_id)` (empty if the taxdump has
+    no `merged.dmp`), and `meta(key, value)` recording `release`, `source`,
+    `build_timestamp`, row counts, and a sha256 checksum of each input
+    `.dmp` file -- enough to reproduce or audit the build later.
     """
     taxdump_path = Path(taxdump_path)
     if taxdump_path.is_dir():
         names_path, nodes_path = find_dmp_files(taxdump_path)
+        merged_path = find_merged_dmp_file(taxdump_path)
         return _build_from_files(
-            names_path, nodes_path, out_path, release=release, source=source, build_timestamp=build_timestamp
+            names_path,
+            nodes_path,
+            out_path,
+            release=release,
+            source=source,
+            build_timestamp=build_timestamp,
+            merged_path=merged_path,
         )
 
     if extract_dir is not None:
         extracted = extract_taxdump(taxdump_path, extract_dir)
         names_path, nodes_path = find_dmp_files(extracted)
+        merged_path = find_merged_dmp_file(extracted)
         return _build_from_files(
-            names_path, nodes_path, out_path, release=release, source=source, build_timestamp=build_timestamp
+            names_path,
+            nodes_path,
+            out_path,
+            release=release,
+            source=source,
+            build_timestamp=build_timestamp,
+            merged_path=merged_path,
         )
 
     with tempfile.TemporaryDirectory(prefix="bugsigdb-taxdump-") as tmp:
         extracted = extract_taxdump(taxdump_path, Path(tmp))
         names_path, nodes_path = find_dmp_files(extracted)
+        merged_path = find_merged_dmp_file(extracted)
         return _build_from_files(
-            names_path, nodes_path, out_path, release=release, source=source, build_timestamp=build_timestamp
+            names_path,
+            nodes_path,
+            out_path,
+            release=release,
+            source=source,
+            build_timestamp=build_timestamp,
+            merged_path=merged_path,
         )

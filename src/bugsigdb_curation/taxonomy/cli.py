@@ -122,6 +122,7 @@ def build_command(
     table.add_row("build_timestamp", stats.build_timestamp)
     table.add_row("names rows", str(stats.names_rows))
     table.add_row("nodes rows", str(stats.nodes_rows))
+    table.add_row("merged rows", str(stats.merged_rows))
     table.add_row("names.dmp sha256", stats.names_dmp_sha256)
     table.add_row("nodes.dmp sha256", stats.nodes_dmp_sha256)
     console.print(table)
