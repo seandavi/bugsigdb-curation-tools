@@ -23,7 +23,7 @@ from pathlib import Path
 
 import duckdb
 
-from bugsigdb_curation.taxonomy.normalize import normalize_taxon_name
+from bugsigdb_curation.taxonomy.normalize import name_norm_sql
 
 #: The name_class NCBI uses for a taxon's canonical scientific name; every
 #: other class (synonym, common name, authority, etc.) is a lower-priority
@@ -111,10 +111,13 @@ class TaxonomyDB:
 
         See the module docstring for the ambiguity policy.
         """
-        norm = normalize_taxon_name(name)
+        # Normalize the query name with the *same* SQL expression the build
+        # used to populate `name_norm` (see `name_norm_sql`), so build ==
+        # query by construction rather than by a Python/SQL parity argument.
         rows = self._con.execute(
-            "SELECT tax_id, name_txt, name_class FROM names WHERE name_norm = ? ORDER BY tax_id, name_class",
-            [norm],
+            f"SELECT tax_id, name_txt, name_class FROM names "
+            f"WHERE name_norm = {name_norm_sql('?')} ORDER BY tax_id, name_class",
+            [name],
         ).fetchall()
         if not rows:
             return None

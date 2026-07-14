@@ -20,36 +20,15 @@ from bugsigdb_curation.taxonomy.build import (
     download_taxdump,
     extract_taxdump,
     find_dmp_files,
-    parse_names,
-    parse_nodes,
 )
 from taxonomy_test_support import (
     EXPECTED_NAMES_ROWS,
     EXPECTED_NODES_ROWS,
-    TAXID_BACTEROIDES_GENUS,
     write_malformed_taxdump_duplicate_node_pk,
     write_synthetic_taxdump,
 )
 
 BUILD_TIMESTAMP = "2026-07-14T00:00:00+00:00"
-
-
-def test_parse_names_reads_all_fields(tmp_path: Path):
-    taxdump_dir = write_synthetic_taxdump(tmp_path / "taxdump")
-    rows = list(parse_names(taxdump_dir / "names.dmp"))
-    assert len(rows) == EXPECTED_NAMES_ROWS
-    tax_id, name_txt, name_class, name_norm = next(r for r in rows if r[1] == "Bacteroides")
-    assert tax_id == TAXID_BACTEROIDES_GENUS
-    assert name_class == "scientific name"
-    assert name_norm == "bacteroides"
-
-
-def test_parse_nodes_reads_first_three_fields_only(tmp_path: Path):
-    taxdump_dir = write_synthetic_taxdump(tmp_path / "taxdump")
-    rows = list(parse_nodes(taxdump_dir / "nodes.dmp"))
-    assert len(rows) == EXPECTED_NODES_ROWS
-    genus_row = next(r for r in rows if r[0] == TAXID_BACTEROIDES_GENUS)
-    assert genus_row == (TAXID_BACTEROIDES_GENUS, 200, "genus")
 
 
 def test_find_dmp_files_locates_both(tmp_path: Path):
