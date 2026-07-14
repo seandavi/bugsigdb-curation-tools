@@ -389,6 +389,102 @@ def test_resolve_name_retries_429_then_succeeds(httpx_mock: HTTPXMock):
     assert 0.01 in sleeps
 
 
+def test_resolve_name_429_honors_retry_after_header(httpx_mock: HTTPXMock):
+    """A 429 carrying a `Retry-After` header must wait (via the injected
+    sleep) that many seconds instead of the fixed exponential delay --
+    deployment-friendly: NCBI's own guidance wins over a guess."""
+    httpx_mock.add_response(
+        url=_esearch_url("faecalibacterium prausnitzii"), status_code=429, headers={"Retry-After": "1"}
+    )
+    httpx_mock.add_response(
+        url=_esearch_url("faecalibacterium prausnitzii"),
+        json={"esearchresult": {"idlist": ["853"]}},
+    )
+
+    sleeps: list[float] = []
+
+    async def fast_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+
+    limiter = _RateLimiter(min_interval=0.0, sleep=fast_sleep)
+    # retry_base_delay is deliberately far from 1s -- if the exponential
+    # schedule were used instead of Retry-After, `sleeps` would show 5.0,
+    # not 1.0.
+    resolver = NcbiTaxonomyResolver(cache_path=None, rate_limiter=limiter, retry_base_delay=5.0)
+
+    async def run() -> int | None:
+        async with httpx.AsyncClient() as client:
+            return await resolver.resolve_name("Faecalibacterium prausnitzii", client=client)
+
+    result = asyncio.run(run())
+
+    assert result == 853
+    assert sleeps == [1.0]
+
+
+def test_resolve_name_429_retry_after_is_capped(httpx_mock: HTTPXMock):
+    """A `Retry-After` larger than `RETRY_AFTER_MAX_SECONDS` must be capped,
+    not honored verbatim -- a misbehaving/malicious server value can't stall
+    a run indefinitely."""
+    from bugsigdb_curation.curator.taxonomy import RETRY_AFTER_MAX_SECONDS
+
+    httpx_mock.add_response(
+        url=_esearch_url("faecalibacterium prausnitzii"), status_code=429, headers={"Retry-After": "9999"}
+    )
+    httpx_mock.add_response(
+        url=_esearch_url("faecalibacterium prausnitzii"),
+        json={"esearchresult": {"idlist": ["853"]}},
+    )
+
+    sleeps: list[float] = []
+
+    async def fast_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+
+    limiter = _RateLimiter(min_interval=0.0, sleep=fast_sleep)
+    resolver = NcbiTaxonomyResolver(cache_path=None, rate_limiter=limiter, retry_base_delay=0.01)
+
+    async def run() -> int | None:
+        async with httpx.AsyncClient() as client:
+            return await resolver.resolve_name("Faecalibacterium prausnitzii", client=client)
+
+    asyncio.run(run())
+
+    assert sleeps == [RETRY_AFTER_MAX_SECONDS]
+
+
+def test_resolve_name_429_falls_back_to_exponential_when_retry_after_missing_or_unparseable(
+    httpx_mock: HTTPXMock,
+):
+    """No `Retry-After` header (or an unparseable one, e.g. an HTTP-date)
+    must fall back to the fixed exponential backoff schedule."""
+    httpx_mock.add_response(
+        url=_esearch_url("faecalibacterium prausnitzii"),
+        status_code=429,
+        headers={"Retry-After": "Wed, 21 Oct 2099 07:28:00 GMT"},
+    )
+    httpx_mock.add_response(
+        url=_esearch_url("faecalibacterium prausnitzii"),
+        json={"esearchresult": {"idlist": ["853"]}},
+    )
+
+    sleeps: list[float] = []
+
+    async def fast_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+
+    limiter = _RateLimiter(min_interval=0.0, sleep=fast_sleep)
+    resolver = NcbiTaxonomyResolver(cache_path=None, rate_limiter=limiter, retry_base_delay=0.01)
+
+    async def run() -> int | None:
+        async with httpx.AsyncClient() as client:
+            return await resolver.resolve_name("Faecalibacterium prausnitzii", client=client)
+
+    asyncio.run(run())
+
+    assert sleeps == [0.01]  # exponential schedule, not the unparseable header
+
+
 def test_resolve_name_persistent_429_ends_unresolved_without_crashing(httpx_mock: HTTPXMock):
     for _ in range(3):
         httpx_mock.add_response(url=_esearch_url("faecalibacterium prausnitzii"), status_code=429)

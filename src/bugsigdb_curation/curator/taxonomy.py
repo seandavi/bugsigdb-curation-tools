@@ -76,6 +76,27 @@ DEFAULT_MIN_INTERVAL_WITH_KEY = 0.11
 #: HTTP statuses `_get_with_retry` treats as transient/retryable.
 _RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
 
+#: Cap on how long a server-supplied `Retry-After` (on a 429) is allowed to
+#: delay a single retry -- deployment-friendly: an overly generous or
+#: malicious value from the server can't stall a run indefinitely.
+RETRY_AFTER_MAX_SECONDS = 30.0
+
+
+def _parse_retry_after(value: str | None) -> float | None:
+    """Parse a `Retry-After` header value as a number of seconds, or `None`
+    if the header is absent or not a plain seconds-delta (e.g. an HTTP-date
+    form, which this deliberately doesn't attempt to parse -- the caller
+    falls back to the exponential backoff schedule in that case)."""
+    if value is None:
+        return None
+    try:
+        seconds = float(value)
+    except ValueError:
+        return None
+    if seconds < 0:
+        return None
+    return seconds
+
 
 def normalize_taxon_name(name: str) -> str:
     """Normalize a taxon label for lookup/comparison (see module docstring)."""
@@ -209,6 +230,14 @@ class NcbiTaxonomyResolver:
         """GET `NCBI_ESEARCH_URL` through the shared rate limiter, retrying a
         429/5xx with exponential backoff (`max_attempts` total tries).
 
+        On a 429 that carries a `Retry-After` header (seconds), that value
+        (capped at `RETRY_AFTER_MAX_SECONDS`) is used as this attempt's
+        backoff delay instead of the exponential schedule -- deployment-
+        friendly: NCBI's server-supplied guidance wins over a guess when
+        it's given. Falls back to the exponential schedule when the header
+        is absent or unparseable (e.g. an HTTP-date form), and always for a
+        5xx (which never carries a meaningful `Retry-After` here).
+
         Returns `None` -- never raises -- once retries are exhausted on a
         retryable status; a non-retryable HTTP error (`raise_for_status()`)
         or a transport-level exception (connection error, timeout, ...)
@@ -228,7 +257,12 @@ class NcbiTaxonomyResolver:
             response = await client.get(NCBI_ESEARCH_URL, params=full_params)
             if response.status_code in _RETRYABLE_STATUSES:
                 if attempt < self.max_attempts - 1:
-                    await self.rate_limiter.sleep(delay)
+                    wait = delay
+                    if response.status_code == 429:
+                        retry_after = _parse_retry_after(response.headers.get("Retry-After"))
+                        if retry_after is not None:
+                            wait = min(retry_after, RETRY_AFTER_MAX_SECONDS)
+                    await self.rate_limiter.sleep(wait)
                     delay *= 2
                     continue
                 return None
