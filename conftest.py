@@ -28,6 +28,20 @@ def _no_ambient_ncbi_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     for every test by default so a developer's/CI's ambient shell env can
     never silently add an `api_key` param to a mocked esearch request and
     break URL matching -- tests that specifically want to exercise API-key
-    resolution set it back with `monkeypatch.setenv(...)` themselves."""
+    resolution set it back with `monkeypatch.setenv(...)` themselves.
+
+    Clearing the env vars alone isn't enough: `resolve_ncbi_api_key()` (and
+    `resolve_google_api_key()` in `curator.model`) call `load_dotenv()`
+    first, whose default `find_dotenv` walks up from the *module file*'s
+    directory (not CWD) looking for a `.env` -- so a real repo-root `.env`
+    gets loaded and silently refills the very env vars this fixture just
+    cleared, regardless of CWD or monkeypatch's env sandboxing. Patch both
+    modules' `load_dotenv` to a no-op so every test that reaches `.load()`
+    (directly or via `curate`/`curate_async`) is hermetic against whatever
+    `.env` happens to exist on disk, not just against the ambient shell env.
+    Same class of bug as the Google-key fix in commit 5ba07fe, generalized
+    here so it protects every test by default instead of test-by-test."""
     monkeypatch.delenv("NCBI_API_KEY", raising=False)
     monkeypatch.delenv("NCBI_EUTILS_API_KEY", raising=False)
+    monkeypatch.setattr("bugsigdb_curation.curator.taxonomy.load_dotenv", lambda *a, **k: None)
+    monkeypatch.setattr("bugsigdb_curation.curator.model.load_dotenv", lambda *a, **k: None)
