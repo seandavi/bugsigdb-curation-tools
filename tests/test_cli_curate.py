@@ -97,7 +97,50 @@ def test_curate_single_pmid_writes_valid_json_record(httpx_mock: HTTPXMock, tmp_
     record = json.loads(out_path.read_text())
     assert record["uid"] == PMID
     assert len(record["experiments"]) == 1
-    assert "valid" in result.stderr
+    # `_report_result` now logs the outcome (structured, via loguru) rather
+    # than printing a rich "PMID ...: valid" line -- the default console sink
+    # still lands on stderr, so the message/kv fields are still visible there.
+    assert "curate result" in result.stderr
+    assert "valid=True" in result.stderr
+
+
+def test_curate_single_pmid_logs_structured_json_result(httpx_mock: HTTPXMock, tmp_path: Path):
+    """Same run as above, but with `--log-format json`: every stderr line is a
+    parseable JSON object, and one of them is the `curate_result` event
+    carrying the structured fields `_report_result` binds (pmid/valid/
+    has_pmc/n_experiments/n_problems) -- proof the CLI's own summary line is
+    genuinely structured, not just human-readable prose that happens to
+    contain the word "valid"."""
+    _mock_all(httpx_mock)
+    out_path = tmp_path / "prediction.json"
+    cache_path = tmp_path / "cache.json"
+
+    result = runner.invoke(
+        app,
+        [
+            "curate",
+            "--pmid",
+            PMID,
+            "--mock",
+            "--out",
+            str(out_path),
+            "--taxonomy-cache",
+            str(cache_path),
+            "--log-format",
+            "json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    records = [json.loads(line) for line in result.stderr.splitlines() if line.strip()]
+    curate_results = [r for r in records if r["record"]["extra"].get("event") == "curate_result"]
+    assert len(curate_results) == 1
+    extra = curate_results[0]["record"]["extra"]
+    assert extra["pmid"] == PMID
+    assert extra["valid"] is True
+    assert extra["has_pmc"] is True
+    assert extra["n_experiments"] == 1
+    assert extra["n_problems"] == 0
 
 
 def test_curate_defaults_to_stdout_when_no_out_given(httpx_mock: HTTPXMock, tmp_path: Path):
@@ -158,7 +201,9 @@ def test_curate_smoke_reuses_one_client_across_studies(tmp_path: Path, monkeypat
 
     seen_clients: list[object] = []
 
-    async def fake_curate_async(pmid, *, model, config, client=None, email, taxonomy_cache_path, resolver=None):
+    async def fake_curate_async(
+        pmid, *, model, config, client=None, email, taxonomy_cache_path, resolver=None, run_id=None
+    ):
         seen_clients.append(client)
         return CurationResult(pmid=pmid, pmcid=None, has_pmc=False, record={}, valid=True, problems=())
 
@@ -193,7 +238,9 @@ def test_curate_smoke_reuses_one_resolver_across_studies(tmp_path: Path, monkeyp
 
     seen_resolvers: list[object] = []
 
-    async def fake_curate_async(pmid, *, model, config, client=None, email, taxonomy_cache_path, resolver=None):
+    async def fake_curate_async(
+        pmid, *, model, config, client=None, email, taxonomy_cache_path, resolver=None, run_id=None
+    ):
         seen_resolvers.append(resolver)
         return CurationResult(pmid=pmid, pmcid=None, has_pmc=False, record={}, valid=True, problems=())
 
