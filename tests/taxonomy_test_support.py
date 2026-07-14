@@ -76,11 +76,18 @@ def _write_names_dmp(path: Path) -> None:
 
 
 def _write_nodes_dmp(path: Path) -> None:
-    # Real nodes.dmp has a dozen-odd trailing columns (embl code, division
-    # id, ...); include a couple of dummy ones to make sure the parser
-    # correctly ignores everything past the third field.
+    # Real nodes.dmp has 13 fields per row (tax_id, parent_tax_id, rank, then 10
+    # trailing columns: embl_code, division_id, inherited_div, genetic_code,
+    # inherited_gc, mito_code, inherited_mgc, genbank_hidden, hidden_subtree,
+    # comments). We emit the full width here on purpose: a `\t|\t`-joined 13-field
+    # row tab-splits into 26 columns, so DuckDB's `read_csv` zero-pads its
+    # positional column names to 2 digits (`column00`...) -- the exact condition
+    # that broke a `column4`-style projection on the real dump but not on a
+    # narrower fixture. The builder must ignore everything past the third field.
+    trailing = "\t|\t".join([""] * 9 + ["0"])  # 10 dummy trailing fields
     lines = [
-        f"{tax_id}\t|\t{parent_tax_id}\t|\t{rank}\t|\t\t|\t0\t|\n" for tax_id, parent_tax_id, rank in NODES
+        f"{tax_id}\t|\t{parent_tax_id}\t|\t{rank}\t|\t{trailing}\t|\n"
+        for tax_id, parent_tax_id, rank in NODES
     ]
     path.write_text("".join(lines), encoding="utf-8")
 

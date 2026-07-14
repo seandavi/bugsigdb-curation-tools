@@ -56,14 +56,21 @@ class BuildStats:
     nodes_dmp_sha256: str
 
 
-#: DuckDB `read_csv` args shared by both `.dmp` loads: fields are joined by
-#: `"\t|\t"` and each row terminated by `"\t|\n"`, so splitting on a plain
-#: tab interleaves real fields with literal `"|"` separator columns at the
-#: odd column indices -- e.g. `names.dmp`'s `(tax_id, name_txt, unique_name,
-#: name_class)` land at `column0, column2, column4, column6`. `quote=''`
-#: disables quote handling (taxdump fields are never quoted), and
-#: `all_varchar=true` defers all casting to the `SELECT` below.
-_DMP_READ_CSV_ARGS = "delim='\t', header=false, quote='', all_varchar=true"
+#: DuckDB `read_csv` args to read each `.dmp` line as ONE column (`column0`):
+#: taxdump fields are joined by `"\t|\t"` and rows end with `"\t|\n"`, so we
+#: read whole lines -- delimiter set to a byte (BEL, 0x07) that never occurs in
+#: the taxdump -- and split them in SQL (`_DMP_FIELDS_SQL`). This is independent
+#: of the field count: relying instead on `read_csv`'s positional `columnNN`
+#: names is fragile, because DuckDB zero-pads them once a row has >=10 tab-split
+#: columns (real `nodes.dmp` has 26), which silently broke `column0` lookups.
+#: `quote=''`/`all_varchar=true` keep the line verbatim.
+_DMP_READ_CSV_ARGS = r"delim=e'\x07', header=false, quote='', all_varchar=true"
+
+#: Split one raw `.dmp` line (`column0`) into its real fields: drop any trailing
+#: newline, strip the `"\t|"` row terminator, then split on the `"\t|\t"` field
+#: separator. `[|]` is a char class (unambiguous literal pipe in the regex);
+#: `str_split`'s delimiter is a literal string, not a regex.
+_DMP_FIELDS_SQL = r"str_split(regexp_replace(rtrim(column0), e'\t[|]$', ''), e'\t|\t')"
 
 
 def find_dmp_files(root: Path) -> tuple[Path, Path]:
@@ -157,22 +164,23 @@ def _build_from_files(
             con.execute("CREATE TABLE nodes (tax_id BIGINT PRIMARY KEY, parent_tax_id BIGINT, rank VARCHAR)")
 
             # DuckDB reads each .dmp directly, in one pass, no staging file.
-            # See `_DMP_READ_CSV_ARGS` for why tax_id/name_txt/unique_name/
-            # name_class land at column0/2/4/6 (names.dmp) and
-            # tax_id/parent_tax_id/rank at column0/2/4 (nodes.dmp).
-            # `name_norm` is computed by the shared SQL expression from
-            # `name_norm_sql` -- the exact same expression `db.py::resolve`
-            # applies to the query name, so build == query by construction.
+            # Each line is read whole (`_DMP_READ_CSV_ARGS`) and split into a
+            # `parts` array (`_DMP_FIELDS_SQL`): for names.dmp parts = (tax_id,
+            # name_txt, unique_name, name_class); for nodes.dmp parts = (tax_id,
+            # parent_tax_id, rank, ...). `name_norm` is computed by the shared
+            # SQL expression from `name_norm_sql` -- the exact same expression
+            # `db.py::resolve` applies to the query name, so build == query by
+            # construction.
             con.execute(
                 f"INSERT INTO names "
-                f"SELECT column0::BIGINT, column2, column6, {name_norm_sql('column2')} "
-                f"FROM read_csv(?, {_DMP_READ_CSV_ARGS})",
+                f"SELECT parts[1]::BIGINT, parts[2], parts[4], {name_norm_sql('parts[2]')} "
+                f"FROM (SELECT {_DMP_FIELDS_SQL} AS parts FROM read_csv(?, {_DMP_READ_CSV_ARGS}))",
                 [str(names_path)],
             )
             con.execute(
                 f"INSERT INTO nodes "
-                f"SELECT column0::BIGINT, column2::BIGINT, column4 "
-                f"FROM read_csv(?, {_DMP_READ_CSV_ARGS})",
+                f"SELECT parts[1]::BIGINT, parts[2]::BIGINT, parts[3] "
+                f"FROM (SELECT {_DMP_FIELDS_SQL} AS parts FROM read_csv(?, {_DMP_READ_CSV_ARGS}))",
                 [str(nodes_path)],
             )
 
