@@ -20,12 +20,16 @@ from bugsigdb_curation.taxonomy.build import (
     download_taxdump,
     extract_taxdump,
     find_dmp_files,
+    find_merged_dmp_file,
 )
 from taxonomy_test_support import (
+    EXPECTED_MERGED_ROWS,
     EXPECTED_NAMES_ROWS,
     EXPECTED_NODES_ROWS,
+    MERGED,
     write_malformed_taxdump_duplicate_node_pk,
     write_synthetic_taxdump,
+    write_synthetic_taxdump_without_merged_dmp,
 )
 
 BUILD_TIMESTAMP = "2026-07-14T00:00:00+00:00"
@@ -52,6 +56,20 @@ def test_find_dmp_files_missing_raises(tmp_path: Path):
         find_dmp_files(empty_dir)
 
 
+def test_find_merged_dmp_file_locates_it(tmp_path: Path):
+    taxdump_dir = write_synthetic_taxdump(tmp_path / "taxdump")
+    merged_path = find_merged_dmp_file(taxdump_dir)
+    assert merged_path is not None
+    assert merged_path.name == "merged.dmp"
+
+
+def test_find_merged_dmp_file_absent_returns_none_not_raises(tmp_path: Path):
+    """Unlike `find_dmp_files`, a missing `merged.dmp` is not an error --
+    a minimal taxdump may simply omit it."""
+    taxdump_dir = write_synthetic_taxdump_without_merged_dmp(tmp_path / "taxdump")
+    assert find_merged_dmp_file(taxdump_dir) is None
+
+
 def test_build_taxonomy_db_from_directory_writes_tables_and_meta(tmp_path: Path):
     taxdump_dir = write_synthetic_taxdump(tmp_path / "taxdump")
     out_path = tmp_path / "out.duckdb"
@@ -66,6 +84,7 @@ def test_build_taxonomy_db_from_directory_writes_tables_and_meta(tmp_path: Path)
 
     assert stats.names_rows == EXPECTED_NAMES_ROWS
     assert stats.nodes_rows == EXPECTED_NODES_ROWS
+    assert stats.merged_rows == EXPECTED_MERGED_ROWS
     assert stats.out_path == out_path
     assert out_path.exists()
 
@@ -73,6 +92,8 @@ def test_build_taxonomy_db_from_directory_writes_tables_and_meta(tmp_path: Path)
     try:
         assert con.execute("SELECT COUNT(*) FROM names").fetchone()[0] == EXPECTED_NAMES_ROWS
         assert con.execute("SELECT COUNT(*) FROM nodes").fetchone()[0] == EXPECTED_NODES_ROWS
+        assert con.execute("SELECT COUNT(*) FROM merged").fetchone()[0] == EXPECTED_MERGED_ROWS
+        assert con.execute("SELECT old_tax_id, new_tax_id FROM merged").fetchall() == MERGED
 
         meta = dict(con.execute("SELECT key, value FROM meta").fetchall())
         assert meta["release"] == "2026-07-14"
@@ -80,8 +101,32 @@ def test_build_taxonomy_db_from_directory_writes_tables_and_meta(tmp_path: Path)
         assert meta["build_timestamp"] == BUILD_TIMESTAMP
         assert meta["names_rows"] == str(EXPECTED_NAMES_ROWS)
         assert meta["nodes_rows"] == str(EXPECTED_NODES_ROWS)
+        assert meta["merged_rows"] == str(EXPECTED_MERGED_ROWS)
+        assert meta["merged_dmp_filename"] == "merged.dmp"
         assert len(meta["names_dmp_sha256"]) == 64  # sha256 hex digest
         assert len(meta["nodes_dmp_sha256"]) == 64
+    finally:
+        con.close()
+
+
+def test_build_taxonomy_db_without_merged_dmp_yields_empty_merged_table(tmp_path: Path):
+    """A minimal taxdump that omits `merged.dmp` entirely must still build
+    successfully -- `merged` is created empty, not an error, and the
+    `merged_dmp_filename` meta key is simply absent."""
+    taxdump_dir = write_synthetic_taxdump_without_merged_dmp(tmp_path / "taxdump")
+    out_path = tmp_path / "out.duckdb"
+
+    stats = build_taxonomy_db(
+        taxdump_dir, out_path, release="r1", source="fixture", build_timestamp=BUILD_TIMESTAMP
+    )
+
+    assert stats.merged_rows == 0
+    con = duckdb.connect(str(out_path), read_only=True)
+    try:
+        assert con.execute("SELECT COUNT(*) FROM merged").fetchone()[0] == 0
+        meta = dict(con.execute("SELECT key, value FROM meta").fetchall())
+        assert meta["merged_rows"] == "0"
+        assert "merged_dmp_filename" not in meta
     finally:
         con.close()
 

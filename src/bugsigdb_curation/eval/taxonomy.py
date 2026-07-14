@@ -23,6 +23,7 @@ S6 (the authority-verified normalization stage) is meant to produce.
 from __future__ import annotations
 
 import json
+import os
 import re
 import warnings
 from dataclasses import dataclass, field
@@ -33,19 +34,18 @@ import duckdb
 import httpx
 
 from bugsigdb_curation.taxonomy.db import TaxonomyDB
-from bugsigdb_curation.taxonomy.paths import resolve_optional_db_path
+from bugsigdb_curation.taxonomy.paths import DB_PATH_ENV_VAR, resolve_optional_db_path
 
-# NOTE: this module resolves gold/predicted taxon names against the
-# *current* NCBI taxdump only -- it does not canonicalize a gold tax_id
-# NCBI has since merged into a successor (`merged.dmp`) or deleted outright
-# (`delnodes.dmp`). A gold tax_id in either bucket will fail `name_of_id`/
-# `genus_of_id` here even though it was a valid id when the corpus was
-# curated, which silently shrinks the genus-lenient and name->ID sub-scores
-# for that study. Full merged/delnodes canonicalization (on both the gold
-# and predicted sides) is deferred to a follow-up PR; in the meantime,
-# `bugsigdb_curation.eval.score`'s `n_unresolved_gold_taxa` counter (and its
-# `n_unresolved_pred_taxa` counterpart) makes the resulting shrinkage
-# observable in the per-study/aggregate report rather than silent.
+# NOTE: this module's local `TaxonomyDB` (PR-2) now canonicalizes a retired
+# gold tax_id NCBI has since merged into a successor (`merged.dmp`, see
+# `TaxonomyDB.canonical_taxid`) -- `name_of_id`/`genus_of_id` below pick this
+# up for free since they delegate to `TaxonomyDB.scientific_name`, which
+# canonicalizes internally. A genuinely *deleted* id (`delnodes.dmp`, no
+# successor) is still out of scope -- there's nothing to canonicalize it to
+# -- and remains a real miss. `bugsigdb_curation.eval.score`'s
+# `n_unresolved_gold_taxa` counter (and its `n_unresolved_pred_taxa`
+# counterpart) makes that residual shrinkage observable in the
+# per-study/aggregate report rather than silent.
 
 #: Rank prefixes appear double-underscored (MetaPhlAn, "g__Bacillus") or
 #: single-underscored (LEfSe figure labels, "g_Bacillus"); strip either form.
@@ -100,17 +100,37 @@ def _load_optional_taxonomy_db(db_path: Path | str | None, db_release: str | Non
     (genus-lenient scoring, name->ID sub-scores) simply won't happen. See
     `eval_score_command` in `cli.py` for how that gets surfaced prominently
     (console note + report line), not just this warning.
+
+    The "not found" warning is split in two (Copilot fix): an *explicit*
+    `db_path`/`BUGSIGDB_TAXONOMY_DB` that just doesn't exist on disk names
+    the actual path that was tried (a config/typo problem, not "nothing was
+    configured"); only the genuinely-unconfigured case (no explicit path AND
+    no cached `ncbi-taxdump-*.duckdb` found) gets the generic message.
     """
     resolved_path = resolve_optional_db_path(db_path, db_release)
     if resolved_path is None or not resolved_path.exists():
-        warnings.warn(
-            "no local taxonomy DB found (no --taxonomy-db/BUGSIGDB_TAXONOMY_DB and no cached "
-            "ncbi-taxdump-*.duckdb) -- TaxonomyResolver has no offline name resolution for this "
-            "run (name-based sub-scores are disabled/degraded). Build one with "
-            "`bugsigdb taxonomy build`.",
-            RuntimeWarning,
-            stacklevel=3,
-        )
+        explicit = db_path is not None or bool(os.environ.get(DB_PATH_ENV_VAR))
+        if explicit:
+            # `resolve_optional_db_path` always returns a concrete (non-None)
+            # Path when `db_path` or the env var is set, so `resolved_path`
+            # here is exactly the path that was tried.
+            warnings.warn(
+                f"configured taxonomy DB not found at {resolved_path} (from --taxonomy-db/"
+                "BUGSIGDB_TAXONOMY_DB) -- TaxonomyResolver has no offline name resolution for "
+                "this run (name-based sub-scores are disabled/degraded). Build one with "
+                "`bugsigdb taxonomy build`, or fix the configured path.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
+        else:
+            warnings.warn(
+                "no local taxonomy DB found (no --taxonomy-db/BUGSIGDB_TAXONOMY_DB and no cached "
+                "ncbi-taxdump-*.duckdb) -- TaxonomyResolver has no offline name resolution for this "
+                "run (name-based sub-scores are disabled/degraded). Build one with "
+                "`bugsigdb taxonomy build`.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
         return None
     try:
         return TaxonomyDB(resolved_path)
@@ -236,6 +256,21 @@ class TaxonomyResolver:
         if not name:
             return None
         return self.resolve_name(name)
+
+    def canonical_id(self, taxid: int) -> int:
+        """Canonicalize a possibly-retired `taxid` to its current successor.
+
+        Delegates to `TaxonomyDB.canonical_taxid` (NCBI's `merged.dmp`);
+        identity (`taxid` unchanged) when no local `db` is configured. Used
+        by `bugsigdb_curation.eval.score` to canonicalize both gold and
+        predicted tax_ids before the set operations that compute the
+        headline taxid-set P/R/F1/Jaccard, so a retired gold id matches a
+        current predicted id for the same taxon instead of scoring as a
+        false-negative/false-positive pair.
+        """
+        if self.db is None:
+            return taxid
+        return self.db.canonical_taxid(taxid)
 
     def name_of_id(self, ncbi_id: int) -> str | None:
         """Normalized name for a resolved taxid, via `id_to_name` (populated

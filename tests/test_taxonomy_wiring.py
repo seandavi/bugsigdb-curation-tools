@@ -26,11 +26,13 @@ from bugsigdb_curation.eval.score import score_study
 from bugsigdb_curation.eval.taxonomy import TaxonomyResolver
 from bugsigdb_curation.taxonomy.build import build_taxonomy_db
 from bugsigdb_curation.taxonomy.db import TaxonomyDB
+from bugsigdb_curation.taxonomy.paths import DB_PATH_ENV_VAR
 from taxonomy_test_support import (
     TAXID_BACTEROIDES_FRAGILIS,
     TAXID_CUTIBACTERIUM_ACNES,
     TAXID_FAECALIBACTERIUM,
     TAXID_FIRMICUTES,
+    TAXID_RETIRED_MERGED_INTO_FRAGILIS,
     write_synthetic_taxdump,
 )
 
@@ -176,6 +178,33 @@ def test_curator_load_with_corrupt_db_warns_and_falls_back_to_live(
     assert asyncio.run(run()) == 853
 
 
+def test_curator_load_with_explicit_missing_db_path_warns_with_actual_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Copilot fix: an explicit `--taxonomy-db`/`BUGSIGDB_TAXONOMY_DB` path
+    that doesn't exist on disk must name that actual path in the warning --
+    a config/typo problem, distinct from "nothing configured at all"."""
+    monkeypatch.delenv("BUGSIGDB_TAXONOMY_DB", raising=False)
+    missing = tmp_path / "does_not_exist.duckdb"
+
+    with pytest.warns(RuntimeWarning, match=r"configured taxonomy DB not found at .*does_not_exist\.duckdb"):
+        resolver = NcbiTaxonomyResolver.load(cache_path=None, db_path=missing)
+
+    assert resolver.db is None
+
+
+def test_curator_load_with_explicit_missing_env_db_path_warns_with_actual_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    missing = tmp_path / "also_missing.duckdb"
+    monkeypatch.setenv(DB_PATH_ENV_VAR, str(missing))
+
+    with pytest.warns(RuntimeWarning, match=r"configured taxonomy DB not found at .*also_missing\.duckdb"):
+        resolver = NcbiTaxonomyResolver.load(cache_path=None)
+
+    assert resolver.db is None
+
+
 def test_curator_bare_constructor_with_db_none_resolves_live_only(httpx_mock: HTTPXMock) -> None:
     """A resolver directly constructed with `db=None` (the dataclass
     default) behaves identically to the pre-PR-2 live-only resolver -- no
@@ -276,6 +305,40 @@ def test_scorer_resolves_prediction_names_via_taxonomy_db_no_taxa_csv(built_db_p
     assert result.micro_taxa.precision == 1.0
     assert result.micro_taxa.recall == 1.0
     assert result.micro_taxa.f1 == 1.0
+
+
+def test_scorer_canonicalizes_retired_gold_id_end_to_end(built_db_path: Path) -> None:
+    """The full retired-gold-id story, end to end through the real scorer:
+    gold curated a since-retired tax_id (999, merged into Bacteroides
+    fragilis's current 817 -- see `taxonomy_test_support.MERGED`), the
+    de-novo curator predicted the CURRENT id (817, since name resolution
+    against `names.dmp` always lands on the current id) -- without
+    canonicalization these would score as a full miss (FN + FP); with it,
+    `score_study` must canonicalize both sides and score a perfect match."""
+    with TaxonomyDB(built_db_path) as db:
+        resolver = TaxonomyResolver(db=db)
+        gold = _gold_study((_gold_signature(frozenset({TAXID_RETIRED_MERGED_INTO_FRAGILIS})),))
+        pred = {
+            "experiments": [
+                {
+                    "body_site": ["Feces"],
+                    "condition": ["CRC"],
+                    "group_0_name": "healthy",
+                    "group_1_name": "CRC",
+                    "sequencing_type": "16S",
+                    "signatures": [
+                        {"abundance_in_group_1": "increased", "taxa": [{"ncbi_id": TAXID_BACTEROIDES_FRAGILIS}]}
+                    ],
+                }
+            ]
+        }
+
+        result = score_study(gold, pred, resolver)
+
+    assert result.micro_taxa.f1 == 1.0
+    assert result.micro_taxa.tp == 1
+    assert result.micro_taxa.fp == 0
+    assert result.micro_taxa.fn == 0
 
 
 def test_scorer_load_with_no_taxa_csv_parameter() -> None:

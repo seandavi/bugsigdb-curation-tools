@@ -4,6 +4,10 @@ known-bad-gold discount."""
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from bugsigdb_curation.eval.gold import GoldExperiment, GoldSignature, GoldStudy, source_type, to_nested_dict
 from bugsigdb_curation.eval.score import (
     align_experiments,
@@ -12,6 +16,14 @@ from bugsigdb_curation.eval.score import (
     score_study,
 )
 from bugsigdb_curation.eval.taxonomy import TaxonomyResolver
+from bugsigdb_curation.taxonomy.build import build_taxonomy_db
+from bugsigdb_curation.taxonomy.db import TaxonomyDB
+from taxonomy_test_support import (
+    TAXID_BACTEROIDES_FRAGILIS,
+    TAXID_RETIRED_MERGED_INTO_FRAGILIS,
+    write_synthetic_taxdump,
+    write_synthetic_taxdump_without_merged_dmp,
+)
 
 
 def _experiment(
@@ -498,6 +510,82 @@ def test_aggregate_scores_direction_accuracy_and_name_to_id_accuracy():
     aggregate = aggregate_scores(scores)
     assert aggregate.direction_accuracy == 1.0
     assert aggregate.n_studies == 1
+
+
+# --- merged.dmp tax_id canonicalization (retired gold id vs. current predicted id) -----------
+
+
+@pytest.fixture()
+def resolver_with_merge(tmp_path: Path) -> TaxonomyResolver:
+    """A resolver backed by a real (if tiny) `TaxonomyDB` built from a
+    taxdump that includes `merged.dmp` -- retired tax_id 999 canonicalizes
+    to Bacteroides fragilis's current 817 (see `taxonomy_test_support`)."""
+    taxdump_dir = write_synthetic_taxdump(tmp_path / "taxdump")
+    out_path = tmp_path / "taxonomy.duckdb"
+    build_taxonomy_db(
+        taxdump_dir, out_path, release="test", source="fixture", build_timestamp="2026-07-14T00:00:00+00:00"
+    )
+    with TaxonomyDB(out_path) as db:
+        yield TaxonomyResolver(db=db)
+
+
+@pytest.fixture()
+def resolver_without_merge(tmp_path: Path) -> TaxonomyResolver:
+    """Same synthetic taxdump, minus `merged.dmp` -- `canonical_id` is then
+    an identity mapping (the pre-canonicalization behavior), so a retired
+    gold id and a current predicted id score as a miss, not a match."""
+    taxdump_dir = write_synthetic_taxdump_without_merged_dmp(tmp_path / "taxdump_no_merge")
+    out_path = tmp_path / "taxonomy_no_merge.duckdb"
+    build_taxonomy_db(
+        taxdump_dir, out_path, release="test", source="fixture", build_timestamp="2026-07-14T00:00:00+00:00"
+    )
+    with TaxonomyDB(out_path) as db:
+        yield TaxonomyResolver(db=db)
+
+
+def _retired_gold_vs_current_pred_study():
+    exp = _experiment(signatures=(_signature("s1", taxa=frozenset({TAXID_RETIRED_MERGED_INTO_FRAGILIS})),))
+    gold = _study([exp])
+    pred = {"experiments": [_pred_exp(signatures=[_pred_sig(taxa=[TAXID_BACTEROIDES_FRAGILIS])])]}
+    return gold, pred
+
+
+def test_retired_gold_id_matches_current_predicted_id_with_merged_dmp(resolver_with_merge: TaxonomyResolver):
+    """The headline proof: gold curated the RETIRED id (999), the de-novo
+    curator predicted the CURRENT id (817, since name resolution against
+    `names.dmp` always lands on the current id) -- canonicalizing both
+    sides through `merged.dmp` before the set operations must score this as
+    a perfect match, not a false-negative/false-positive pair."""
+    gold, pred = _retired_gold_vs_current_pred_study()
+
+    result = score_study(gold, pred, resolver_with_merge)
+
+    assert result.micro_taxa.f1 == 1.0
+    assert result.micro_taxa.tp == 1
+    assert result.micro_taxa.fp == 0
+    assert result.micro_taxa.fn == 0
+
+
+def test_retired_gold_id_is_a_miss_without_merged_dmp(resolver_without_merge: TaxonomyResolver):
+    """Same scenario, but the local DB has no `merged.dmp` data (identity
+    canonicalization) -- the retired gold id and the current predicted id
+    are different ints, so this scores as a miss (F1 0.0), not a match.
+    Demonstrates the exact regression `merged.dmp` canonicalization fixes."""
+    gold, pred = _retired_gold_vs_current_pred_study()
+
+    result = score_study(gold, pred, resolver_without_merge)
+
+    assert result.micro_taxa.f1 == 0.0
+    assert result.micro_taxa.tp == 0
+    assert result.micro_taxa.fp == 1
+    assert result.micro_taxa.fn == 1
+
+
+def test_name_of_id_resolves_retired_gold_id_to_current_scientific_name(resolver_with_merge: TaxonomyResolver):
+    """The name->ID/genus sub-score path also benefits: `name_of_id` on a
+    retired gold id returns the CURRENT node's scientific name (via
+    `TaxonomyDB.scientific_name`'s internal canonicalization), not `None`."""
+    assert resolver_with_merge.name_of_id(TAXID_RETIRED_MERGED_INTO_FRAGILIS) == "bacteroides fragilis"
 
 
 # --- resolution-coverage counters (Fix 2b) ---------------------------------------------------

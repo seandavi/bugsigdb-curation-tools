@@ -21,8 +21,10 @@ from taxonomy_test_support import (
     TAXID_MORGANELLA_A,
     TAXID_MORGANELLA_B,
     TAXID_PROVIDENCIA_SCIENTIFIC,
+    TAXID_RETIRED_MERGED_INTO_FRAGILIS,
     TAXID_ROOT,
     write_synthetic_taxdump,
+    write_synthetic_taxdump_without_merged_dmp,
 )
 
 
@@ -221,6 +223,74 @@ def test_taxonomy_db_corrupt_file_raises_duckdb_error(tmp_path: Path):
 
     with pytest.raises(duckdb.Error):
         TaxonomyDB(bad_path)
+
+
+# --- canonical_taxid / merged.dmp canonicalization -------------------------------------------
+
+
+def test_canonical_taxid_maps_retired_id_to_current(taxonomy_db: TaxonomyDB):
+    assert taxonomy_db.canonical_taxid(TAXID_RETIRED_MERGED_INTO_FRAGILIS) == TAXID_BACTEROIDES_FRAGILIS
+
+
+def test_canonical_taxid_current_id_returns_unchanged(taxonomy_db: TaxonomyDB):
+    assert taxonomy_db.canonical_taxid(TAXID_BACTEROIDES_FRAGILIS) == TAXID_BACTEROIDES_FRAGILIS
+
+
+def test_canonical_taxid_unknown_id_returns_unchanged(taxonomy_db: TaxonomyDB):
+    """A genuinely deleted id (not in `merged`, not in `names`/`nodes` --
+    the `delnodes.dmp` case, deliberately out of scope) has no successor to
+    map to, so `canonical_taxid` is a no-op for it."""
+    assert taxonomy_db.canonical_taxid(999999) == 999999
+
+
+def test_scientific_name_resolves_retired_id_via_canonicalization(taxonomy_db: TaxonomyDB):
+    assert taxonomy_db.scientific_name(TAXID_RETIRED_MERGED_INTO_FRAGILIS) == "Bacteroides fragilis"
+    assert taxonomy_db.scientific_name(TAXID_RETIRED_MERGED_INTO_FRAGILIS) == taxonomy_db.scientific_name(
+        TAXID_BACTEROIDES_FRAGILIS
+    )
+
+
+def test_genus_of_resolves_retired_id_via_canonicalization(taxonomy_db: TaxonomyDB):
+    assert taxonomy_db.genus_of(TAXID_RETIRED_MERGED_INTO_FRAGILIS) == TAXID_BACTEROIDES_GENUS
+
+
+def test_lineage_resolves_retired_id_via_canonicalization(taxonomy_db: TaxonomyDB):
+    retired_lineage = taxonomy_db.lineage(TAXID_RETIRED_MERGED_INTO_FRAGILIS)
+    current_lineage = taxonomy_db.lineage(TAXID_BACTEROIDES_FRAGILIS)
+    assert retired_lineage == current_lineage
+    assert retired_lineage[-1][0] == TAXID_BACTEROIDES_FRAGILIS
+
+
+def test_canonical_taxid_with_no_merged_table_is_identity(tmp_path: Path):
+    """A DB built from a taxdump with no `merged.dmp` at all still gets an
+    empty `merged` table (see `test_taxonomy_build.py`), which behaves
+    identically to a pre-this-feature DB with no `merged` table whatsoever
+    -- both must degrade to an identity mapping, not error."""
+    taxdump_dir = write_synthetic_taxdump_without_merged_dmp(tmp_path / "taxdump")
+    out_path = tmp_path / "taxonomy.duckdb"
+    build_taxonomy_db(
+        taxdump_dir, out_path, release="test", source="fixture", build_timestamp="2026-07-14T00:00:00+00:00"
+    )
+    with TaxonomyDB(out_path) as db:
+        assert db.canonical_taxid(TAXID_RETIRED_MERGED_INTO_FRAGILIS) == TAXID_RETIRED_MERGED_INTO_FRAGILIS
+        assert db.scientific_name(TAXID_RETIRED_MERGED_INTO_FRAGILIS) is None
+
+
+def test_canonical_taxid_with_db_predating_merged_table_is_identity(tmp_path: Path):
+    """A hand-crafted DB with no `merged` table at all (simulating a DB
+    built before this feature existed) must still open and treat
+    `canonical_taxid` as an identity mapping, not crash on `SELECT ...
+    FROM merged` against a table that doesn't exist."""
+    out_path = tmp_path / "legacy.duckdb"
+    con = duckdb.connect(str(out_path))
+    con.execute("CREATE TABLE names (tax_id BIGINT, name_txt VARCHAR, name_class VARCHAR, name_norm VARCHAR)")
+    con.execute("CREATE TABLE nodes (tax_id BIGINT PRIMARY KEY, parent_tax_id BIGINT, rank VARCHAR)")
+    con.execute("CREATE TABLE meta (key VARCHAR, value VARCHAR)")
+    con.execute("INSERT INTO meta VALUES ('release', 'legacy')")
+    con.close()
+
+    with TaxonomyDB(out_path) as db:
+        assert db.canonical_taxid(123) == 123
 
 
 def test_taxonomy_db_close_is_idempotent(tmp_path: Path):

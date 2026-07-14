@@ -25,9 +25,11 @@ from bugsigdb_curation.eval.taxonomy import (
 from bugsigdb_curation.taxonomy.build import build_taxonomy_db
 from bugsigdb_curation.taxonomy.db import TaxonomyDB
 from bugsigdb_curation.taxonomy.normalize import normalize_taxon_name as taxonomy_normalize_taxon_name
+from bugsigdb_curation.taxonomy.paths import DB_PATH_ENV_VAR
 from taxonomy_test_support import (
     TAXID_BACTEROIDES_FRAGILIS,
     TAXID_BACTEROIDES_GENUS,
+    TAXID_RETIRED_MERGED_INTO_FRAGILIS,
     write_synthetic_taxdump,
 )
 
@@ -140,6 +142,41 @@ def test_load_with_no_cache_path_yields_empty_cache():
     assert resolver.cache_path is None
 
 
+# --- Copilot fix: split "no DB" warning -- unconfigured vs. explicit-but-missing -----------
+
+
+def test_load_with_nothing_configured_warns_with_generic_message(monkeypatch):
+    """No `db_path`, no `BUGSIGDB_TAXONOMY_DB`, and nothing cached -- the
+    genuinely-unconfigured case still gets the original generic message,
+    not the "configured but missing" one."""
+    monkeypatch.delenv("BUGSIGDB_TAXONOMY_DB", raising=False)
+    with pytest.warns(RuntimeWarning, match=r"^no local taxonomy DB found") as record:
+        resolver = TaxonomyResolver.load(cache_path=None)
+    assert resolver.db is None
+    assert "configured taxonomy DB not found" not in str(record[0].message)
+
+
+def test_load_with_explicit_missing_db_path_warns_with_actual_path(tmp_path, monkeypatch):
+    """An explicit `--taxonomy-db` path that just doesn't exist on disk must
+    name that actual path in the warning, not the generic "nothing
+    configured" message."""
+    monkeypatch.delenv("BUGSIGDB_TAXONOMY_DB", raising=False)
+    missing = tmp_path / "does_not_exist.duckdb"
+    with pytest.warns(RuntimeWarning, match=r"configured taxonomy DB not found at .*does_not_exist\.duckdb"):
+        resolver = TaxonomyResolver.load(db_path=missing, cache_path=None)
+    assert resolver.db is None
+
+
+def test_load_with_explicit_missing_env_db_path_warns_with_actual_path(tmp_path, monkeypatch):
+    """Same as above, but the explicit configuration comes from
+    `BUGSIGDB_TAXONOMY_DB` rather than a direct `db_path` argument."""
+    missing = tmp_path / "also_missing.duckdb"
+    monkeypatch.setenv(DB_PATH_ENV_VAR, str(missing))
+    with pytest.warns(RuntimeWarning, match=r"configured taxonomy DB not found at .*also_missing\.duckdb"):
+        resolver = TaxonomyResolver.load(cache_path=None)
+    assert resolver.db is None
+
+
 # --- resolve_name: cache priority + unresolved tracking ------------------------------------
 
 
@@ -247,6 +284,34 @@ def test_name_of_id_prefers_id_to_name_over_db(taxonomy_db: TaxonomyDB):
     `resolve_name`)."""
     resolver = TaxonomyResolver(db=taxonomy_db, id_to_name={TAXID_BACTEROIDES_GENUS: "overridden name"})
     assert resolver.name_of_id(TAXID_BACTEROIDES_GENUS) == "overridden name"
+
+
+# --- canonical_id / merged.dmp canonicalization ---------------------------------------------
+
+
+def test_canonical_id_delegates_to_db(taxonomy_db: TaxonomyDB):
+    resolver = TaxonomyResolver(db=taxonomy_db)
+    assert resolver.canonical_id(TAXID_RETIRED_MERGED_INTO_FRAGILIS) == TAXID_BACTEROIDES_FRAGILIS
+    assert resolver.canonical_id(TAXID_BACTEROIDES_FRAGILIS) == TAXID_BACTEROIDES_FRAGILIS
+
+
+def test_canonical_id_identity_when_no_db():
+    resolver = TaxonomyResolver()
+    assert resolver.canonical_id(TAXID_RETIRED_MERGED_INTO_FRAGILIS) == TAXID_RETIRED_MERGED_INTO_FRAGILIS
+
+
+def test_name_of_id_resolves_retired_id_via_canonicalization(taxonomy_db: TaxonomyDB):
+    """A retired gold tax_id (999, merged into Bacteroides fragilis's 817)
+    must resolve to the CURRENT node's scientific name -- `name_of_id`
+    delegates to `TaxonomyDB.scientific_name`, which canonicalizes
+    internally (see `db.py`)."""
+    resolver = TaxonomyResolver(db=taxonomy_db)
+    assert resolver.name_of_id(TAXID_RETIRED_MERGED_INTO_FRAGILIS) == "bacteroides fragilis"
+
+
+def test_genus_of_id_resolves_retired_id_via_canonicalization(taxonomy_db: TaxonomyDB):
+    resolver = TaxonomyResolver(db=taxonomy_db)
+    assert resolver.genus_of_id(TAXID_RETIRED_MERGED_INTO_FRAGILIS) == "bacteroides"
 
 
 # --- add_resolution / save_cache -----------------------------------------------------------
