@@ -152,37 +152,149 @@ def test_pdf_pages_with_text_are_text_units_and_text_free_pages_are_size_capped_
     assert units[2].text.strip() == "tiny"  # the sparse text stays available to the prompt
 
 
-def test_pdf_page_image_is_re_encoded_at_lower_quality_until_it_fits():
-    # a noisy page that does not fit 200 KB at the first JPEG quality
+def _noisy_pdf(*, side: int = 400, points: int = 60000, page_size: tuple[float, float] | None = None) -> bytes:
     doc = pymupdf.open()
-    page = doc.new_page()
+    page = doc.new_page(width=page_size[0], height=page_size[1]) if page_size else doc.new_page()
     rng = random.Random(0)
-    pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 400, 400), False)
+    pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, side, side), False)
     pix.set_rect(pix.irect, (255, 255, 255))
-    for _ in range(60000):
-        x, y = rng.randrange(400), rng.randrange(400)
+    for _ in range(points):
+        x, y = rng.randrange(side), rng.randrange(side)
         pix.set_pixel(x, y, tuple(rng.randrange(256) for _ in range(3)))
     page.insert_image(page.rect, pixmap=pix)
-    (unit,) = supplement_units([_file("noise.pdf", "pdf", doc.tobytes())])
+    return doc.tobytes()
+
+
+def _spy_on_rendering(monkeypatch) -> list[int]:
+    """Encoded size of every JPEG a page render produces, in order (one entry per `get_pixmap` call)."""
+    sizes: list[int] = []
+    real_get_pixmap = pymupdf.Page.get_pixmap
+
+    def get_pixmap(self, *args, **kwargs):
+        pixmap = real_get_pixmap(self, *args, **kwargs)
+        real_tobytes = pixmap.tobytes
+
+        def tobytes(*a, **kw):
+            data = real_tobytes(*a, **kw)
+            sizes.append(len(data))
+            return data
+
+        return type("Spy", (), {"tobytes": staticmethod(tobytes), "__getattr__": lambda _, n: getattr(pixmap, n)})()
+
+    monkeypatch.setattr(pymupdf.Page, "get_pixmap", get_pixmap)
+    return sizes
+
+
+def test_pdf_page_image_is_re_encoded_at_lower_quality_until_it_fits(monkeypatch):
+    # a noisy page that does not fit 200 KB at the first JPEG quality
+    sizes = _spy_on_rendering(monkeypatch)
+    (unit,) = supplement_units([_file("noise.pdf", "pdf", _noisy_pdf())])
     assert unit.image is not None and len(unit.image) <= MAX_IMAGE_BYTES
+    assert len(sizes) >= 2 and sizes[0] > MAX_IMAGE_BYTES  # the first attempt was too big, so it was re-encoded
+    assert sizes[-1] == len(unit.image) <= MAX_IMAGE_BYTES and all(size > MAX_IMAGE_BYTES for size in sizes[:-1])
 
 
-def test_images_other_and_unreadable_files_are_skipped_with_a_reason():
+def test_a_huge_pdf_page_is_rendered_with_its_longest_side_within_about_2000_px():
+    doc = pymupdf.open()
+    doc.new_page(width=6000, height=3000).draw_rect(pymupdf.Rect(50, 50, 500, 500), fill=(1, 0, 0))
+    (unit,) = supplement_units([_file("poster.pdf", "pdf", doc.tobytes())])
+    assert unit.image is not None
+    rendered = pymupdf.Pixmap(unit.image)
+    assert max(rendered.width, rendered.height) <= 2000 + 1 and rendered.width > rendered.height
+    letter = pymupdf.open()
+    letter.new_page().draw_rect(pymupdf.Rect(50, 50, 300, 300), fill=(1, 0, 0))
+    (small,) = supplement_units([_file("a.pdf", "pdf", letter.tobytes())])
+    assert small.image is not None and abs(pymupdf.Pixmap(small.image).height - 842 * 100 / 72) <= 2  # 100 dpi unchanged
+
+
+def test_a_page_image_that_never_fits_is_skipped_with_a_reason_not_sent(monkeypatch):
+    monkeypatch.setattr("bugsigdb_curation.curator.supplement_lever.MAX_IMAGE_BYTES", 500)
+    skipped: list[tuple[str, str]] = []
+    units = supplement_units(
+        [_file("noise.pdf", "pdf", _noisy_pdf()), _file("ok.csv", "csv", b"a,b\n1,2\n")], skipped=skipped
+    )
+    assert [u.id for u in units] == ["ok.csv"]  # nothing oversized goes on to the screen
+    ((name, reason),) = skipped
+    assert name == "noise.pdf :: page 1" and "page image over 500 bytes" in reason
+
+
+def test_images_other_legacy_and_unreadable_files_are_skipped_with_a_reason():
     skipped: list[tuple[str, str]] = []
     units = supplement_units(
         [
             _file("fig.png", "image", b"png"),
             _file("data.bin", "other", b"?"),
-            _file("legacy.xls", "xlsx", b"not really an xlsx"),
+            _file("legacy.xls", "xlsx", b"\xd0\xcf\x11\xe0 old binary"),
+            _file("notes.doc", "docx", b"\xd0\xcf\x11\xe0 old binary"),
+            _file("broken.xlsx", "xlsx", b"not really an xlsx"),
             _file("broken.pdf", "pdf", b"%PDF-garbage"),
             _file("ok.csv", "csv", b"a,b\n1,2\n"),
         ],
         skipped=skipped,
     )
     assert [u.id for u in units] == ["ok.csv"]
-    assert [name for name, _ in skipped] == ["fig.png", "data.bin", "legacy.xls", "broken.pdf"]
+    assert [name for name, _ in skipped] == ["fig.png", "data.bin", "legacy.xls", "notes.doc", "broken.xlsx", "broken.pdf"]
     reasons = dict(skipped)
-    assert "not read" in reasons["fig.png"] and "unreadable" in reasons["legacy.xls"]
+    assert "not read" in reasons["fig.png"]
+    assert "legacy .xls format not supported" in reasons["legacy.xls"]
+    assert "legacy .doc format not supported" in reasons["notes.doc"]
+    assert reasons["broken.xlsx"].startswith("unreadable:") and reasons["broken.pdf"].startswith("unreadable:")
+
+
+def test_a_bug_in_our_own_unit_code_surfaces_instead_of_being_recorded_as_unreadable(monkeypatch):
+    def buggy(rows):
+        raise ZeroDivisionError("our bug")
+
+    monkeypatch.setattr("bugsigdb_curation.curator.supplement_lever._rows_to_text", buggy)
+    with pytest.raises(ZeroDivisionError):
+        supplement_units([_file("a.csv", "csv", b"a,b\n1,2\n")])
+    with pytest.raises(ZeroDivisionError):
+        supplement_units([_file("a.xlsx", "xlsx", _xlsx({"s": [["a"]]}))])
+
+
+def test_an_unreadable_sheet_or_page_costs_only_that_part(monkeypatch):
+    real_get_text = pymupdf.Page.get_text
+
+    def get_text(self, *args, **kwargs):
+        if self.number == 1:
+            raise RuntimeError("bad page")
+        return real_get_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(pymupdf.Page, "get_text", get_text)
+    skipped: list[tuple[str, str]] = []
+    units = supplement_units([_file("S.pdf", "pdf", _pdf([LONG_TEXT, LONG_TEXT, LONG_TEXT]))], skipped=skipped)
+    assert [u.id for u in units] == ["S.pdf::page 1", "S.pdf::page 3"]
+    assert [name for name, _ in skipped] == ["S.pdf :: page 2"] and "bad page" in skipped[0][1]
+
+
+def test_extraction_text_is_capped_in_total_characters_and_flagged_truncated():
+    # 400 rows x 40 columns x 200 characters is ~3 MB: far more than a model context should receive
+    wide = [["x" * 200] * 40 for _ in range(400)]
+    (unit,) = supplement_units([_file("wide.xlsx", "xlsx", _xlsx({"wide": wide}))])
+    assert 0 < len(unit.text) <= 60_000 and unit.truncated
+    assert unit.text.splitlines()[0].count("\t") == 39
+
+
+def test_truncated_marks_rows_columns_cells_and_document_characters_that_were_cut():
+    def truncated(rows: list[list], name: str = "t") -> bool:
+        return supplement_units([_file(f"{name}.xlsx", "xlsx", _xlsx({"s": rows}))])[0].truncated
+
+    assert not truncated([["taxon", "lda"]] + [[f"t{i}", i] for i in range(399)])  # 400 rows fit exactly
+    assert truncated([["taxon", "lda"]] + [[f"t{i}", i] for i in range(400)])  # the 401st row is cut
+    assert not truncated([["c"] * 40])
+    assert truncated([["c"] * 41])  # a 41st column is cut
+    assert not truncated([["x" * 200]])
+    assert truncated([["x" * 201]])
+    csv_rows = "".join(f"t{i},{i}\n" for i in range(500)).encode()
+    assert supplement_units([_file("big.csv", "csv", csv_rows)])[0].truncated
+    assert not supplement_units([_file("small.csv", "csv", b"a,b\n1,2\n")])[0].truncated
+    assert supplement_units([_file("m.docx", "docx", _docx("x" * 20_000))])[0].truncated
+    assert not supplement_units([_file("m.docx", "docx", _docx("short"))])[0].truncated
+    dense = pymupdf.open()
+    dense.new_page().insert_textbox(pymupdf.Rect(20, 20, 580, 820), "word " * 4000, fontsize=3)  # ~20k characters
+    long_page, short_page = dense.tobytes(), _pdf([LONG_TEXT])
+    assert supplement_units([_file("l.pdf", "pdf", long_page)])[0].truncated
+    assert not supplement_units([_file("s.pdf", "pdf", short_page)])[0].truncated
 
 
 def test_unit_is_a_frozen_dataclass():
@@ -234,6 +346,7 @@ def test_screen_routes_iff_p_da_reaches_the_threshold_and_keeps_input_order():
     assert screened[3].arity == ONE_VS_REST and screened[3].content_kind == "da_taxa_table"
     assert screened[0].annotation() == {
         "id": "lo", "p_da": 0.49, "content_kind": "da_taxa_table", "arity": "two_group", "routed": False,
+        "truncated": False,
     }
     assert isinstance(screened[0], ScreenedUnit)
 
@@ -654,6 +767,7 @@ def test_e2e_routes_extracts_expands_and_dedupes(httpx_mock, tmp_path):
         "S2.pdf::page 1": True, "S2.pdf::page 2": False, "tiny.csv": False,
     }
     assert screen["S1.xlsx::OVR"]["arity"] == ONE_VS_REST and screen["S1.xlsx::DA"]["content_kind"] == "da_taxa_table"
+    assert not any(u["truncated"] for u in screen.values())
     assert sum(1 for c in decision.calls if c["stage"] == "s1b_screen") == 6
     assert [c["images"] != [] for c in decision.calls if c["stage"] == "s1b_screen" and c["state"].get("page") == 2] == [True]
     assert sum(1 for c in model.calls if c["stage"] == "supplement_extract") == 3
@@ -677,6 +791,23 @@ def test_e2e_routes_extracts_expands_and_dedupes(httpx_mock, tmp_path):
     assert set(skipped) == {"fig.png", "movie.mp4"}
     assert not {"supplement_screen_error", "supplement_extract_error"} & set(result.annotations)
     json.dumps(result.annotations)
+
+
+def test_cpu_bound_unit_parsing_runs_off_the_event_loop(httpx_mock, tmp_path, monkeypatch):
+    import threading
+
+    import bugsigdb_curation.curator.supplement_lever as lever
+
+    threads: list[threading.Thread] = []
+    real = lever.supplement_units
+
+    def spy(files, *, skipped=None):
+        threads.append(threading.current_thread())
+        return real(files, skipped=skipped)
+
+    monkeypatch.setattr(lever, "supplement_units", spy)
+    _curate(httpx_mock, tmp_path, tag="thread", decision=_decision(), supplements=True)
+    assert threads and all(t is not threading.main_thread() for t in threads)
 
 
 def test_with_the_flag_off_the_record_is_byte_identical_and_nothing_is_fetched(httpx_mock, tmp_path):

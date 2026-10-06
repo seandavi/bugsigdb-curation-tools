@@ -27,11 +27,13 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
+import itertools
 import re
 import zipfile
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal
+from pathlib import Path
+from typing import Any, Literal, TypeVar
 
 import httpx
 from loguru import logger
@@ -65,10 +67,14 @@ _EXTRACT_CONCURRENCY = 4
 _SCREEN_ROWS = 30
 _SCREEN_CELL_CHARS = 60
 _SCREEN_COLUMNS = 15
-#: Extraction text for a sheet/csv: up to this many rows, cells cut to 200 chars, first 40 columns.
+#: Extraction text for a sheet/csv: up to this many rows, cells cut to 200 chars, first 40 columns -- and at most
+#: `_EXTRACT_TOTAL_CHARS` characters in all, so a 400 x 40 x 200 sheet cannot blow the model's context window.
 _EXTRACT_ROWS = 400
 _EXTRACT_CELL_CHARS = 200
 _EXTRACT_COLUMNS = 40
+_EXTRACT_TOTAL_CHARS = 60_000
+#: Rows scanned (blank ones included) while looking for `_EXTRACT_ROWS` non-blank ones.
+_SCAN_ROWS = _EXTRACT_ROWS * 4
 #: Characters of docx / PDF-page text sent to a model.
 _TEXT_CHARS = 12_000
 #: A PDF page with at least this much extractable text is read as text; otherwise it is rendered.
@@ -78,9 +84,14 @@ _MAX_PDF_PAGES = 200
 #: The Workers AI pre-flight token estimate scales with the *encoded* image size (probe: a 0.8 MB PNG page was
 #: rejected as ~274k tokens against a 65k context; <= 200 KB JPEGs averaged ~1.6k), so pages are JPEGs under this.
 MAX_IMAGE_BYTES = 200_000
+#: A rendered page's longest side is at most this many pixels, whatever the page's physical size.
+_MAX_IMAGE_SIDE_PX = 2000
 #: (dpi, JPEG quality) attempts in order: the probe's 100 dpi at decreasing quality, then a lower resolution for
-#: a pathological (photographic / noisy) page that still does not fit.
+#: a pathological (photographic / noisy) page that still does not fit. The dpi is further capped per page so the
+#: longest side stays within `_MAX_IMAGE_SIDE_PX`.
 _RENDER_ATTEMPTS = ((100, 80), (100, 65), (100, 50), (100, 35), (72, 35), (50, 35))
+#: Formats the old binary Office readers produced; neither openpyxl nor python-docx can read them.
+_LEGACY_SUFFIXES = (".xls", ".doc")
 
 #: What a lever step can raise for a failed call or a bad generative response, beyond a bug in our code.
 #: `ModelCallError` (a transport/provider failure or malformed completion) is a `ModelError`, so it is covered.
@@ -98,7 +109,8 @@ class SupplementUnit:
 
     `label` is the sheet name / ``"page N"`` (empty for a whole-file csv/docx); `text` is the extraction text
     (tab-joined rows for tables, plain text for documents, the sparse page text for an image page);
-    `image` is the rendered JPEG of a text-free PDF page.
+    `image` is the rendered JPEG of a text-free PDF page; `truncated` is True when rows, columns, cell text or
+    document characters were cut to fit the extraction limits (the model never saw the whole unit).
     """
 
     id: str
@@ -108,6 +120,7 @@ class SupplementUnit:
     text: str
     image: bytes | None
     page: int | None = None
+    truncated: bool = False
 
     @property
     def provenance(self) -> str:
@@ -118,78 +131,152 @@ class SupplementUnit:
 # --- units ---------------------------------------------------------------------------------------------
 
 
-def _cell(value: Any, limit: int) -> str:
+class _Unreadable(Exception):
+    """A third-party reader (openpyxl, csv, pymupdf) could not open or parse part of a supplement."""
+
+
+_T = TypeVar("_T")
+
+
+def _read(fn: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:
+    """Call a third-party open/parse function; whatever it raises on a malformed file becomes :class:`_Unreadable`.
+
+    Only the library call is guarded -- a bug in our own code around it must still surface.
+    """
+    try:
+        return fn(*args, **kwargs)
+    except Exception as exc:  # noqa: BLE001 -- a malformed third-party file must not abort the study
+        raise _Unreadable(f"{type(exc).__name__}: {exc}") from exc
+
+
+def _cell_text(value: Any) -> str:
     if value is None:
         return ""
     text = f"{value:.4g}" if isinstance(value, float) else str(value)
-    return re.sub(r"[\t\r\n]+", " ", text).strip()[:limit]
+    return re.sub(r"[\t\r\n]+", " ", text).strip()
 
 
-def _rows_to_text(rows: Any) -> str:
-    """Tab-joined, blank-row-free text of up to :data:`_EXTRACT_ROWS` rows."""
+def _rows_to_text(rows: Sequence[Sequence[Any]]) -> tuple[str, bool]:
+    """Tab-joined, blank-row-free text of a table, and whether anything was cut to fit.
+
+    Limits: :data:`_EXTRACT_ROWS` rows, :data:`_EXTRACT_COLUMNS` columns, :data:`_EXTRACT_CELL_CHARS` per cell and
+    :data:`_EXTRACT_TOTAL_CHARS` in all; :data:`_SCAN_ROWS` rows are looked at while hunting for non-blank ones.
+    """
     lines: list[str] = []
-    for row in rows:
-        cells = [_cell(c, _EXTRACT_CELL_CHARS) for c in list(row)[:_EXTRACT_COLUMNS]]
+    chars = 0
+    truncated = False
+    for scanned, row in enumerate(rows, 1):
+        cells_full = [_cell_text(c) for c in row]
+        if scanned > _SCAN_ROWS:
+            truncated = any(cells_full)
+            break
+        cells = [c[:_EXTRACT_CELL_CHARS] for c in cells_full[:_EXTRACT_COLUMNS]]
         while cells and not cells[-1]:
             cells.pop()
         if not cells:
             continue
-        lines.append("\t".join(cells))
-        if len(lines) >= _EXTRACT_ROWS:
+        line = "\t".join(cells)
+        if len(lines) >= _EXTRACT_ROWS or chars + len(line) + 1 > _EXTRACT_TOTAL_CHARS:
+            truncated = True
             break
-    return "\n".join(lines)
+        truncated |= any(len(c) > _EXTRACT_CELL_CHARS for c in cells_full[:_EXTRACT_COLUMNS]) or any(
+            cells_full[_EXTRACT_COLUMNS:]
+        )
+        lines.append(line)
+        chars += len(line) + 1
+    return "\n".join(lines), truncated
+
+
+def _sheet_rows(sheet: Any) -> list[tuple[Any, ...]]:
+    # One column beyond the limit is read so a wider sheet is noticed (and flagged truncated).
+    return list(sheet.iter_rows(values_only=True, max_row=_SCAN_ROWS + 1, max_col=_EXTRACT_COLUMNS + 1))
 
 
 def _xlsx_units(f: SupplementFile, skipped: list[tuple[str, str]]) -> list[SupplementUnit]:
     import openpyxl
 
-    workbook = openpyxl.load_workbook(io.BytesIO(f.raw_bytes), read_only=True, data_only=True)
+    workbook = _read(openpyxl.load_workbook, io.BytesIO(f.raw_bytes), read_only=True, data_only=True)
     try:
         units = []
-        for sheet in workbook.worksheets:
-            text = _rows_to_text(sheet.iter_rows(values_only=True, max_row=_EXTRACT_ROWS * 4))
+        for sheet in _read(lambda: list(workbook.worksheets)):
+            try:
+                rows = _read(_sheet_rows, sheet)
+            except _Unreadable as exc:
+                skipped.append((f"{f.filename} :: {sheet.title}", f"unreadable: {exc}"))
+                continue
+            text, truncated = _rows_to_text(rows)
             if not text:
                 skipped.append((f"{f.filename} :: {sheet.title}", "empty sheet"))
                 continue
             units.append(
-                SupplementUnit(f"{f.filename}::{sheet.title}", f.filename, sheet.title, "sheet", text, None)
+                SupplementUnit(
+                    f"{f.filename}::{sheet.title}", f.filename, sheet.title, "sheet", text, None, truncated=truncated
+                )
             )
         return units
     finally:
         workbook.close()
 
 
+def _delimited_rows(raw_bytes: bytes, delimiter: str) -> list[list[str]]:
+    decoded = raw_bytes.decode("utf-8-sig", errors="replace")
+    return list(itertools.islice(csv.reader(io.StringIO(decoded), delimiter=delimiter), _SCAN_ROWS + 1))
+
+
 def _delimited_unit(f: SupplementFile) -> list[SupplementUnit]:
-    decoded = f.raw_bytes.decode("utf-8-sig", errors="replace")
-    reader = csv.reader(io.StringIO(decoded), delimiter="\t" if f.media_type == "tsv" else ",")
-    text = _rows_to_text(reader)
-    return [SupplementUnit(f.filename, f.filename, "", "delimited", text, None)] if text else []
+    rows = _read(_delimited_rows, f.raw_bytes, "\t" if f.media_type == "tsv" else ",")
+    text, truncated = _rows_to_text(rows)
+    return [SupplementUnit(f.filename, f.filename, "", "delimited", text, None, truncated=truncated)] if text else []
 
 
-def _render_page(page: Any) -> bytes:
-    for dpi, quality in _RENDER_ATTEMPTS:
-        data = page.get_pixmap(dpi=dpi).tobytes("jpeg", jpg_quality=quality)
+def _jpeg(page: Any, dpi: int, quality: int) -> bytes:
+    return page.get_pixmap(dpi=dpi).tobytes("jpeg", jpg_quality=quality)
+
+
+def _render_page(page: Any) -> bytes | None:
+    """The page as a JPEG of at most :data:`MAX_IMAGE_BYTES`, or None when no attempt fits.
+
+    The dpi is capped so the longest side stays within :data:`_MAX_IMAGE_SIDE_PX` pixels, whatever the page size.
+    """
+    rect = _read(lambda: page.rect)
+    longest_points = max(rect.width, rect.height)
+    max_dpi = max(1, int(_MAX_IMAGE_SIDE_PX * 72 / longest_points)) if longest_points > 0 else 100
+    for dpi, quality in dict.fromkeys((min(dpi, max_dpi), quality) for dpi, quality in _RENDER_ATTEMPTS):
+        data = _read(_jpeg, page, dpi, quality)
         if len(data) <= MAX_IMAGE_BYTES:
             return data
-    return data
+    return None
 
 
 def _pdf_units(f: SupplementFile, skipped: list[tuple[str, str]]) -> list[SupplementUnit]:
     import pymupdf
 
     units = []
-    with pymupdf.open(stream=f.raw_bytes, filetype="pdf") as doc:
+    doc = _read(pymupdf.open, stream=f.raw_bytes, filetype="pdf")
+    with doc:
         if doc.page_count > _MAX_PDF_PAGES:
             skipped.append((f.filename, f"pages beyond {_MAX_PDF_PAGES} not read ({doc.page_count} pages)"))
-        for number, page in enumerate(doc, 1):
-            if number > _MAX_PDF_PAGES:
-                break
+        for number in range(1, min(doc.page_count, _MAX_PDF_PAGES) + 1):
             label, unit_id = f"page {number}", f"{f.filename}::page {number}"
-            text = page.get_text().strip()
-            if len(text) >= _PDF_TEXT_MIN_CHARS:
-                units.append(SupplementUnit(unit_id, f.filename, label, "pdf_text", text[:_TEXT_CHARS], None, number))
-            else:
-                units.append(SupplementUnit(unit_id, f.filename, label, "pdf_image", text, _render_page(page), number))
+            try:
+                page = _read(doc.load_page, number - 1)
+                text = _read(page.get_text).strip()
+                if len(text) >= _PDF_TEXT_MIN_CHARS:
+                    units.append(
+                        SupplementUnit(
+                            unit_id, f.filename, label, "pdf_text", text[:_TEXT_CHARS], None, number,
+                            truncated=len(text) > _TEXT_CHARS,
+                        )
+                    )
+                    continue
+                image = _render_page(page)
+            except _Unreadable as exc:
+                skipped.append((f"{f.filename} :: {label}", f"unreadable: {exc}"))
+                continue
+            if image is None:
+                skipped.append((f"{f.filename} :: {label}", f"page image over {MAX_IMAGE_BYTES} bytes at the lowest quality"))
+                continue
+            units.append(SupplementUnit(unit_id, f.filename, label, "pdf_image", text, image, number))
     return units
 
 
@@ -199,14 +286,19 @@ def supplement_units(
     """Split unpacked supplementary files into units: xlsx -> one per sheet, csv/tsv and docx -> one, PDF -> one per page.
 
     A PDF page with at least 200 characters of extractable text is a text unit; a text-free page is rendered to a
-    JPEG of at most :data:`MAX_IMAGE_BYTES`. Images and other file types are not read; an unreadable or empty
-    file/sheet is skipped too. Every skip is appended to `skipped` (when given) as ``(file, reason)``.
+    JPEG of at most :data:`MAX_IMAGE_BYTES` (skipped if it cannot be made to fit). Images, legacy ``.xls``/``.doc``
+    and other file types are not read; an unreadable or empty file/sheet/page is skipped too. Every skip is
+    appended to `skipped` (when given) as ``(file, reason)``. Only the third-party open/parse calls are guarded;
+    this is CPU-bound, so callers on an event loop run it in a worker thread.
     """
     notes: list[tuple[str, str]] = skipped if skipped is not None else []
     units: list[SupplementUnit] = []
     for f in files:
+        suffix = Path(f.filename).suffix.lower()
         try:
-            if f.media_type == "xlsx":
+            if suffix in _LEGACY_SUFFIXES:
+                notes.append((f.filename, f"legacy {suffix} format not supported (re-save as .xlsx / .docx)"))
+            elif f.media_type == "xlsx":
                 units += _xlsx_units(f, notes)
             elif f.media_type in ("csv", "tsv"):
                 units += _delimited_unit(f)
@@ -215,14 +307,19 @@ def supplement_units(
                 if text is None:
                     notes.append((f.filename, "unreadable docx"))
                 elif text.strip():
-                    units.append(SupplementUnit(f.filename, f.filename, "", "docx", text.strip()[:_TEXT_CHARS], None))
+                    body = text.strip()
+                    units.append(
+                        SupplementUnit(
+                            f.filename, f.filename, "", "docx", body[:_TEXT_CHARS], None, truncated=len(body) > _TEXT_CHARS
+                        )
+                    )
             elif f.media_type == "pdf":
                 units += _pdf_units(f, notes)
             else:
                 notes.append((f.filename, f"{f.media_type} file not read"))
-        except Exception as exc:  # noqa: BLE001 -- a malformed third-party file must not abort the study
-            logger.bind(stage="S1b").warning("unreadable supplement file", filename=f.filename, error=repr(exc))
-            notes.append((f.filename, f"unreadable: {exc!r}"))
+        except _Unreadable as exc:
+            logger.bind(stage="S1b").warning("unreadable supplement file", filename=f.filename, error=str(exc))
+            notes.append((f.filename, f"unreadable: {exc}"))
     return units
 
 
@@ -284,6 +381,7 @@ class ScreenedUnit:
             "content_kind": self.content_kind,
             "arity": self.arity,
             "routed": self.routed,
+            "truncated": self.unit.truncated,
         }
 
 
@@ -625,7 +723,7 @@ async def supplement_experiments(
     failures (network, decision, bad generative response) are logged and recorded in `annotations`
     (``supplement_screen_error`` / ``supplement_extract_error`` as lists of ``{unit, error}``) and never abort the
     study; a bug in our code still propagates. Also records ``supplement_screen`` (per unit ``{id, p_da,
-    content_kind, arity, routed}``), ``supplement_skipped`` (``{file, reason}``) and
+    content_kind, arity, routed, truncated}``), ``supplement_skipped`` (``{file, reason}``) and
     ``supplement_dropped_duplicates``.
     """
     log = logger.bind(stage="S1b")
@@ -638,7 +736,7 @@ async def supplement_experiments(
         skipped.append(("(supplementary files zip)", f"corrupt zip: {exc}"))
     if not files and not skipped:
         skipped.append(("(supplementary files zip)", "none fetched (none exist, too large, or the fetch failed; see log)"))
-    units = supplement_units(files, skipped=skipped)
+    units = await asyncio.to_thread(supplement_units, files, skipped=skipped)
     if skipped:
         annotations["supplement_skipped"] = [{"file": name, "reason": reason} for name, reason in skipped]
     if not units:
