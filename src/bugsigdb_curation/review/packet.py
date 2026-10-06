@@ -536,7 +536,7 @@ class _PacketBuilder:
             '<div class="sig-controls">'
             f"<label>Direction {_select(f'exp.{e}.sig.{s}.direction', _DIRECTION_OPTIONS, f'Direction verdict, signature {s + 1}')}</label>"
             f'<button type="button" class="secondary small" data-action="mark-taxa-correct" data-exp="{e}" '
-            f'data-sig="{s}">Mark all taxa correct</button></div></article>'
+            f'data-sig="{s}">Mark remaining taxa correct</button></div></article>'
         )
 
     # --- evidence --------------------------------------------------------------------------

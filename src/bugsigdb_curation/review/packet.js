@@ -117,10 +117,12 @@
     return state;
   }
 
+  /** Mark the taxa of one signature "correct" where the reviewer has not already judged them. */
   function markTaxaCorrect(state, record, e, s) {
     var signature = signaturesOf(experimentsOf(record)[e] || {})[s];
     taxaOf(signature || {}).forEach(function (_taxon, k) {
-      setValue(state, taxonKey(e, s, k) + ".verdict", "correct");
+      var key = taxonKey(e, s, k) + ".verdict";
+      if (getValue(state, key) === "") setValue(state, key, "correct");
     });
     return state;
   }
@@ -187,8 +189,10 @@
     };
   }
 
+  /** Quote a CSV cell; text starting like a spreadsheet formula gets a leading `'` so Excel shows it as text. */
   function csvCell(value) {
     var text = value === null || value === undefined ? "" : String(value);
+    if (typeof value === "string" && /^[=+\-@\t\r]/.test(text)) text = "'" + text;
     return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
   }
 

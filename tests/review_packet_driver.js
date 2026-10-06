@@ -278,6 +278,31 @@ const scenarios = {
 
     return transcript;
   },
+
+  /** Taxon names and notes that start like a spreadsheet formula must reach the CSV neutralised. */
+  csv_injection() {
+    const w = makeWorld({});
+    nameYourself(w, "@reviewer");
+    setControl(w, "exp.0.sig.0.taxon.0.note", "+1");
+    setControl(w, "exp.0.sig.0.taxon.1.note", "-2 fold");
+    setControl(w, "exp.0.note", "\tindented");
+    setControl(w, "study.note", "plain, with comma");
+    w.confirmAnswer = true;
+    click(w, "export-csv");
+    return { csv: lastCsv(w).text };
+  },
+
+  /** "Mark remaining taxa correct" only fills verdicts the reviewer has not given. */
+  mark_remaining() {
+    const w = makeWorld({});
+    setControl(w, "exp.0.sig.0.taxon.0.verdict", "wrong_taxon");
+    setControl(w, "exp.0.sig.0.taxon.1.verdict", "");
+    click(w, "mark-taxa-correct", { "data-exp": "0", "data-sig": "0" });
+    return {
+      verdicts: [w.byKey["exp.0.sig.0.taxon.0.verdict"].value, w.byKey["exp.0.sig.0.taxon.1.verdict"].value],
+      other_signature: w.byKey["exp.0.sig.1.taxon.0.verdict"].value,
+    };
+  },
 };
 
 const options = process.argv[4] ? JSON.parse(process.argv[4]) : {};

@@ -25,15 +25,23 @@ pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="node is no
 DRIVER = Path(__file__).parent / "review_packet_driver.js"
 
 
-@pytest.fixture(scope="module")
-def transcript(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
-    record = load_draft()
+def run_scenario(
+    tmp_path: Path, scenario: str, record: dict[str, Any] | None = None, options: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Build a packet for `record` (default: the fixture draft), run one driver scenario on it, parse its transcript."""
+    record = record if record is not None else load_draft()
     page = build_packet(record, load_annotations(), sample_evidence("cc by"), sample_meta(record))
-    html = tmp_path_factory.mktemp("js") / "packet.html"
+    html = tmp_path / "packet.html"
     html.write_text(page, encoding="utf-8")
-    done = subprocess.run(["node", str(DRIVER), str(html)], capture_output=True, text=True, timeout=60, check=False)
+    args = ["node", str(DRIVER), str(html), scenario, json.dumps(options or {})]
+    done = subprocess.run(args, capture_output=True, text=True, timeout=60, check=False)
     assert done.returncode == 0, done.stderr
     return json.loads(done.stdout)
+
+
+@pytest.fixture(scope="module")
+def transcript(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
+    return run_scenario(tmp_path_factory.mktemp("js"), "review")
 
 
 def _exported(transcript: dict[str, Any]) -> dict[str, Any]:
@@ -145,3 +153,30 @@ def test_image_is_injected_from_the_embedded_store_and_zooms(transcript):
 def test_restore_state_ignores_garbage(transcript):
     assert transcript["restoreGarbage"] == {"exp.0.note": "kept"}
     assert transcript["restoreNull"] == {}
+
+
+def test_csv_cells_that_look_like_formulas_are_neutralised(tmp_path):
+    record = load_draft()
+    record["experiments"][0]["signatures"][0]["taxa"][0]["taxon_name"] = '=HYPERLINK("http://x","y")'
+    csv_text = run_scenario(tmp_path, "csv_injection", record)["csv"]
+    rows = list(csv.DictReader(io.StringIO(csv_text)))
+    by_level = {(r["level"], r["taxon"]): r for r in rows}
+    assert by_level[("taxon", "'=HYPERLINK(\"http://x\",\"y\")")]["note"] == "'+1"
+    assert all(not r["taxon"].startswith("=") for r in rows)
+    assert {r["note"] for r in rows if r["level"] == "taxon"} >= {"'+1", "'-2 fold"}
+    assert next(r for r in rows if r["level"] == "experiment")["note"] == "'\tindented"
+    assert rows[0]["reviewer"] == "'@reviewer"
+    # ordinary text is left alone
+    assert next(r for r in rows if r["level"] == "study")["note"] == "plain, with comma"
+
+
+def test_mark_remaining_taxa_correct_keeps_verdicts_already_given(tmp_path):
+    transcript = run_scenario(tmp_path, "mark_remaining")
+    assert transcript["verdicts"] == ["wrong_taxon", "correct"]
+    assert transcript["other_signature"] == ""
+
+
+def test_mark_taxa_button_is_labelled_remaining():
+    record = load_draft()
+    page = build_packet(record, load_annotations(), sample_evidence("cc by"), sample_meta(record))
+    assert "Mark remaining taxa correct" in page and "Mark all taxa correct" not in page
