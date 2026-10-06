@@ -298,6 +298,23 @@ def test_fetch_supplement_zip_aborts_when_the_total_time_exceeds_timeout(httpx_m
     assert asyncio.run(run()) is None
 
 
+def test_fetch_supplement_zip_lets_the_overall_deadline_govern_not_the_clients_shorter_per_operation_timeout(
+    httpx_mock: HTTPXMock,
+):
+    httpx_mock.add_response(
+        url=EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid="PMC3333336"),
+        content=b"zip",
+        headers={"Content-Type": "application/zip"},
+    )
+
+    async def run() -> bytes | None:
+        async with httpx.AsyncClient(timeout=1.0) as client:
+            return await fetch_supplement_zip("PMC3333336", client=client, timeout=75.0)
+
+    assert asyncio.run(run()) == b"zip"
+    assert httpx_mock.get_requests()[0].extensions["timeout"]["read"] == 75.0
+
+
 def test_fetch_supplement_zip_default_guards_are_60mb_and_90s():
     import inspect
 

@@ -225,7 +225,9 @@ async def fetch_supplement_zip(
     url = EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid=pmcid)
     try:
         async with asyncio.timeout(timeout):
-            async with client.stream("GET", url) as response:
+            # EuropePMC assembles the ZIP on request (first byte can take ~30 s), so the shared client's
+            # per-operation timeout must not preempt the overall deadline enforced above.
+            async with client.stream("GET", url, timeout=httpx.Timeout(timeout)) as response:
                 response.raise_for_status()
                 content_type = response.headers.get("content-type", "")
                 if "zip" not in content_type.lower():
