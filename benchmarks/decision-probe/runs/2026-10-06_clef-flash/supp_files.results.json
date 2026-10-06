@@ -1,0 +1,225 @@
+{
+ "units": [
+  {
+   "id": "MOESM1",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.0376,
+   "content_kind": "sample_metadata",
+   "content_kind_conf": 0.2189,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.1034,
+   "n_groups": 1.6602
+  },
+  {
+   "id": "MOESM2",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.0402,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.6994,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.5109,
+   "n_groups": 1.9822
+  },
+  {
+   "id": "MOESM3",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.031,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.6622,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.1774,
+   "n_groups": 1.9841
+  },
+  {
+   "id": "MOESM4",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.3826,
+   "content_kind": "figure_or_image",
+   "content_kind_conf": 0.801,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.5058,
+   "n_groups": 1.1989
+  },
+  {
+   "id": "MOESM5",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.521,
+   "content_kind": "figure_or_image",
+   "content_kind_conf": 0.7991,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.5194,
+   "n_groups": 1.2069
+  },
+  {
+   "id": "MOESM6",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.0822,
+   "content_kind": "figure_or_image",
+   "content_kind_conf": 0.858,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.5626,
+   "n_groups": 1.7557
+  },
+  {
+   "id": "MOESM7",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.8812,
+   "content_kind": "figure_or_image",
+   "content_kind_conf": 0.7398,
+   "arity": "two_group",
+   "arity_conf": 0.3525,
+   "n_groups": 0.1644
+  },
+  {
+   "id": "MOESM8",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "abundance_matrix"
+   },
+   "p_da": 0.1182,
+   "content_kind": "abundance_matrix",
+   "content_kind_conf": 0.7132,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.0771,
+   "n_groups": 1.9601
+  },
+  {
+   "id": "MOESM9",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.3274,
+   "content_kind": "figure_or_image",
+   "content_kind_conf": 0.7344,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.2467,
+   "n_groups": 1.2339
+  },
+  {
+   "id": "MOESM10",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.0427,
+   "content_kind": "figure_or_image",
+   "content_kind_conf": 0.8485,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.6787,
+   "n_groups": 0.4718
+  },
+  {
+   "id": "MOESM11",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.0241,
+   "content_kind": "figure_or_image",
+   "content_kind_conf": 0.4406,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.4737,
+   "n_groups": 0.9816
+  },
+  {
+   "id": "MOESM12",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.8192,
+   "content_kind": "figure_or_image",
+   "content_kind_conf": 0.378,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.0813,
+   "n_groups": 0.4447
+  },
+  {
+   "id": "MOESM13",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.8297,
+   "content_kind": "figure_or_image",
+   "content_kind_conf": 0.4088,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.0822,
+   "n_groups": 0.4935
+  },
+  {
+   "id": "MOESM14",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.4062,
+   "content_kind": "figure_or_image",
+   "content_kind_conf": 0.353,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.104,
+   "n_groups": 0.386
+  },
+  {
+   "id": "MOESM15",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table"
+   },
+   "p_da": 0.7457,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.147,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.0767,
+   "n_groups": 1.8756
+  },
+  {
+   "id": "MOESM16",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "sample_metadata"
+   },
+   "p_da": 0.1821,
+   "content_kind": "abundance_matrix",
+   "content_kind_conf": 0.1288,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.3801,
+   "n_groups": 0.7664
+  },
+  {
+   "id": "MOESM17",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "abundance_matrix"
+   },
+   "p_da": 0.1668,
+   "content_kind": "abundance_matrix",
+   "content_kind_conf": 0.1245,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.3924,
+   "n_groups": 0.7992
+  }
+ ]
+}

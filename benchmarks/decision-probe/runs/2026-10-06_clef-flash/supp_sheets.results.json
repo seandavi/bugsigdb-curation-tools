@@ -1,0 +1,194 @@
+{
+ "units": [
+  {
+   "id": "MOESM15::Table S1",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "sample_metadata"
+   },
+   "p_da": 0.0354,
+   "content_kind": "sample_metadata",
+   "content_kind_conf": 0.8739,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.061,
+   "n_groups": 0.9669
+  },
+  {
+   "id": "MOESM15::Table S2",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "other"
+   },
+   "p_da": 0.1815,
+   "content_kind": "other",
+   "content_kind_conf": 0.1534,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.4322,
+   "n_groups": 1.5542
+  },
+  {
+   "id": "MOESM15::Table S3",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "multi_group_all_pairwise",
+    "n_groups": 4
+   },
+   "p_da": 0.9593,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8856,
+   "arity": "two_group",
+   "arity_conf": 0.2113,
+   "n_groups": 1.2959
+  },
+  {
+   "id": "MOESM15::Table S4",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "multi_group_all_pairwise",
+    "n_groups": 4
+   },
+   "p_da": 0.9595,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8676,
+   "arity": "two_group",
+   "arity_conf": 0.6344,
+   "n_groups": 0.1656
+  },
+  {
+   "id": "MOESM15::Table S5",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "other"
+   },
+   "p_da": 0.2617,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.2556,
+   "arity": "two_group",
+   "arity_conf": 0.2717,
+   "n_groups": 0.8009
+  },
+  {
+   "id": "MOESM15::Table S6",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "abundance_matrix"
+   },
+   "p_da": 0.0472,
+   "content_kind": "abundance_matrix",
+   "content_kind_conf": 0.8591,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.0815,
+   "n_groups": 1.9039
+  },
+  {
+   "id": "MOESM15::Table S7",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "multi_group_all_pairwise",
+    "n_groups": 4
+   },
+   "p_da": 0.9604,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.9174,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.181,
+   "n_groups": 1.4996
+  },
+  {
+   "id": "MOESM15::Table S8",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "abundance_matrix"
+   },
+   "p_da": 0.0725,
+   "content_kind": "abundance_matrix",
+   "content_kind_conf": 0.8463,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.0322,
+   "n_groups": 1.9221
+  },
+  {
+   "id": "MOESM15::Table S9",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "abundance_matrix"
+   },
+   "p_da": 0.0488,
+   "content_kind": "abundance_matrix",
+   "content_kind_conf": 0.8485,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.0308,
+   "n_groups": 1.92
+  },
+  {
+   "id": "MOESM15::Table S10",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9632,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8655,
+   "arity": "two_group",
+   "arity_conf": 0.6135,
+   "n_groups": 0.1197
+  },
+  {
+   "id": "MOESM16::Sample-history",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "sample_metadata"
+   },
+   "p_da": 0.017,
+   "content_kind": "sample_metadata",
+   "content_kind_conf": 0.9236,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.8951,
+   "n_groups": 0.7249
+  },
+  {
+   "id": "MOESM16::CADESI-4 + PVAS",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "sample_metadata"
+   },
+   "p_da": 0.0556,
+   "content_kind": "abundance_matrix",
+   "content_kind_conf": 0.4993,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.2452,
+   "n_groups": 1.2454
+  },
+  {
+   "id": "MOESM17::Phylum",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "abundance_matrix"
+   },
+   "p_da": 0.037,
+   "content_kind": "abundance_matrix",
+   "content_kind_conf": 0.8897,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.089,
+   "n_groups": 1.8611
+  },
+  {
+   "id": "MOESM17::Genus",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "abundance_matrix"
+   },
+   "p_da": 0.034,
+   "content_kind": "abundance_matrix",
+   "content_kind_conf": 0.895,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.0469,
+   "n_groups": 1.8979
+  }
+ ]
+}

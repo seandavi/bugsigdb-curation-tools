@@ -485,3 +485,26 @@ and drop out of scoring; the multi-group→experiments decomposition is unsolved
 **Artifacts.** `data/runs/supp_demo/` (predictions + report) and the extraction script (scratchpad) —
 both gitignored/out-of-repo. **Next:** confirm on a second big paper (37864204) once its supplement is
 obtained; then scope supplement retrieval (fetch + PDF/XLSX parse) and a direction-orientation fix.
+
+## L032 — Decision models (Clef / Clef-flash) probe: seam + offline probe (issue #19) — 2026-10-06
+**Motivation.** The curator's routing/screening/verification judgments are bounded (is this sheet a DA table,
+which experiment is this figure, which group is "positive", one-vs-rest or pairwise, which UBERON term).
+Cloudflare's System One decision models return a calibrated probability per option without generating text
+($0.24/M clef, $0.09/M clef-flash). Phase 0: build the seam, probe offline against gold, wire nothing.
+**Built.** `src/bugsigdb_curation/decision.py` (#20: `DecisionModel` protocol, `ClefDecisionModel` with
+throttle/backoff and a JSONL archive, `MockDecisionModel`; wire format checked against the published schemas
+and a live smoke) and `benchmarks/decision-probe/` (retrieval cache, runner, 12 experiments, scorer,
+`RESULTS.md`; raw archives gitignored, per-item results + summaries tracked). Whole probe ≈ $0.39 clef / $0.15 flash.
+**Result (details + caveats in `benchmarks/decision-probe/RESULTS.md`).**
+* **GO** — P1 supplement-page/sheet screening: R = 1.0 at P ≥ 0.77 (τ = 0.5), 20/47 pages routed; clef for
+  file-manifest pre-screening. P2 `is_da` as a ranker (AUROC 0.96 vs the S5a regex's P 0.39 / R 0.65). P5 body_site
+  ontology (recall@10 0.995, acc 0.95–0.98). P4 narrow one-vs-rest detection (3/3, 0 FP; n = 3).
+* **NO-GO / not yet** — P3 per-taxon direction (figures 0.68–0.70; table pages 0.51 text vs 0.76 image; only
+  LEfSe bars reach 0.95); P2 figure type (0.53–0.60); P2 artifact→experiment assignment at 38–48 options
+  (clef 0.70, flash 0.45); 4-way arity; P5 condition (recall@10 0.896 — gold IDs outside efo/mondo/hp).
+**Caveats.** Labels are agent-drafted and unreviewed; n is small (two big papers, 15 figures); oracle-stub
+option sets; gold-derived negatives are noisy; one run per cell. A Workers AI gotcha: the pre-flight token
+estimate scales with encoded image bytes (use size-capped JPEG, not PNG).
+**Next.** Human review of `labels/*.yaml`; follow-up issues only for the GO points (S1b screening wired into the
+supplement lever; deterministic one-vs-rest decomposition behind the arity check; body_site `choice`), and a
+re-test of assignment with ≤ 10-option shortlists and of condition with a wider ontology set.

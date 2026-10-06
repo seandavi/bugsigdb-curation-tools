@@ -1,0 +1,114 @@
+# P1/P4 hand labels for PMC10590023 (PMID 37864204), the Shiba Inu atopic-dermatitis paper.
+# STATUS: agent-drafted from the file captions and sheet contents, cross-checked against the
+# supplementary tables the gold cites (S3, S4, S7, S10). NEEDS HUMAN REVIEW before numbers are quoted.
+#
+# refs   -- one entry per unique <supplementary-material> file (the pre-download unit).
+# sheets -- one entry per xlsx sheet, keyed "<file suffix>::<sheet>".
+# Arity convention: a single table whose rows carry a 'Comparison' column over >2 groups is
+# multi_group_all_pairwise (n_groups = number of groups); a standalone table per pair is two_group.
+# Borderline: MOESM7 (Figure S7, one genus' significance at 12 sites) is labelled has_da_results=false.
+pmid: '37864204'
+labeller: agent-draft
+refs:
+  40168_2023_1671_MOESM1_ESM.zip:
+    has_da_results: false
+    content_kind: figure_or_image
+  40168_2023_1671_MOESM2_ESM.zip:
+    has_da_results: false
+    content_kind: figure_or_image
+  40168_2023_1671_MOESM3_ESM.zip:
+    has_da_results: false
+    content_kind: figure_or_image
+  40168_2023_1671_MOESM4_ESM.eps:
+    has_da_results: true
+    content_kind: figure_or_image
+  40168_2023_1671_MOESM5_ESM.eps:
+    has_da_results: true
+    content_kind: figure_or_image
+  40168_2023_1671_MOESM6_ESM.eps:
+    has_da_results: false
+    content_kind: figure_or_image
+  40168_2023_1671_MOESM7_ESM.eps:
+    has_da_results: false
+    content_kind: figure_or_image
+  40168_2023_1671_MOESM8_ESM.zip:
+    has_da_results: false
+    content_kind: abundance_matrix
+  40168_2023_1671_MOESM9_ESM.eps:
+    has_da_results: true
+    content_kind: figure_or_image
+  40168_2023_1671_MOESM10_ESM.eps:
+    has_da_results: false
+    content_kind: figure_or_image
+  40168_2023_1671_MOESM11_ESM.eps:
+    has_da_results: false
+    content_kind: figure_or_image
+  40168_2023_1671_MOESM12_ESM.eps:
+    has_da_results: false
+    content_kind: figure_or_image
+  40168_2023_1671_MOESM13_ESM.eps:
+    has_da_results: false
+    content_kind: figure_or_image
+  40168_2023_1671_MOESM14_ESM.eps:
+    has_da_results: false
+    content_kind: figure_or_image
+  40168_2023_1671_MOESM15_ESM.xlsx:
+    has_da_results: true
+    content_kind: da_taxa_table
+  40168_2023_1671_MOESM16_ESM.xlsx:
+    has_da_results: false
+    content_kind: sample_metadata
+  40168_2023_1671_MOESM17_ESM.xlsx:
+    has_da_results: false
+    content_kind: abundance_matrix
+sheets:
+  MOESM15::Table S1:
+    has_da_results: false
+    content_kind: sample_metadata
+  MOESM15::Table S2:
+    has_da_results: false
+    content_kind: other
+  MOESM15::Table S3:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: multi_group_all_pairwise
+    n_groups: 4
+  MOESM15::Table S4:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: multi_group_all_pairwise
+    n_groups: 4
+  MOESM15::Table S5:
+    has_da_results: false
+    content_kind: other
+  MOESM15::Table S6:
+    has_da_results: false
+    content_kind: abundance_matrix
+  MOESM15::Table S7:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: multi_group_all_pairwise
+    n_groups: 4
+  MOESM15::Table S8:
+    has_da_results: false
+    content_kind: abundance_matrix
+  MOESM15::Table S9:
+    has_da_results: false
+    content_kind: abundance_matrix
+  MOESM15::Table S10:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+    n_groups: 2
+  MOESM16::Sample-history:
+    has_da_results: false
+    content_kind: sample_metadata
+  MOESM16::CADESI-4 + PVAS:
+    has_da_results: false
+    content_kind: sample_metadata
+  MOESM17::Phylum:
+    has_da_results: false
+    content_kind: abundance_matrix
+  MOESM17::Genus:
+    has_da_results: false
+    content_kind: abundance_matrix

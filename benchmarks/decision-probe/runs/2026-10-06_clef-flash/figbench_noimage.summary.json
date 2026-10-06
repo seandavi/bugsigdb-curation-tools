@@ -1,0 +1,365 @@
+{
+  "cost": {
+    "calls": 95,
+    "input_tokens": 72570,
+    "mean_latency_ms": 327.8
+  },
+  "direction": {
+    "binary": {
+      "at_0.5": {
+        "n_routed": 100,
+        "precision": 0.56,
+        "recall": 0.4827586206896552,
+        "tau": 0.5
+      },
+      "at_recall_0.95": {
+        "n_routed": 237,
+        "precision": 0.46835443037974683,
+        "recall": 0.9568965517241379,
+        "tau": 0.1365
+      },
+      "at_recall_1.0": {
+        "n_routed": 248,
+        "precision": 0.46774193548387094,
+        "recall": 1.0,
+        "tau": 0.0191
+      },
+      "auprc": 0.6050861866000627,
+      "auroc": 0.5982953072336012,
+      "brier": 0.2572205004016066,
+      "n": 249,
+      "n_pos": 116
+    },
+    "by_figure_type": {
+      "box_or_violin": {
+        "accuracy": 0.6363636363636364,
+        "n": 22
+      },
+      "cladogram": {
+        "accuracy": 0.5576923076923077,
+        "n": 104
+      },
+      "heatmap": {
+        "accuracy": 0.603448275862069,
+        "n": 58
+      },
+      "lefse_lda_bar": {
+        "accuracy": 0.5853658536585366,
+        "n": 41
+      },
+      "other": {
+        "accuracy": 0.23076923076923078,
+        "n": 13
+      },
+      "stacked_bar_composition": {
+        "accuracy": 1.0,
+        "n": 11
+      }
+    },
+    "coverage_at_confidence": [
+      {
+        "accuracy": 0.5823293172690763,
+        "coverage": 1.0,
+        "n": 249,
+        "tau": 0.0
+      },
+      {
+        "accuracy": 0.6379310344827587,
+        "coverage": 0.23293172690763053,
+        "n": 58,
+        "tau": 0.5
+      },
+      {
+        "accuracy": 0.7307692307692307,
+        "coverage": 0.10441767068273092,
+        "n": 26,
+        "tau": 0.8
+      },
+      {
+        "accuracy": 0.7142857142857143,
+        "coverage": 0.05622489959839357,
+        "n": 14,
+        "tau": 0.9
+      },
+      {
+        "accuracy": 0.75,
+        "coverage": 0.01606425702811245,
+        "n": 4,
+        "tau": 0.95
+      }
+    ],
+    "per_figure": [
+      {
+        "n": 5,
+        "pmid": "30854760",
+        "taxon_accuracy": 1.0,
+        "type": "stacked_bar_composition"
+      },
+      {
+        "n": 6,
+        "pmid": "32552447",
+        "taxon_accuracy": 1.0,
+        "type": "stacked_bar_composition"
+      },
+      {
+        "n": 5,
+        "pmid": "31215600",
+        "taxon_accuracy": 1.0,
+        "type": "box_or_violin"
+      },
+      {
+        "n": 9,
+        "pmid": "33167991",
+        "taxon_accuracy": 0.4444444444444444,
+        "type": "box_or_violin"
+      },
+      {
+        "n": 8,
+        "pmid": "34090383",
+        "taxon_accuracy": 0.625,
+        "type": "box_or_violin"
+      },
+      {
+        "n": 12,
+        "pmid": "24192039",
+        "taxon_accuracy": 0.75,
+        "type": "lefse_lda_bar"
+      },
+      {
+        "n": 15,
+        "pmid": "32753953",
+        "taxon_accuracy": 0.6,
+        "type": "lefse_lda_bar"
+      },
+      {
+        "n": 14,
+        "pmid": "38387693",
+        "taxon_accuracy": 0.42857142857142855,
+        "type": "lefse_lda_bar"
+      },
+      {
+        "n": 38,
+        "pmid": "29459704",
+        "taxon_accuracy": 0.5526315789473685,
+        "type": "cladogram"
+      },
+      {
+        "n": 32,
+        "pmid": "33804656",
+        "taxon_accuracy": 0.59375,
+        "type": "cladogram"
+      },
+      {
+        "n": 34,
+        "pmid": "41670382",
+        "taxon_accuracy": 0.5294117647058824,
+        "type": "cladogram"
+      },
+      {
+        "n": 11,
+        "pmid": "35233023",
+        "taxon_accuracy": 0.45454545454545453,
+        "type": "heatmap"
+      },
+      {
+        "n": 20,
+        "pmid": "35387878",
+        "taxon_accuracy": 0.5,
+        "type": "heatmap"
+      },
+      {
+        "n": 27,
+        "pmid": "40943094",
+        "taxon_accuracy": 0.7407407407407407,
+        "type": "heatmap"
+      },
+      {
+        "n": 13,
+        "pmid": "30675188",
+        "taxon_accuracy": 0.23076923076923078,
+        "type": "other"
+      }
+    ],
+    "signature_majority_correct": 0.575,
+    "taxon_accuracy": 0.5823293172690763
+  },
+  "figure_type": {
+    "accuracy": 0.4,
+    "confusions": [
+      [
+        "stacked_bar_composition",
+        "cladogram"
+      ],
+      [
+        "stacked_bar_composition",
+        "box_or_violin"
+      ],
+      [
+        "box_or_violin",
+        "lefse_lda_bar"
+      ],
+      [
+        "box_or_violin",
+        "stacked_bar_composition"
+      ],
+      [
+        "lefse_lda_bar",
+        "stacked_bar_composition"
+      ],
+      [
+        "cladogram",
+        "lefse_lda_bar"
+      ],
+      [
+        "heatmap",
+        "lefse_lda_bar"
+      ],
+      [
+        "heatmap",
+        "other"
+      ],
+      [
+        "other",
+        "box_or_violin"
+      ]
+    ],
+    "coverage_at_confidence": [
+      {
+        "accuracy": 0.6,
+        "coverage": 0.3333333333333333,
+        "n": 5,
+        "tau": 0.5
+      },
+      {
+        "accuracy": 0.75,
+        "coverage": 0.26666666666666666,
+        "n": 4,
+        "tau": 0.7
+      },
+      {
+        "accuracy": 0.0,
+        "coverage": 0.06666666666666667,
+        "n": 1,
+        "tau": 0.9
+      }
+    ],
+    "n": 15
+  },
+  "orientation_answers": [
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "30854760"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "32552447"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "31215600"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_0",
+        "positive_or_enriched_means_group_0"
+      ],
+      "pmid": "33167991"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "34090383"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "24192039"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "32753953"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "38387693"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_0",
+        "positive_or_enriched_means_group_0"
+      ],
+      "pmid": "29459704"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "33804656"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "41670382"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "35233023"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "35387878"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "40943094"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_0",
+        "positive_or_enriched_means_group_0",
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_0"
+      ],
+      "pmid": "30675188"
+    }
+  ]
+}

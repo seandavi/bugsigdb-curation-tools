@@ -1,0 +1,59 @@
+{
+  "content_kind": {
+    "accuracy": 0.7058823529411765,
+    "confusions": [
+      [
+        "abundance_matrix",
+        "figure_or_image"
+      ],
+      [
+        "figure_or_image",
+        "diversity_or_ordination_stats"
+      ],
+      [
+        "figure_or_image",
+        "sample_metadata"
+      ],
+      [
+        "sample_metadata",
+        "abundance_matrix"
+      ]
+    ],
+    "da_vs_rest_agreement": 0.8235294117647058,
+    "n": 17
+  },
+  "cost": {
+    "calls": 17,
+    "input_tokens": 15430,
+    "mean_latency_ms": 577.4
+  },
+  "has_da_results": {
+    "at_0.5": {
+      "n_routed": 8,
+      "precision": 0.5,
+      "recall": 1.0,
+      "tau": 0.5
+    },
+    "at_recall_0.95": {
+      "n_routed": 5,
+      "precision": 0.8,
+      "recall": 1.0,
+      "tau": 0.9134
+    },
+    "at_recall_1.0": {
+      "n_routed": 5,
+      "precision": 0.8,
+      "recall": 1.0,
+      "tau": 0.9134
+    },
+    "auprc": 0.6791666666666667,
+    "auroc": 0.9230769230769231,
+    "brier": 0.24332780764705883,
+    "n": 17,
+    "n_pos": 4
+  },
+  "routed_at_recall_0.95": {
+    "routed": 5,
+    "total": 17
+  }
+}

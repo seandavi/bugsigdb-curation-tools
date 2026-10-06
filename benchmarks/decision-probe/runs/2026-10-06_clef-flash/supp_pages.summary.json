@@ -1,0 +1,103 @@
+{
+  "arity": {
+    "accuracy": 0.65,
+    "confusions": [
+      [
+        "two_group",
+        "multi_group_all_pairwise"
+      ]
+    ],
+    "coverage_at_confidence": [
+      {
+        "accuracy": 0.65,
+        "coverage": 1.0,
+        "n": 20,
+        "tau": 0.0
+      },
+      {
+        "accuracy": 1.0,
+        "coverage": 0.4,
+        "n": 8,
+        "tau": 0.5
+      },
+      {
+        "accuracy": 1.0,
+        "coverage": 0.2,
+        "n": 4,
+        "tau": 0.7
+      },
+      {
+        "accuracy": NaN,
+        "coverage": 0.0,
+        "n": 0,
+        "tau": 0.9
+      }
+    ],
+    "multi_group_recall": 1.0,
+    "n": 20,
+    "one_vs_rest_detection": {
+      "false_positive": 0,
+      "gold_positive": 3,
+      "true_positive": 3
+    },
+    "two_group_recall": 0.5882352941176471
+  },
+  "content_kind": {
+    "accuracy": 0.8723404255319149,
+    "confusions": [
+      [
+        "figure_or_image",
+        "diversity_or_ordination_stats"
+      ],
+      [
+        "methods_text",
+        "other"
+      ],
+      [
+        "other",
+        "da_taxa_table"
+      ]
+    ],
+    "da_vs_rest_agreement": 0.9787234042553191,
+    "n": 47
+  },
+  "cost": {
+    "calls": 47,
+    "input_tokens": 76836,
+    "mean_latency_ms": 557.3
+  },
+  "has_da_results": {
+    "at_0.5": {
+      "n_routed": 22,
+      "precision": 0.9090909090909091,
+      "recall": 1.0,
+      "tau": 0.5
+    },
+    "at_recall_0.95": {
+      "n_routed": 19,
+      "precision": 1.0,
+      "recall": 0.95,
+      "tau": 0.9378
+    },
+    "at_recall_1.0": {
+      "n_routed": 20,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tau": 0.9255
+    },
+    "auprc": 1.0,
+    "auroc": 1.0,
+    "brier": 0.033153689574468084,
+    "n": 47,
+    "n_pos": 20
+  },
+  "n_groups": {
+    "mean_abs_level_error": 0.6873400000000001,
+    "n": 20,
+    "within_half_level": 0.5
+  },
+  "routed_at_recall_0.95": {
+    "routed": 19,
+    "total": 47
+  }
+}
