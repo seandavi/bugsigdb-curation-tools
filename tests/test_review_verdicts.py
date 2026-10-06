@@ -177,7 +177,12 @@ def test_report_aggregates_exact_numbers():
     assert (t.directions["ok"], t.directions["flipped"], t.directions["unsure"]) == (4, 1, 1)
     assert flip_rate(t.directions) == 0.2
     assert t.signature_directions[(0, 1)]["flipped"] == 1
-    assert (t.experiments["ok"], t.experiments["needs_edit"], t.experiments["wrong"], t.experiments["unsure"]) == (1, 1, 1, 1)
+    assert (t.experiments["ok"], t.experiments["needs_edit"], t.experiments["wrong"], t.experiments["unsure"]) == (
+        1,
+        1,
+        1,
+        1,
+    )
     assert ok_rate(t.study) == 0.5
     assert t.ratings == [5, 2]
 
