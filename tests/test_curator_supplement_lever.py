@@ -1409,6 +1409,14 @@ def test_cli_smoke_summary_also_counts_extraction_errors_and_fetch_failures(monk
     assert "screening call failed" not in output
 
 
-def test_cli_help_mentions_supplements():
-    _, output = _invoke("curate", "--help")
-    assert "--supplements" in output and "--no-supplements" in output and "supplementary files" in output
+def _curate_params() -> dict[str, object]:
+    """The `curate` command's declared options by parameter name (independent of rendered help width)."""
+    import typer.main
+
+    return {p.name: p for p in typer.main.get_command(app).commands["curate"].params}
+
+
+def test_cli_declares_the_supplements_flag_and_describes_it():
+    param = _curate_params()["supplements"]
+    assert "--supplements" in param.opts and "--no-supplements" in param.secondary_opts
+    assert param.default is False and "supplementary files" in param.help

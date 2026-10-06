@@ -408,10 +408,10 @@ def test_decision_model_help_mentions_body_site_mapping():
 
     from bugsigdb_curation.cli import app
 
-    import re
+    import typer.main
 
-    # Rich styles/wraps help per terminal: pin a wide, colourless terminal and strip any ANSI left over.
-    raw = CliRunner().invoke(app, ["curate", "--help"], env={"COLUMNS": "250", "TERMINAL_WIDTH": "250", "NO_COLOR": "1", "TERM": "dumb"}).output
-    out = " ".join(re.sub(r"\x1b\[[0-9;]*m", "", raw).replace("│", " ").split())
-    assert "UBERON" in out and "today: S5a artifact ranking" not in out
-    assert "--ols-cache" in out
+    # Assert on the declared options/help strings, not on rendered help (whose wrapping depends on the terminal).
+    params = {p.name: p for p in typer.main.get_command(app).commands["curate"].params}
+    help_text = params["decision_backend"].help
+    assert "UBERON" in help_text and "today: S5a artifact ranking" not in help_text
+    assert "--ols-cache" in params["ols_cache"].opts
