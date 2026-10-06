@@ -23,6 +23,7 @@ is kept, unresolved (`ncbi_id=None`) -- never dropped.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Literal
 
 import httpx
@@ -192,3 +193,37 @@ async def reconcile_names(
         n_disambiguated=n_disambiguated,
     )
     return signatures
+
+
+async def ground_unresolved(
+    signatures: list[ExtractedSignature],
+    *,
+    model: Model,
+    resolver: NcbiTaxonomyResolver,
+    client: httpx.AsyncClient,
+    source_context: str,
+) -> list[ExtractedSignature]:
+    """Give taxa that came back without a verified NCBI id one, by resolving their NAME against the authority.
+
+    Fused-lean keeps a model-proposed id only if S6 can verify it, so taxa the model proposed no (or a wrong) id
+    for end up with ``ncbi_id=None`` and the record fails S9's ``ncbi_id`` requirement. This resolves exactly those
+    names through :func:`resolve_one_name` -- the same cache -> local `TaxonomyDB` (LLM disambiguation only on an
+    ambiguous homonym, constrained to the candidates) -> live gap-fill path the split designs use -- so nothing is
+    guessed: a name the authority cannot resolve stays ``None``. Already-resolved taxa are untouched.
+    """
+    grounded: list[ExtractedSignature] = []
+    n_grounded = 0
+    for signature in signatures:
+        taxa: list[ExtractedTaxon] = []
+        for taxon in signature.taxa:
+            if taxon.ncbi_id is None:
+                tax_id, _ = await resolve_one_name(
+                    taxon.taxon_name, model=model, resolver=resolver, client=client, source_context=source_context
+                )
+                if tax_id is not None:
+                    taxon = replace(taxon, ncbi_id=tax_id)
+                    n_grounded += 1
+            taxa.append(taxon)
+        grounded.append(replace(signature, taxa=tuple(dedup_taxa(taxa))))
+    logger.bind(stage="S6-ground").info("unresolved taxa grounded by name", n_grounded=n_grounded)
+    return grounded

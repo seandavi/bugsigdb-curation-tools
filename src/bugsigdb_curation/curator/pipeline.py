@@ -58,6 +58,7 @@ from bugsigdb_curation.curator.ner import extract_names
 from bugsigdb_curation.curator.ols import DEFAULT_CACHE_PATH as DEFAULT_OLS_CACHE_PATH
 from bugsigdb_curation.curator.ols import OlsClient
 from bugsigdb_curation.curator.panel import review_signatures
+from bugsigdb_curation.curator.reconcile import ground_unresolved as ground_unresolved_taxa
 from bugsigdb_curation.curator.reconcile import reconcile_names
 from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL, resolve
 from bugsigdb_curation.curator.routing import DECISION_CALL_ERRORS, map_body_sites, rank_artifacts
@@ -199,6 +200,7 @@ async def _extract_experiment_signatures(
     client: httpx.AsyncClient,
     image_bytes: bytes | None,
     experiment_fields: ExperimentFields,
+    ground_unresolved: bool = False,
 ) -> tuple[list[ExtractedSignature], tuple[str, ...]]:
     """S5b/S6 + S10, dispatched by `design` -- the only per-design branch in
     the whole pipeline (see module docstring). Returns `(signatures, flags)`;
@@ -223,6 +225,14 @@ async def _extract_experiment_signatures(
         signatures = await extract_signatures(
             bundle_artifact, model=model, resolver=resolver, client=client, image_bytes=image_bytes, groups=groups
         )
+        if ground_unresolved:  # opt-in: resolve names S6 could not verify an id for (split designs already do)
+            signatures = await ground_unresolved_taxa(
+                signatures,
+                model=model,
+                resolver=resolver,
+                client=client,
+                source_context=_build_source_context(experiment_fields, bundle_artifact),
+            )
         return signatures, ()
 
     source_context = _build_source_context(experiment_fields, bundle_artifact)
@@ -264,6 +274,7 @@ async def curate_async(
     ols: OlsClient | None = None,
     supplements: bool = False,
     html_cache_dir: Path | None = None,
+    ground_unresolved: bool = False,
 ) -> CurationResult:
     """S0-S9: turn a bare PMID into a validated nested prediction record.
 
@@ -281,6 +292,10 @@ async def curate_async(
     and their experiments appended after the main-text ones (`signatures[].source` names the file and
     sheet/page); the screen, skipped files, errors and dropped duplicates are recorded in `annotations`.
     With `supplements=False` (the default) none of that runs and the record is unchanged.
+
+    `ground_unresolved=True` (fused-lean only; off by default) resolves taxa whose model-proposed NCBI id could
+    not be verified by NAME against the authority (`reconcile.ground_unresolved`: local DB / live gap-fill, LLM
+    disambiguation only for homonyms), so fewer records fail S9's `ncbi_id` requirement. Nothing is guessed.
 
     `design` selects one of the three §6b designs (default `fused-lean`,
     today's original walking skeleton, unchanged) -- see the module
@@ -409,6 +424,7 @@ async def curate_async(
                             client=client,
                             image_bytes=image_bytes,
                             experiment_fields=experiment_fields,
+                            ground_unresolved=ground_unresolved,
                         )
                         flags.extend(stage_flags)
                         source = artifact.provenance
