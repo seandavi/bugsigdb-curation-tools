@@ -46,7 +46,6 @@ from bugsigdb_curation.retrieval import (
     parse_fulltext_tables,
 )
 
-
 # --- PMC article-HTML fetch: challenge-aware, throttled, cached ---------------------------------------
 #
 # PMC's article HTML is the only source of figure *image* URLs, and PMC intermittently answers a

@@ -205,10 +205,9 @@ def test_fetch_figure_image_returns_none_without_blob_url():
 
 # --- PMC article HTML: challenge detection, retry, throttle, cache ----------------------------------------
 
-import test_curator_pipeline_e2e as _e2e  # noqa: E402 -- reuse the offline e2e fixtures below
+import test_curator_pipeline_e2e as _e2e
 
-from bugsigdb_curation.curator import evidence as evidence_module  # noqa: E402
-from bugsigdb_curation.curator.evidence import (  # noqa: E402
+from bugsigdb_curation.curator.evidence import (
     PmcRequestLimiter,
     fetch_pmc_html,
     is_pmc_challenge,
