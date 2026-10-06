@@ -23,6 +23,7 @@ from typing import Literal
 import httpx
 from loguru import logger
 
+from bugsigdb_curation.curator.artifact_text import group_orientation_text
 from bugsigdb_curation.curator.locate import LocatedArtifact
 from bugsigdb_curation.curator.model import Model, build_image_content, build_text_content
 from bugsigdb_curation.curator.taxonomy import NcbiTaxonomyResolver
@@ -54,6 +55,7 @@ _INTERNAL_WHITESPACE = re.compile(r"\s+")
 _PROMPT_TEMPLATE = (
     "You are extracting a differential-abundance microbial signature from a microbiome "
     "research paper's {artifact_kind}, for BugSigDB curation.\n\n"
+    "{orientation}"
     "For every taxon reported as significantly different between the two compared groups, "
     "report: its name (genus/species, as written), whether it is INCREASED or DECREASED in "
     "Group 1 relative to Group 0, and your best-guess NCBI Taxonomy id for that name. Your "
@@ -88,8 +90,17 @@ def dedup_taxa(taxa: list[ExtractedTaxon]) -> list[ExtractedTaxon]:
     return list(kept.values())
 
 
-def build_signature_messages(artifact: LocatedArtifact, *, image_bytes: bytes | None = None) -> list[dict]:
-    """Build S5b's fused-extract prompt: table text, or figure legend + image."""
+def build_signature_messages(
+    artifact: LocatedArtifact,
+    *,
+    image_bytes: bytes | None = None,
+    groups: tuple[str | None, str | None] | None = None,
+) -> list[dict]:
+    """Build S5b's fused-extract prompt: table text, or figure legend + image.
+
+    `groups` is S4's `(group_0_name, group_1_name)`; when both are known the prompt names them and
+    pins down what INCREASED/DECREASED is relative to (see `group_orientation_text`).
+    """
     if artifact.kind == "table" and artifact.table is not None:
         artifact_kind = "table"
         artifact_content = f"Table ({artifact.table.provenance}):\n{artifact.table.as_text()}"
@@ -99,7 +110,10 @@ def build_signature_messages(artifact: LocatedArtifact, *, image_bytes: bytes | 
     else:
         raise ValueError(f"LocatedArtifact of kind {artifact.kind!r} is missing its payload")
 
-    text = _PROMPT_TEMPLATE.format(artifact_kind=artifact_kind, artifact_content=artifact_content)
+    orientation = group_orientation_text(*groups) if groups else ""
+    text = _PROMPT_TEMPLATE.format(
+        artifact_kind=artifact_kind, artifact_content=artifact_content, orientation=orientation
+    )
     content: list[dict] = [build_text_content(text)]
     if image_bytes is not None:
         content.append(build_image_content(image_bytes))
@@ -113,13 +127,14 @@ async def extract_signatures(
     resolver: NcbiTaxonomyResolver,
     client: httpx.AsyncClient,
     image_bytes: bytes | None = None,
+    groups: tuple[str | None, str | None] | None = None,
 ) -> list[ExtractedSignature]:
     """S5b (fused extract) + S6 (verify): one model call, per-taxon id verification.
 
     Groups the model's flat taxon list by direction into <=2
     `ExtractedSignature`s (schema shape: one signature per direction).
     """
-    messages = build_signature_messages(artifact, image_bytes=image_bytes)
+    messages = build_signature_messages(artifact, image_bytes=image_bytes, groups=groups)
     # NOTE: model.complete() is sync and blocks the event loop here (and in
     # the other stage modules' model calls). Fine for Architecture-A's
     # single-worker loop; only matters once Architecture-B runs experiments
