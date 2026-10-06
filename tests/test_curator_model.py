@@ -22,6 +22,7 @@ from bugsigdb_curation.curator.model import (
     _GOOGLE_KEY_ENV_NAMES,
     _parse_json_loose,
     build_image_content,
+    sniff_image_mime,
     build_text_content,
     resolve_google_api_key,
 )
@@ -241,3 +242,15 @@ def test_litellm_model_live_completion_smoke():
         ],
     )
     assert result.get("ok") is True
+
+
+def test_sniff_image_mime_follows_the_bytes_and_build_image_content_uses_it():
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8
+    jpg = b"\xff\xd8\xff\xe0" + b"\x00" * 8
+    webp = b"RIFF\x00\x00\x00\x00WEBPVP8 "
+    gif = b"GIF89a" + b"\x00" * 8
+    assert [sniff_image_mime(b) for b in (png, jpg, webp, gif)] == ["image/png", "image/jpeg", "image/webp", "image/gif"]
+    assert sniff_image_mime(b"unknown") == "image/jpeg"  # historical default
+    assert build_image_content(webp)["image_url"]["url"].startswith("data:image/webp;base64,")
+    # an explicit mime_type still wins
+    assert build_image_content(webp, mime_type="image/png")["image_url"]["url"].startswith("data:image/png;base64,")
