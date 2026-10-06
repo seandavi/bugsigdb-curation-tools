@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "duckdb>=1.5.4",
     "httpx>=0.28.1",
+    "jsonschema>=4.26.0",
     "linkml>=1.11.1",
     "litellm>=1.92.0",
     "loguru>=0.7.3",
@@ -33,6 +34,7 @@ packages = ["src/bugsigdb_curation"]
 # runtime via importlib.resources in bugsigdb_curation.validate.default_schema_path().
 [tool.hatch.build.targets.wheel.force-include]
 "schema/bugsigdb.yaml" = "bugsigdb_curation/data/bugsigdb.yaml"
+"schema/review_verdict.schema.json" = "bugsigdb_curation/data/review_verdict.schema.json"
 
 [tool.pytest.ini_options]
 markers = [
@@ -42,7 +44,6 @@ addopts = "-m 'not network'"
 
 [dependency-groups]
 dev = [
-    "jsonschema>=4.26.0",
     "pymupdf>=1.28.2",
     "pytest>=9.1.1",
     "pytest-httpx>=0.36.2",
