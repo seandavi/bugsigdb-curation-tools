@@ -20,8 +20,18 @@ from bugsigdb_curation.curator.locate import LocatedArtifact, locate_artifact
 from bugsigdb_curation.curator.model import MockModel
 from bugsigdb_curation.curator.pipeline import _rank_or_none, curate_async
 from bugsigdb_curation.curator.routing import candidate_artifacts, rank_artifacts
-from bugsigdb_curation.decision import DecisionModelError, MockDecisionModel, NoulAnswer
+from bugsigdb_curation.decision import ChoiceAnswer, DecisionModelError, MockDecisionModel, NoulAnswer
 from bugsigdb_curation.retrieval import ArticleMetadata, SectionEntry
+
+
+def _mock_ols_feces(httpx_mock) -> None:
+    """OLS4 answer for the e2e study's one body-site label: curate_async maps it whenever a decision model is on."""
+    httpx_mock.add_response(
+        url=httpx.URL("https://www.ebi.ac.uk/ols4/api/search").copy_merge_params(
+            {"q": "Feces", "ontology": "uberon", "rows": "10", "type": "class", "queryFields": "label,synonym,short_form,obo_id"}
+        ),
+        json={"response": {"docs": [{"obo_id": "UBERON:0001988", "label": "feces"}]}},
+    )
 
 
 def _table(n: str, caption: str, rows=(("Taxon", "LDA"), ("Bacteroides", "4.1"))) -> EvidenceTable:
@@ -115,8 +125,12 @@ def test_curate_async_records_artifact_ranking_sidecar(httpx_mock, tmp_path):
     e2e._mock_idconv(httpx_mock)
     e2e._mock_fulltext(httpx_mock)
     e2e._mock_taxonomy(httpx_mock)
+    _mock_ols_feces(httpx_mock)
     decision = MockDecisionModel(
-        {"s5a_locate": lambda state, qs: {"is_da_artifact": NoulAnswer(0.8 if state["kind"] == "table" else 0.3)}}
+        {
+            "s5a_locate": lambda state, qs: {"is_da_artifact": NoulAnswer(0.8 if state["kind"] == "table" else 0.3)},
+            "s4_ontology": {"term": ChoiceAnswer("UBERON:0001988", {"UBERON:0001988": 0.9, "none_of_these": 0.1}, 0.9)},
+        }
     )
 
     async def run():
@@ -127,6 +141,7 @@ def test_curate_async_records_artifact_ranking_sidecar(httpx_mock, tmp_path):
                 client=client,
                 decision_model=decision,
                 taxonomy_cache_path=tmp_path / "c.json",
+                ols_cache_path=tmp_path / "ols.json",
             )
 
     result = asyncio.run(run())
@@ -242,15 +257,20 @@ def test_curate_async_falls_back_to_the_regex_choice_when_decisions_fail(httpx_m
         e2e._mock_idconv(httpx_mock)
         e2e._mock_fulltext(httpx_mock)
         e2e._mock_taxonomy(httpx_mock)
+        if decision is not None:
+            _mock_ols_feces(httpx_mock)
         async with httpx.AsyncClient() as client:
             return await curate_async(
-                e2e.PMID, model=MockModel(), client=client, decision_model=decision, taxonomy_cache_path=tmp_path / f"{tag}.json"
+                e2e.PMID, model=MockModel(), client=client, decision_model=decision,
+                taxonomy_cache_path=tmp_path / f"{tag}.json", ols_cache_path=tmp_path / f"{tag}-ols.json",
             )
 
     baseline = asyncio.run(run(None, "base"))
     failed = asyncio.run(run(Down(), "failed"))
     assert failed.record == baseline.record  # same artifact chosen
-    assert set(failed.annotations) == {"artifact_ranking_error"} and "401" in failed.annotations["artifact_ranking_error"]
+    # both best-effort judgments fail independently and visibly; the record is still the regex/no-decision one
+    assert set(failed.annotations) == {"artifact_ranking_error", "body_site_terms_error"}
+    assert "401" in failed.annotations["artifact_ranking_error"]
 
 
 def test_cli_fails_fast_without_credentials(monkeypatch, tmp_path):
