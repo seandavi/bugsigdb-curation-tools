@@ -37,6 +37,7 @@ import base64
 import csv
 import io
 import zipfile
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -152,48 +153,84 @@ _SKIPPED_EXTENSIONS = frozenset(
 #: Defaults of `fetch_supplement_zip`'s download guard: EuropePMC's ZIP for 37864204 was 262 MB (two
 #: videos) and took ~11 minutes, which a best-effort enrichment channel must not wait for.
 MAX_ZIP_BYTES = 60 * 1024 * 1024
-ZIP_TIMEOUT_SECONDS = 90.0
-#: Default cap on one unpacked member (uncompressed size).
+#: EuropePMC assembles the ZIP on request: its supplementaryFiles endpoint had a 30 s time-to-first-byte.
+ZIP_TIMEOUT_SECONDS = 240.0
+#: Default cap on one unpacked member (uncompressed size), on all members together, and on the member count.
 MAX_MEMBER_BYTES = 25 * 1024 * 1024
+MAX_TOTAL_UNCOMPRESSED_BYTES = 200 * 1024 * 1024
+MAX_ZIP_MEMBERS = 500
+
+#: Where fetch-level skip reasons are filed in a `skipped` collector (there is no member name to attach them to).
+ZIP_SKIP_NAME = "(supplementary files zip)"
+
+#: What reading one member can raise for a damaged, truncated, encrypted or unsupported-compression entry
+#: (`BadZipFile` covers a CRC mismatch).
+_MEMBER_READ_ERRORS = (zlib.error, EOFError, NotImplementedError, RuntimeError, zipfile.BadZipFile)
+
+
+def _unique_filename(filename: str, seen: dict[str, int]) -> str:
+    """`filename`, or ``"<stem> (n)<suffix>"`` when another member of the archive already used that basename."""
+    count = seen.get(filename, 0) + 1
+    seen[filename] = count
+    if count == 1:
+        return filename
+    path = Path(filename)
+    return f"{path.stem} ({count}){path.suffix}"
 
 
 def unpack_supplement_zip(
     zip_bytes: bytes,
     *,
     max_member_bytes: int = MAX_MEMBER_BYTES,
+    max_total_bytes: int = MAX_TOTAL_UNCOMPRESSED_BYTES,
+    max_members: int = MAX_ZIP_MEMBERS,
     skipped: list[tuple[str, str]] | None = None,
 ) -> list[SupplementFile]:
     """Unzip a supplementary-files archive in-memory into `SupplementFile`s.
 
     Directory entries are skipped, as are members that are not useful to a reader (video, EPS,
-    nested ZIP) or larger than `max_member_bytes`; each skipped member is appended to `skipped`
-    (when given) as ``(filename, reason)``. `media_type` is derived from the entry's filename
-    extension (see `_media_type_for_filename`) -- the zip's own entries carry no separate
-    content-type metadata.
+    nested ZIP), larger than `max_member_bytes`, or that would take the unpacked total over
+    `max_total_bytes`; only the first `max_members` members are considered. A member that cannot be
+    read (corrupt stream, truncated, encrypted, unsupported compression) is skipped too. Each skip is
+    appended to `skipped` (when given) as ``(filename, reason)``. Two members with the same basename in
+    different folders get distinct names (``S1.xlsx``, ``S1 (2).xlsx``). `media_type` is derived from
+    the entry's filename extension (see `_media_type_for_filename`) -- the zip's own entries carry no
+    separate content-type metadata.
     """
+
+    def skip(name: str, reason: str) -> None:
+        if skipped is not None:
+            skipped.append((name, reason))
+
     files: list[SupplementFile] = []
+    seen: dict[str, int] = {}
+    total = 0
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
-        for info in zf.infolist():
-            if info.is_dir():
-                continue
-            filename = Path(info.filename).name
-            reason = None
+        members = [info for info in zf.infolist() if not info.is_dir()]
+        for info in members[:max_members]:
+            filename = _unique_filename(Path(info.filename).name, seen)
             if Path(filename).suffix.lower() in _SKIPPED_EXTENSIONS:
-                reason = "file type not useful (video, EPS or nested archive)"
+                skip(filename, "file type not useful (video, EPS or nested archive)")
             elif info.file_size > max_member_bytes:
-                reason = f"larger than {max_member_bytes} bytes ({info.file_size})"
-            if reason is not None:
-                if skipped is not None:
-                    skipped.append((filename, reason))
-                continue
-            raw_bytes = zf.read(info.filename)
-            files.append(
-                SupplementFile(
-                    filename=filename,
-                    media_type=_media_type_for_filename(filename),
-                    raw_bytes=raw_bytes,
+                skip(filename, f"larger than {max_member_bytes} bytes ({info.file_size})")
+            elif total + info.file_size > max_total_bytes:
+                skip(filename, f"would take the unpacked total over {max_total_bytes} bytes")
+            else:
+                try:
+                    raw_bytes = zf.read(info.filename)
+                except _MEMBER_READ_ERRORS as exc:
+                    skip(filename, f"unreadable member: {type(exc).__name__}: {exc}")
+                    continue
+                total += len(raw_bytes)
+                files.append(
+                    SupplementFile(
+                        filename=filename,
+                        media_type=_media_type_for_filename(filename),
+                        raw_bytes=raw_bytes,
+                    )
                 )
-            )
+        if len(members) > max_members:
+            skip(ZIP_SKIP_NAME, f"{len(members) - max_members} further members not read (limit {max_members})")
     return files
 
 
@@ -206,6 +243,7 @@ async def fetch_supplement_zip(
     client: httpx.AsyncClient,
     max_bytes: int = MAX_ZIP_BYTES,
     timeout: float = ZIP_TIMEOUT_SECONDS,
+    skipped: list[tuple[str, str]] | None = None,
 ) -> bytes | None:
     """GET the EuropePMC supplementary-files ZIP for `pmcid`, or None if unavailable.
 
@@ -216,6 +254,9 @@ async def fetch_supplement_zip(
     isn't a zip, or a download that exceeds the guard is logged as a WARNING
     and also returns None rather than raising -- this is a best-effort
     enrichment channel, never something that should abort a caller's run.
+    Whenever None is returned, the reason (404 / not a zip / too large / timeout / HTTP or
+    transport error) is appended to `skipped` (when given) as ``(ZIP_SKIP_NAME, reason)``, so
+    "no supplements exist" is distinguishable from "lost to a guard".
 
     The body is streamed and abandoned as soon as it passes `max_bytes` (a
     declared `Content-Length` over the cap is refused before any body is read)
@@ -223,6 +264,11 @@ async def fetch_supplement_zip(
     """
     log = logger.bind(stage="supplements")
     url = EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid=pmcid)
+
+    def none(reason: str) -> None:
+        if skipped is not None:
+            skipped.append((ZIP_SKIP_NAME, reason))
+
     try:
         async with asyncio.timeout(timeout):
             # EuropePMC assembles the ZIP on request (first byte can take ~30 s), so the shared client's
@@ -236,13 +282,13 @@ async def fetch_supplement_zip(
                         pmcid=pmcid,
                         content_type=content_type,
                     )
-                    return None
+                    return none(f"response was not a zip (content-type {content_type!r})")
                 declared = response.headers.get("content-length", "")
                 if declared.isdigit() and int(declared) > max_bytes:
                     log.warning(
                         "supplementary files zip too large; skipping", pmcid=pmcid, content_length=int(declared), max_bytes=max_bytes
                     )
-                    return None
+                    return none(f"zip too large ({declared} bytes declared; limit {max_bytes})")
                 body = bytearray()
                 async for chunk in response.aiter_bytes():
                     body.extend(chunk)
@@ -250,24 +296,21 @@ async def fetch_supplement_zip(
                         log.warning(
                             "supplementary files zip exceeded the size cap; aborting download", pmcid=pmcid, max_bytes=max_bytes
                         )
-                        return None
+                        return none(f"zip too large (download passed the {max_bytes} byte limit)")
                 return bytes(body)
     except TimeoutError:
         log.warning("supplementary files download timed out; skipping", pmcid=pmcid, timeout=timeout)
-        return None
+        return none(f"download timed out after {timeout:g} s")
     except httpx.HTTPStatusError as exc:
-        if exc.response.status_code == 404:
+        status = exc.response.status_code
+        if status == 404:
             log.info("no supplementary files for pmcid", pmcid=pmcid)
-        else:
-            log.warning(
-                "supplementary files fetch failed",
-                pmcid=pmcid,
-                status_code=exc.response.status_code,
-            )
-        return None
+            return none("no supplementary files (HTTP 404)")
+        log.warning("supplementary files fetch failed", pmcid=pmcid, status_code=status)
+        return none(f"fetch failed: HTTP {status}")
     except httpx.HTTPError as exc:
         log.warning("supplementary files fetch failed", pmcid=pmcid, error=str(exc))
-        return None
+        return none(f"fetch failed: {type(exc).__name__}: {exc}")
 
 
 async def fetch_supplements(
@@ -277,13 +320,14 @@ async def fetch_supplements(
 
     Returns `[]` (not an error) when there's no ZIP to unpack -- either
     because EuropePMC has none for this PMCID, or the fetch otherwise failed
-    best-effort (see `fetch_supplement_zip`). Members skipped while unpacking
-    are appended to `skipped` (see `unpack_supplement_zip`).
+    best-effort (see `fetch_supplement_zip`). The fetch failure reason and the
+    members skipped while unpacking are appended to `skipped`. Unpacking is
+    CPU-bound, so it runs in a worker thread.
     """
-    zip_bytes = await fetch_supplement_zip(pmcid, client=client)
+    zip_bytes = await fetch_supplement_zip(pmcid, client=client, skipped=skipped)
     if zip_bytes is None:
         return []
-    return unpack_supplement_zip(zip_bytes, skipped=skipped)
+    return await asyncio.to_thread(unpack_supplement_zip, zip_bytes, skipped=skipped)
 
 
 # --- model-ready content: text rendering + document content blocks ----------------------
