@@ -4,9 +4,11 @@ merge/dedupe, and the pipeline/CLI wiring. Fully offline."""
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import io
 import json
 import random
+import re
 import zipfile
 
 import docx
@@ -15,11 +17,14 @@ import openpyxl
 import pymupdf
 import pytest
 import test_curator_pipeline_e2e as e2e
+from typer.testing import CliRunner
 
+import bugsigdb_curation.cli as cli_module
+from bugsigdb_curation.cli import app
 from bugsigdb_curation.curator.experiment import ExperimentFields
 from bugsigdb_curation.curator.model import MockModel, ModelError
 from bugsigdb_curation.curator.ner import NamedTaxon
-from bugsigdb_curation.curator.pipeline import curate_async
+from bugsigdb_curation.curator.pipeline import CurationResult, curate_async
 from bugsigdb_curation.curator.signature import ExtractedSignature, ExtractedTaxon
 from bugsigdb_curation.curator.supplement_lever import (
     MAX_IMAGE_BYTES,
@@ -746,3 +751,78 @@ def test_a_corrupt_zip_is_recorded_not_raised(httpx_mock):
 
     assert asyncio.run(run()) == []
     assert "corrupt zip" in annotations["supplement_skipped"][0]["reason"]
+
+
+# --- CLI ----------------------------------------------------------------------------------------------
+
+#: Rich wraps/styles console output per terminal; pin a wide, colourless one and normalise what is left.
+_PLAIN_TERMINAL = {"COLUMNS": "250", "NO_COLOR": "1", "TERM": "dumb"}
+
+
+def _invoke(*args: str):
+    result = CliRunner().invoke(app, list(args), env=_PLAIN_TERMINAL)
+    return result, " ".join(re.sub(r"\x1b\[[0-9;]*m", "", result.output).split())
+
+
+def _stub_curate(monkeypatch, annotations_for=lambda pmid: {}):
+    seen: list[dict] = []
+
+    @contextlib.asynccontextmanager
+    async def fake_open(name, archive=None, **_):
+        yield object()
+
+    async def fake_curate_async(pmid, **kwargs):
+        seen.append({"pmid": pmid, **kwargs})
+        return CurationResult(
+            pmid=pmid, pmcid=None, has_pmc=False, record={"uid": pmid}, valid=True, problems=(),
+            annotations=annotations_for(pmid),
+        )
+
+    monkeypatch.setattr(cli_module, "open_decision_model", fake_open)
+    monkeypatch.setattr(cli_module, "curate_async", fake_curate_async)
+    monkeypatch.setattr(cli_module, "require_credentials", lambda: None)
+    monkeypatch.setattr(cli_module, "_build_model", lambda mock, name: MockModel())
+    return seen
+
+
+def test_cli_supplements_requires_a_decision_model(monkeypatch, tmp_path):
+    seen = _stub_curate(monkeypatch)
+    result, output = _invoke("curate", "--pmid", "1", "--supplements", "--out", str(tmp_path / "o.json"))
+    assert result.exit_code == 2 and "--supplements needs a decision model" in output and "--decision-model" in output
+    mocked, mocked_output = _invoke(
+        "curate", "--pmid", "1", "--mock", "--decision-model", "clef", "--supplements", "--out", str(tmp_path / "o.json")
+    )
+    assert mocked.exit_code == 2 and "--supplements needs a decision model" in mocked_output
+    assert seen == []  # nothing ran
+
+
+def test_cli_single_pmid_threads_supplements_to_curate_async(monkeypatch, tmp_path):
+    seen = _stub_curate(monkeypatch)
+    base = ["curate", "--pmid", "1", "--decision-model", "clef", "--out", str(tmp_path / "o.json")]
+    base += ["--taxonomy-cache", str(tmp_path / "tax.json"), "--ols-cache", str(tmp_path / "ols.json")]
+    for extra in (["--supplements"], [], ["--no-supplements"]):
+        result, _ = _invoke(*base, *extra)
+        assert result.exit_code == 0
+    assert [kw["supplements"] for kw in seen] == [True, False, False]
+
+
+def test_cli_smoke_threads_supplements_and_counts_screen_failures(monkeypatch, tmp_path):
+    seen = _stub_curate(
+        monkeypatch,
+        lambda pmid: {"supplement_screen_error": [{"unit": "S1.xlsx::DA", "error": "boom"}]} if pmid == "A" else {},
+    )
+    monkeypatch.setattr(cli_module, "smoke_study_ids", lambda: ["A", "B", "C"])
+    caches = ["--taxonomy-cache", str(tmp_path / "tax.json"), "--ols-cache", str(tmp_path / "ols.json")]
+    result, output = _invoke(
+        "curate", "--smoke", "--decision-model", "clef", "--supplements", "--out", str(tmp_path / "s"), *caches
+    )
+    assert result.exit_code == 0, output
+    assert [kw["supplements"] for kw in seen] == [True, True, True]
+    assert "1 study(ies) have no supplement experiments because the supplement screening call failed" in output
+    smoke_off, _ = _invoke("curate", "--smoke", "--decision-model", "clef", "--out", str(tmp_path / "s2"), *caches)
+    assert smoke_off.exit_code == 0 and [kw["supplements"] for kw in seen[3:]] == [False, False, False]
+
+
+def test_cli_help_mentions_supplements():
+    _, output = _invoke("curate", "--help")
+    assert "--supplements" in output and "--no-supplements" in output and "supplementary files" in output
