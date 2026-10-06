@@ -28,6 +28,7 @@ from bugsigdb_curation.curator.pipeline import CurationResult, curate_async
 from bugsigdb_curation.curator.signature import ExtractedSignature, ExtractedTaxon
 from bugsigdb_curation.curator.supplement_lever import (
     MAX_IMAGE_BYTES,
+    ExtractionNotes,
     ONE_VS_REST,
     SCREEN_QUESTIONS,
     SCREEN_THRESHOLD,
@@ -39,6 +40,7 @@ from bugsigdb_curation.curator.supplement_lever import (
     drop_duplicate_experiments,
     expand_one_vs_rest,
     extract_comparisons,
+    inherited_field_names,
     resolve_comparison,
     screen_state,
     screen_units,
@@ -535,14 +537,187 @@ def test_one_vs_rest_extraction_expands_in_code_and_only_when_asked():
     model = MockModel(
         {
             "supplement_extract": {
-                "groups": [{"name": "G1", "taxa": [{"name": "A"}, "B"]}, {"name": "G2", "taxa": [{"name": "C"}]}, {"taxa": []}]
+                "groups": [
+                    {"name": "G1", "taxa": [{"name": "A"}, "B"]},
+                    {"name": "G2", "taxa": [{"name": "C"}]},
+                    {"name": "G3", "taxa": []},
+                    {"taxa": []},
+                ]
             }
         }
     )
     comparisons = extract_comparisons(_unit("a"), model=model, one_vs_rest=True)
-    assert [c.group_1_name for c in comparisons] == ["G1", "G2"]
+    assert [c.group_1_name for c in comparisons] == ["G1", "G2"]  # G3 has no taxa: nothing to record
     assert [t.name for t in comparisons[0].taxa] == ["A", "B"]
+    assert len(model.calls) == 1
     assert extract_comparisons(_unit("a"), model=model, one_vs_rest=False) == []  # never expanded unless the screen said so
+
+
+def _routing_model(groups: list[dict], comparisons: list[dict] | None = None) -> MockModel:
+    """Answers the one-vs-rest prompt with `groups` and the two-group prompt with `comparisons`."""
+    return MockModel(
+        {
+            "supplement_extract": lambda messages: (
+                {"groups": groups} if "ENRICHED" in _prompt(messages) else {"comparisons": comparisons or []}
+            )
+        }
+    )
+
+
+TWO_GROUP_ANSWER = [
+    {"group_0_name": "Ctl", "group_1_name": "Case", "taxa": [{"name": "Bacteroides", "direction": "increased"}]}
+]
+
+
+@pytest.mark.parametrize(
+    "groups, n_distinct",
+    [
+        ([{"name": "A", "taxa": ["t1"]}], 1),
+        ([{"name": "A", "taxa": ["t1"]}, {"name": "B", "taxa": ["t2"]}], 2),
+        ([{"name": "A", "taxa": ["t1"]}, {"name": "B", "taxa": ["t2"]}, {"name": " A ", "taxa": ["t3"]}], 2),
+        ([{"name": "A", "taxa": ["t1"]}, {"name": "B", "taxa": ["t2"]}, {"name": "   ", "taxa": ["t3"]}], 2),
+    ],
+)
+def test_one_vs_rest_is_rejected_below_three_distinct_groups_and_the_unit_is_read_as_two_group(groups, n_distinct):
+    model = _routing_model(groups, TWO_GROUP_ANSWER)
+    notes = ExtractionNotes()
+    comparisons = extract_comparisons(_unit("a"), model=model, one_vs_rest=True, notes=notes)
+    assert notes.one_vs_rest_rejected_groups == n_distinct
+    assert [("ENRICHED" in _prompt(c["messages"])) for c in model.calls] == [True, False]  # fell back to the two-group prompt
+    assert [(c.group_0_name, c.group_1_name) for c in comparisons] == [("Ctl", "Case")]  # not "all other groups (not A)"
+
+
+def test_one_vs_rest_merges_duplicate_group_names_when_three_distinct_remain():
+    groups = [
+        {"name": "A", "taxa": ["t1", "t2"]},
+        {"name": "B", "taxa": ["t3"]},
+        {"name": " A ", "taxa": ["t2", "t4"]},
+        {"name": "C", "taxa": ["t5"]},
+    ]
+    notes = ExtractionNotes()
+    comparisons = extract_comparisons(_unit("a"), model=_routing_model(groups), one_vs_rest=True, notes=notes)
+    assert notes.one_vs_rest_rejected_groups is None
+    assert [(c.group_1_name, [t.name for t in c.taxa]) for c in comparisons] == [
+        ("A", ["t1", "t2", "t4"]), ("B", ["t3"]), ("C", ["t5"]),
+    ]
+
+
+def test_a_group_with_no_taxa_still_counts_toward_the_three_group_minimum():
+    groups = [{"name": "A", "taxa": ["t1"]}, {"name": "B", "taxa": ["t2"]}, {"name": "C", "taxa": []}]
+    notes = ExtractionNotes()
+    comparisons = extract_comparisons(_unit("a"), model=_routing_model(groups), one_vs_rest=True, notes=notes)
+    assert notes.one_vs_rest_rejected_groups is None and [c.group_1_name for c in comparisons] == ["A", "B"]
+
+
+# --- caps on what the model returns, and whitespace-only names -------------------------------------
+
+
+def _comparison(i: int, taxa: list[dict] | None = None) -> dict:
+    return {
+        "group_0_name": f"c{i}", "group_1_name": f"g{i}",
+        "taxa": taxa if taxa is not None else [{"name": f"t{i}", "direction": "increased"}],
+    }
+
+
+def test_comparisons_per_unit_are_capped_at_50_and_the_cut_is_noted():
+    model = MockModel({"supplement_extract": {"comparisons": [_comparison(i) for i in range(60)]}})
+    notes = ExtractionNotes()
+    comparisons = extract_comparisons(_unit("a"), model=model, notes=notes)
+    assert [c.group_1_name for c in comparisons] == [f"g{i}" for i in range(50)]
+    assert notes.cuts == ["10 comparison(s) beyond the first 50 dropped"]
+
+
+def test_taxa_per_comparison_are_capped_at_500_and_the_cut_is_noted():
+    taxa = [{"name": f"t{i}", "direction": "increased"} for i in range(520)]
+    model = MockModel({"supplement_extract": {"comparisons": [_comparison(0, taxa)]}})
+    notes = ExtractionNotes()
+    (comparison,) = extract_comparisons(_unit("a"), model=model, notes=notes)
+    assert len(comparison.taxa) == 500 and comparison.taxa[-1].name == "t499"
+    assert notes.cuts == ["20 taxon name(s) beyond the first 500 per comparison dropped"]
+
+
+def test_one_vs_rest_caps_groups_and_taxa_too():
+    groups = [{"name": f"G{i}", "taxa": [f"t{i}-{j}" for j in range(501)]} for i in range(52)]
+    notes = ExtractionNotes()
+    comparisons = extract_comparisons(_unit("a"), model=_routing_model(groups), one_vs_rest=True, notes=notes)
+    assert len(comparisons) == 50 and all(len(c.taxa) == 500 for c in comparisons)
+    assert notes.cuts == ["2 comparison(s) beyond the first 50 dropped", "50 taxon name(s) beyond the first 500 per comparison dropped"]
+
+
+def test_long_names_are_cut_to_200_characters_and_noted():
+    model = MockModel(
+        {
+            "supplement_extract": {
+                "comparisons": [
+                    {
+                        "group_0_name": "g" * 300, "group_1_name": "case",
+                        "taxa": [{"name": "t" * 250, "direction": "increased"}],
+                    }
+                ]
+            }
+        }
+    )
+    notes = ExtractionNotes()
+    (comparison,) = extract_comparisons(_unit("a"), model=model, notes=notes)
+    assert comparison.group_0_name == "g" * 200 and comparison.taxa[0].name == "t" * 200
+    assert notes.cuts == ["2 name(s) cut to 200 characters"]
+
+
+def test_whitespace_only_names_are_dropped_before_the_emptiness_test():
+    model = MockModel(
+        {
+            "supplement_extract": {
+                "comparisons": [
+                    {
+                        "group_0_name": "   ", "group_1_name": "\t",
+                        "taxa": [{"name": "  ", "direction": "increased"}, {"name": " Bacteroides ", "direction": "increased"}],
+                    },
+                    {"group_0_name": "a", "group_1_name": "b", "taxa": [{"name": " \n ", "direction": "decreased"}]},
+                ]
+            }
+        }
+    )
+    (comparison,) = extract_comparisons(_unit("a"), model=model)
+    assert comparison.group_0_name is None and comparison.group_1_name is None
+    assert [t.name for t in comparison.taxa] == ["Bacteroides"]  # and the all-blank comparison vanished
+    groups = [{"name": "  ", "taxa": ["x"]}, {"name": "A", "taxa": [" ", "t1"]}, {"name": "B", "taxa": ["t2"]}, {"name": "C", "taxa": ["t3"]}]
+    ovr = extract_comparisons(_unit("a"), model=_routing_model(groups), one_vs_rest=True)
+    assert [(c.group_1_name, [t.name for t in c.taxa]) for c in ovr] == [("A", ["t1"]), ("B", ["t2"]), ("C", ["t3"])]
+
+
+# --- per-comparison metadata ---------------------------------------------------------------------------
+
+
+def test_the_two_group_prompt_asks_for_host_sequencing_test_and_correction_per_comparison():
+    text = _prompt(build_extract_messages(_unit("a"), study_title="", one_vs_rest=False))
+    for key in ("host_species", "sequencing_type", "statistical_test", "mht_correction"):
+        assert key in text
+    assert "16S" in text and "LEfSe" in text  # the closed vocabularies are listed
+
+
+def test_extraction_parses_stated_metadata_and_normalizes_it_to_the_vocabularies():
+    model = MockModel(
+        {
+            "supplement_extract": {
+                "comparisons": [
+                    {
+                        **_comparison(0), "host_species": " Mus musculus ", "sequencing_type": "16s",
+                        "statistical_test": ["lefse", "not a test"], "mht_correction": True,
+                    },
+                    {**_comparison(1), "host_species": "", "sequencing_type": "pigeon", "statistical_test": "LEfSe", "mht_correction": "yes"},
+                    _comparison(2),
+                ]
+            }
+        }
+    )
+    first, second, third = extract_comparisons(_unit("a"), model=model)
+    assert (first.host_species, first.sequencing_type, first.statistical_test, first.mht_correction) == (
+        "Mus musculus", "16S", ("LEfSe",), True,
+    )
+    assert (second.host_species, second.sequencing_type, second.statistical_test, second.mht_correction) == (
+        None, None, ("LEfSe",), None,
+    )
+    assert (third.host_species, third.sequencing_type, third.statistical_test, third.mht_correction) == (None, None, (), None)
 
 
 # --- resolution and dedupe ---------------------------------------------------------------------------
@@ -585,6 +760,28 @@ def test_resolve_comparison_resolves_names_and_inherits_only_host_sequencing_and
         )
     )[0]
     assert (bare.host_species, bare.sequencing_type, bare.statistical_test, bare.mht_correction) == (None, None, (), None)
+
+
+def test_stated_metadata_wins_and_only_absent_fields_are_inherited_from_the_main_experiment():
+    unit = _unit("S1", kind="sheet", label="DA")
+    taxa = (NamedTaxon("Bacteroides fragilis", "increased"),)
+    stated = SupplementComparison(
+        "H", "C", (), (), taxa, host_species="Mus musculus", sequencing_type="WMS", mht_correction=False
+    )
+    fields, _, _ = asyncio.run(
+        resolve_comparison(
+            stated, unit, defaults=_fields(mht_correction=True), model=MockModel(),
+            resolver=_resolver(bacteroides_fragilis=817), client=None,  # type: ignore[arg-type]
+        )
+    )
+    assert (fields.host_species, fields.sequencing_type, fields.statistical_test, fields.mht_correction) == (
+        "Mus musculus", "WMS", ("LEfSe",), False,  # a stated False is not "absent"
+    )
+    assert inherited_field_names(stated, _fields(mht_correction=True)) == ["statistical_test"]
+    bare = SupplementComparison("H", "C", (), (), taxa)
+    assert inherited_field_names(bare, _fields()) == ["host_species", "sequencing_type", "statistical_test", "mht_correction"]
+    assert inherited_field_names(bare, _fields(host_species=None, statistical_test=(), mht_correction=None)) == ["sequencing_type"]
+    assert inherited_field_names(bare, None) == []  # nothing to inherit when the main text has no experiment
 
 
 def _record(direction: str, *taxa: tuple[str, int | None], source: str = "S1.xlsx :: DA"):
@@ -784,6 +981,14 @@ def test_e2e_routes_extracts_expands_and_dedupes(httpx_mock, tmp_path):
     assert [t["ncbi_id"] for t in ovr[0]["signatures"][0]["taxa"]] == [301301, 40520]  # ids from the authority path
     assert supplement[0]["host_species"] == "Homo sapiens" and supplement[0]["sequencing_type"] == "16S"  # S4 exp 0 defaults
     assert supplement[0]["body_site"] == ["Feces"] and "body_site" not in supplement[-1]  # only if the supplement states it
+    all_four = ["host_species", "sequencing_type", "statistical_test", "mht_correction"]
+    assert result.annotations["supplement_inherited_fields"] == [
+        {"source": source, "group_1_name": group_1, "fields": all_four, "from_main_experiment": 0}
+        for source, group_1 in [
+            ("S1.xlsx :: DA", "Crohn"), ("S1.xlsx :: DA", "Other"), ("S1.xlsx :: OVR", "Cluster1"),
+            ("S1.xlsx :: OVR", "Cluster2"), ("S1.xlsx :: OVR", "Cluster3"), ("S2.pdf :: page 1", "Ileum"),
+        ]
+    ]  # the dropped duplicate ("Treated") is not listed
 
     (dropped,) = result.annotations["supplement_dropped_duplicates"]
     assert dropped["group_1_name"] == "Treated" and dropped["jaccard"] == 0.5 and dropped["main_experiment_index"] == 0
@@ -915,6 +1120,107 @@ def test_a_corrupt_zip_is_recorded_not_raised(httpx_mock):
 
     assert asyncio.run(run()) == []
     assert "corrupt zip" in annotations["supplement_skipped"][0]["reason"]
+
+
+# --- lever-level guards, annotations and error paths (offline) ----------------------------------------
+
+
+def _csv_zip(files: dict[str, str]) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        for name, content in files.items():
+            zf.writestr(name, content)
+    return buf.getvalue()
+
+
+def _run_lever(httpx_mock, files: dict[str, str], *, decision, model, resolver, main_experiments=(), **kwargs):
+    _mock_zip(httpx_mock, content=_csv_zip(files))
+    annotations: dict = {}
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await supplement_experiments(
+                e2e.PMCID, client=client, decision_model=decision, model=model, resolver=resolver, study_title="",
+                main_experiments=list(main_experiments), annotations=annotations, **kwargs,
+            )
+
+    return asyncio.run(run()), annotations
+
+
+def _cached(**ids: int | None) -> NcbiTaxonomyResolver:
+    return NcbiTaxonomyResolver(cache={k.replace("_", " "): v for k, v in ids.items()}, cache_path=None, db=None)
+
+
+def test_at_most_400_units_are_screened_and_the_rest_are_recorded_as_skipped(httpx_mock):
+    decision = MockDecisionModel({"s1b_screen": lambda s, q: _answers(0.1)})
+    files = {f"f{i:03d}.csv": "a,b\n1,2\n" for i in range(405)}
+    kept, annotations = _run_lever(httpx_mock, files, decision=decision, model=MockModel(), resolver=_cached())
+    assert kept == [] and len(decision.calls) == 400 and len(annotations["supplement_screen"]) == 400
+    assert annotations["supplement_screen"][-1]["id"] == "f399.csv"
+    assert annotations["supplement_skipped"] == [
+        {"file": f"f{i:03d}.csv", "reason": "1 unit(s) not screened (limit 400 units per study)"} for i in range(400, 405)
+    ]
+
+
+def test_cuts_and_a_rejected_one_vs_rest_label_are_recorded_in_the_annotations(httpx_mock):
+    def screen(state, questions):
+        return _answers(0.9, arity=ONE_VS_REST if state["file"] == "two_groups.csv" else "two_group")
+
+    def extract(messages):
+        text = _prompt(messages)
+        if "two_groups.csv" in text and "ENRICHED" in text:
+            return {"groups": [{"name": "A", "taxa": ["t0"]}, {"name": "B", "taxa": ["t1"]}]}
+        if "two_groups.csv" in text:
+            return {"comparisons": [_comparison(0)]}
+        return {"comparisons": [_comparison(i) for i in range(60)]}
+
+    resolver = _cached(**{f"t{i}": 1000 + i for i in range(60)})
+    kept, annotations = _run_lever(
+        httpx_mock, {"two_groups.csv": "a,b\n1,2\n", "many.csv": "a,b\n1,2\n"},
+        decision=MockDecisionModel({"s1b_screen": screen}), model=MockModel({"supplement_extract": extract}),
+        resolver=resolver,
+    )
+    assert annotations["supplement_one_vs_rest_rejected"] == [{"unit": "two_groups.csv", "n_groups": 2}]
+    assert annotations["supplement_truncated"] == [{"unit": "many.csv", "cut": "10 comparison(s) beyond the first 50 dropped"}]
+    assert [fields.group_0_name for fields, _, _ in kept[:1]] == ["c0"]  # two_groups.csv read as a two-group table
+    assert len(kept) == 51  # 1 + the first 50 of many.csv, no duplicates among them (distinct taxa)
+    json.dumps(annotations)
+
+
+def test_a_name_resolution_failure_skips_only_that_unit_and_is_recorded(httpx_mock):
+    class Offline(NcbiTaxonomyResolver):
+        async def resolve_name(self, name, *, client):
+            raise httpx.ConnectError("no route")
+
+    resolver = Offline(cache={"bacteroides": 816}, cache_path=None, db=None)
+
+    def extract(messages):
+        taxon = "Bacteroides" if "ok.csv" in _prompt(messages) else "Uncached taxon"
+        return {"comparisons": [{"group_0_name": "c", "group_1_name": "g", "taxa": [{"name": taxon, "direction": "increased"}]}]}
+
+    kept, annotations = _run_lever(
+        httpx_mock, {"ok.csv": "a,b\n1,2\n", "net.csv": "a,b\n1,2\n"},
+        decision=MockDecisionModel({"s1b_screen": lambda s, q: _answers(0.9)}),
+        model=MockModel({"supplement_extract": extract}), resolver=resolver,
+    )
+    assert [source for _, _, source in kept] == ["ok.csv"]
+    (failure,) = annotations["supplement_extract_error"]
+    assert failure["unit"] == "net.csv" and "ConnectError" in failure["error"]
+
+
+def test_a_fetch_failure_reason_reaches_the_skipped_annotation(httpx_mock):
+    _mock_zip(httpx_mock, status_code=503, content=b"")
+    annotations: dict = {}
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await supplement_experiments(
+                e2e.PMCID, client=client, decision_model=_decision(), model=MockModel(), resolver=_resolver(),
+                study_title="", main_experiments=[], annotations=annotations,
+            )
+
+    assert asyncio.run(run()) == []
+    assert annotations["supplement_skipped"] == [{"file": "(supplementary files zip)", "reason": "fetch failed: HTTP 503"}]
 
 
 # --- CLI ----------------------------------------------------------------------------------------------

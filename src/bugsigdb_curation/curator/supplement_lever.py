@@ -30,8 +30,9 @@ import io
 import itertools
 import re
 import zipfile
+from collections import Counter
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, TypeVar
 
@@ -45,8 +46,9 @@ from bugsigdb_curation.curator.reconcile import reconcile_names
 from bugsigdb_curation.curator.routing import DECISION_CALL_ERRORS, unwrap_fan_out_failure
 from bugsigdb_curation.curator.signature import ExtractedSignature
 from bugsigdb_curation.curator.taxonomy import NcbiTaxonomyResolver
+from bugsigdb_curation.loader import SEQUENCING_TYPE_VALUES, STATISTICAL_TEST_VALUES, normalize_enum
 from bugsigdb_curation.decision import Choice, ChoiceAnswer, DecisionModel, Noul, NoulAnswer
-from bugsigdb_curation.supplements import SupplementFile, fetch_supplements, supplement_to_text
+from bugsigdb_curation.supplements import ZIP_SKIP_NAME, SupplementFile, fetch_supplements, supplement_to_text
 from bugsigdb_curation.taxonomy.normalize import normalize_taxon_name
 
 SCREEN_STAGE = "s1b_screen"
@@ -58,6 +60,16 @@ SCREEN_THRESHOLD = 0.5
 #: The only arity answer that switches a unit to the one-vs-rest prompt + deterministic expansion
 #: (probe: 3/3 detected, 0 false positives -- but only 3 positives, so every use is logged).
 ONE_VS_REST = "multi_group_one_vs_rest"
+
+#: Limits on what is accepted from one unit's extraction answer (cuts are recorded in ``supplement_truncated``)
+#: and on how many units one study may screen at all (the rest are recorded as skipped).
+_MAX_COMPARISONS_PER_UNIT = 50
+_MAX_TAXA_PER_COMPARISON = 500
+_MAX_NAME_CHARS = 200
+_MAX_UNITS_SCREENED = 400
+#: One-vs-rest expansion needs at least this many distinct groups; with fewer, the screen's arity label is
+#: distrusted (probe: only 3 positives) and the unit is read as a two-group table instead.
+MIN_ONE_VS_REST_GROUPS = 3
 
 #: Concurrent decision calls while screening / generative calls while extracting.
 _SCREEN_CONCURRENCY = 6
@@ -461,12 +473,17 @@ _TWO_GROUP_PROMPT = (
     "- group_0_name and group_1_name: short names for the two compared groups. {convention}\n"
     "- body_site: the anatomical site(s) sampled if stated (list of free-text strings), else []\n"
     "- condition: the disease/condition label(s) if stated (list of free-text strings), else []\n"
+    "- host_species, sequencing_type, statistical_test, mht_correction: ONLY if this content itself states them "
+    "for the comparison, else null (or [] for statistical_test) -- they are then taken from the main text. "
+    "host_species is the organism studied (e.g. \"Homo sapiens\"); sequencing_type is EXACTLY one of {sequencing_types}; "
+    "statistical_test is a list, each EXACTLY one of {statistical_tests}; mht_correction is true if a "
+    "multiple-hypothesis-testing correction was applied, false if explicitly not.\n"
     "- taxa: every taxon reported as significantly different, with its name exactly as written (do NOT propose "
     "NCBI Taxonomy ids -- they are resolved separately) and its direction, \"increased\" or \"decreased\" in "
     "Group 1 relative to Group 0.\n\n"
     'Return ONLY a JSON object: {{"comparisons": [{{"group_0_name": "...", "group_1_name": "...", '
-    '"body_site": [...], "condition": [...], "taxa": [{{"name": "...", "direction": "increased"|"decreased"}}, '
-    "...]}}, ...]}}\n\n"
+    '"body_site": [...], "condition": [...], "host_species": ..., "sequencing_type": ..., "statistical_test": [...], '
+    '"mht_correction": ..., "taxa": [{{"name": "...", "direction": "increased"|"decreased"}}, ...]}}, ...]}}\n\n'
     "{content}"
 )
 
@@ -487,13 +504,34 @@ _ONE_VS_REST_PROMPT = (
 
 @dataclass(frozen=True, slots=True)
 class SupplementComparison:
-    """One comparison extracted from a unit, names only (ids come from the taxonomy authority afterwards)."""
+    """One comparison extracted from a unit, names only (ids come from the taxonomy authority afterwards).
+
+    `host_species`, `sequencing_type`, `statistical_test` and `mht_correction` are only what the supplement itself
+    stated; absent ones fall back to the main text's first experiment (:func:`resolve_comparison`).
+    """
 
     group_0_name: str | None
     group_1_name: str | None
     body_site: tuple[str, ...]
     condition: tuple[str, ...]
     taxa: tuple[NamedTaxon, ...]
+    host_species: str | None = None
+    sequencing_type: str | None = None
+    statistical_test: tuple[str, ...] = ()
+    mht_correction: bool | None = None
+
+
+@dataclass
+class ExtractionNotes:
+    """What :func:`extract_comparisons` reports besides the comparisons (an out-parameter, like ``skipped``).
+
+    `cuts` are human-readable notes on what was dropped from the model's answer to respect the caps;
+    `one_vs_rest_rejected_groups` is the distinct-group count when a one-vs-rest answer had fewer than
+    :data:`MIN_ONE_VS_REST_GROUPS` groups (the unit was then read as a two-group table), else None.
+    """
+
+    cuts: list[str] = field(default_factory=list)
+    one_vs_rest_rejected_groups: int | None = None
 
 
 def build_extract_messages(unit: SupplementUnit, *, study_title: str, one_vs_rest: bool) -> list[dict]:
@@ -509,6 +547,8 @@ def build_extract_messages(unit: SupplementUnit, *, study_title: str, one_vs_res
         title=f' ("{study_title}")' if study_title else "",
         source=source,
         convention=_GROUP_CONVENTION,
+        sequencing_types=sorted(SEQUENCING_TYPE_VALUES),
+        statistical_tests=sorted(STATISTICAL_TEST_VALUES),
         content=content,
     )
     blocks = [build_text_content(prompt)]
@@ -524,34 +564,71 @@ def _strings(value: Any) -> tuple[str, ...]:
     return tuple(str(v).strip() for v in items if v is not None and str(v).strip())
 
 
-def _optional_name(value: Any) -> str | None:
-    return str(value).strip() or None if value is not None else None
+def _name(value: Any, cuts: Counter[str]) -> str:
+    """A model-supplied name, stripped (so a whitespace-only one is empty) and cut to :data:`_MAX_NAME_CHARS`."""
+    text = str(value).strip() if value is not None else ""
+    if len(text) > _MAX_NAME_CHARS:
+        cuts["names"] += 1
+        text = text[:_MAX_NAME_CHARS].rstrip()
+    return text
 
 
-def _two_group_comparisons(response: dict[str, Any]) -> list[SupplementComparison]:
-    comparisons = []
+def _cut_notes(cuts: Counter[str]) -> list[str]:
+    notes = {
+        "comparisons": f"{cuts['comparisons']} comparison(s) beyond the first {_MAX_COMPARISONS_PER_UNIT} dropped",
+        "taxa": f"{cuts['taxa']} taxon name(s) beyond the first {_MAX_TAXA_PER_COMPARISON} per comparison dropped",
+        "names": f"{cuts['names']} name(s) cut to {_MAX_NAME_CHARS} characters",
+    }
+    return [note for key, note in notes.items() if cuts[key]]
+
+
+def _optional_str(value: Any) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _statistical_tests(value: Any) -> tuple[str, ...]:
+    items = [value] if isinstance(value, str) else value if isinstance(value, list) else []
+    return tuple(v for v in (normalize_enum(_optional_str(x), STATISTICAL_TEST_VALUES) for x in items) if v)
+
+
+def _two_group_comparisons(response: dict[str, Any], cuts: Counter[str]) -> list[SupplementComparison]:
+    comparisons: list[SupplementComparison] = []
     raw = response.get("comparisons")
     for item in raw if isinstance(raw, list) else []:
         if not isinstance(item, dict):
             continue
-        taxa = []
+        taxa: list[NamedTaxon] = []
         raw_taxa = item.get("taxa")
         for t in raw_taxa if isinstance(raw_taxa, list) else []:
-            if not isinstance(t, dict) or not t.get("name"):
+            if not isinstance(t, dict):
                 continue
+            name = _name(t.get("name"), cuts)
             direction = str(t.get("direction", "")).strip().lower()
-            if direction in ("increased", "decreased"):
-                taxa.append(NamedTaxon(name=str(t["name"]).strip(), direction=direction))  # type: ignore[arg-type]
-        if taxa:
-            comparisons.append(
-                SupplementComparison(
-                    group_0_name=_optional_name(item.get("group_0_name")),
-                    group_1_name=_optional_name(item.get("group_1_name")),
-                    body_site=_strings(item.get("body_site")),
-                    condition=_strings(item.get("condition")),
-                    taxa=tuple(taxa),
-                )
+            if not name or direction not in ("increased", "decreased"):
+                continue
+            if len(taxa) >= _MAX_TAXA_PER_COMPARISON:
+                cuts["taxa"] += 1
+                continue
+            taxa.append(NamedTaxon(name=name, direction=direction))  # type: ignore[arg-type]
+        if not taxa:
+            continue
+        if len(comparisons) >= _MAX_COMPARISONS_PER_UNIT:
+            cuts["comparisons"] += 1
+            continue
+        mht = item.get("mht_correction")
+        comparisons.append(
+            SupplementComparison(
+                group_0_name=_name(item.get("group_0_name"), cuts) or None,
+                group_1_name=_name(item.get("group_1_name"), cuts) or None,
+                body_site=_strings(item.get("body_site")),
+                condition=_strings(item.get("condition")),
+                taxa=tuple(taxa),
+                host_species=_name(item.get("host_species"), cuts) or None,
+                sequencing_type=normalize_enum(_optional_str(item.get("sequencing_type")), SEQUENCING_TYPE_VALUES),
+                statistical_test=_statistical_tests(item.get("statistical_test")),
+                mht_correction=mht if isinstance(mht, bool) else None,
             )
+        )
     return comparisons
 
 
@@ -571,36 +648,78 @@ def expand_one_vs_rest(groups: Sequence[tuple[str, Sequence[str]]]) -> list[Supp
     ]
 
 
-def _one_vs_rest_comparisons(response: dict[str, Any]) -> list[SupplementComparison]:
-    groups: list[tuple[str, list[str]]] = []
+def _one_vs_rest_groups(response: dict[str, Any], cuts: Counter[str]) -> list[tuple[str, list[str]]]:
+    """The answer's distinct, non-empty group names (first-seen order) with their taxa; a repeated name merges its taxa."""
+    groups: dict[str, list[str]] = {}
     raw = response.get("groups")
     for item in raw if isinstance(raw, list) else []:
-        if not isinstance(item, dict) or not item.get("name"):
+        if not isinstance(item, dict):
             continue
+        name = _name(item.get("name"), cuts)
+        if not name:
+            continue
+        if name not in groups and len(groups) >= _MAX_COMPARISONS_PER_UNIT:
+            cuts["comparisons"] += 1
+            continue
+        names = groups.setdefault(name, [])
         raw_taxa = item.get("taxa")
-        names = [
-            str(t.get("name") if isinstance(t, dict) else t).strip()
-            for t in (raw_taxa if isinstance(raw_taxa, list) else [])
-            if (t.get("name") if isinstance(t, dict) else t)
-        ]
-        groups.append((str(item["name"]).strip(), names))
-    return expand_one_vs_rest(groups)
+        for t in raw_taxa if isinstance(raw_taxa, list) else []:
+            taxon = _name(t.get("name") if isinstance(t, dict) else t, cuts)
+            if not taxon or taxon in names:
+                continue
+            if len(names) >= _MAX_TAXA_PER_COMPARISON:
+                cuts["taxa"] += 1
+                continue
+            names.append(taxon)
+    return list(groups.items())
 
 
 def extract_comparisons(
-    unit: SupplementUnit, *, model: Model, study_title: str = "", one_vs_rest: bool = False
+    unit: SupplementUnit,
+    *,
+    model: Model,
+    study_title: str = "",
+    one_vs_rest: bool = False,
+    notes: ExtractionNotes | None = None,
 ) -> list[SupplementComparison]:
     """One generative call (stage ``supplement_extract``) for a routed unit.
 
     Two-group prompt by default; `one_vs_rest=True` (only for a unit the screen labelled
     :data:`ONE_VS_REST`) asks for each group's enriched taxa and expands them in code
-    (:func:`expand_one_vs_rest`). Raises :class:`~bugsigdb_curation.curator.model.ModelError` for an
-    unparseable response; a parseable but oddly-shaped one yields what could be read.
+    (:func:`expand_one_vs_rest`) -- but only when the answer has at least :data:`MIN_ONE_VS_REST_GROUPS`
+    distinct groups; with fewer the label is rejected (recorded in `notes`) and the unit is read again with the
+    two-group prompt. The answer is capped (:data:`_MAX_COMPARISONS_PER_UNIT` comparisons,
+    :data:`_MAX_TAXA_PER_COMPARISON` taxa each, :data:`_MAX_NAME_CHARS`-character names) and the cuts are
+    appended to `notes.cuts`. Raises :class:`~bugsigdb_curation.curator.model.ModelError` for an unparseable
+    response or a failed call; a parseable but oddly-shaped one yields what could be read.
     """
+    cuts: Counter[str] = Counter()
     response = model.complete(
         stage=EXTRACT_STAGE, messages=build_extract_messages(unit, study_title=study_title, one_vs_rest=one_vs_rest)
     )
-    return _one_vs_rest_comparisons(response) if one_vs_rest else _two_group_comparisons(response)
+    comparisons: list[SupplementComparison]
+    if one_vs_rest:
+        groups = _one_vs_rest_groups(response, cuts)
+        if len(groups) >= MIN_ONE_VS_REST_GROUPS:
+            comparisons = expand_one_vs_rest(groups)
+        else:
+            logger.bind(stage="S1b").warning(
+                "one-vs-rest label rejected: fewer than three distinct groups; reading the unit as two-group",
+                unit=unit.id,
+                n_groups=len(groups),
+            )
+            if notes is not None:
+                notes.one_vs_rest_rejected_groups = len(groups)
+            cuts = Counter()
+            response = model.complete(
+                stage=EXTRACT_STAGE, messages=build_extract_messages(unit, study_title=study_title, one_vs_rest=False)
+            )
+            comparisons = _two_group_comparisons(response, cuts)
+    else:
+        comparisons = _two_group_comparisons(response, cuts)
+    if notes is not None:
+        notes.cuts.extend(_cut_notes(cuts))
+    return comparisons
 
 
 # --- resolution, merge, dedupe -------------------------------------------------------------------------
@@ -617,6 +736,26 @@ def _source_context(fields: ExperimentFields, provenance: str) -> str:
     return "; ".join([*parts, f"source: {provenance}"])
 
 
+#: The experiment fields a supplement comparison may state itself; the rest of S4's fields come from the supplement
+#: only when stated (body_site / condition, groups) or not at all.
+_INHERITABLE_FIELDS = ("host_species", "sequencing_type", "statistical_test", "mht_correction")
+
+
+def _stated(value: Any) -> bool:
+    return value is not None and value != ()
+
+
+def inherited_field_names(comparison: SupplementComparison, defaults: ExperimentFields | None) -> list[str]:
+    """The :data:`_INHERITABLE_FIELDS` the comparison did not state and that `defaults` (main experiment 0) supplies."""
+    if defaults is None:
+        return []
+    return [
+        name
+        for name in _INHERITABLE_FIELDS
+        if not _stated(getattr(comparison, name)) and _stated(getattr(defaults, name))
+    ]
+
+
 async def resolve_comparison(
     comparison: SupplementComparison,
     unit: SupplementUnit,
@@ -628,18 +767,24 @@ async def resolve_comparison(
 ) -> ExperimentRecord:
     """S6 on one comparison's names via `reconcile_names`, as an experiment record sourced from the unit.
 
-    Host / sequencing / test fields the supplement does not state come from `defaults` (the main text's S4
-    experiment 0); body_site / condition only if the supplement stated them.
+    Host / sequencing / test / correction fields come from the comparison when the supplement stated them, else
+    from `defaults` (the main text's S4 experiment 0; see :func:`inherited_field_names`); body_site / condition
+    only if the supplement stated them.
     """
+
+    def pick(name: str) -> Any:
+        own = getattr(comparison, name)
+        return own if _stated(own) or defaults is None else getattr(defaults, name)
+
     fields = ExperimentFields(
-        host_species=defaults.host_species if defaults else None,
+        host_species=pick("host_species"),
         body_site=comparison.body_site,
         condition=comparison.condition,
         group_0_name=comparison.group_0_name,
         group_1_name=comparison.group_1_name,
-        sequencing_type=defaults.sequencing_type if defaults else None,
-        statistical_test=defaults.statistical_test if defaults else (),
-        mht_correction=defaults.mht_correction if defaults else None,
+        sequencing_type=pick("sequencing_type"),
+        statistical_test=pick("statistical_test"),
+        mht_correction=pick("mht_correction"),
     )
     signatures = await reconcile_names(
         list(comparison.taxa),
@@ -724,7 +869,10 @@ async def supplement_experiments(
     (``supplement_screen_error`` / ``supplement_extract_error`` as lists of ``{unit, error}``) and never abort the
     study; a bug in our code still propagates. Also records ``supplement_screen`` (per unit ``{id, p_da,
     content_kind, arity, routed, truncated}``), ``supplement_skipped`` (``{file, reason}``) and
-    ``supplement_dropped_duplicates``.
+    ``supplement_dropped_duplicates``, ``supplement_truncated`` (``{unit, cut}``: what was cut from a model answer),
+    ``supplement_one_vs_rest_rejected`` (``{unit, n_groups}``) and ``supplement_inherited_fields`` (``{source,
+    group_1_name, fields, from_main_experiment}`` per kept experiment that took host / sequencing / test /
+    correction fields from main-text experiment 0).
     """
     log = logger.bind(stage="S1b")
     skipped: list[tuple[str, str]] = []
@@ -733,10 +881,14 @@ async def supplement_experiments(
     except zipfile.BadZipFile as exc:
         log.warning("supplement zip is corrupt; skipping", error=repr(exc))
         files = []
-        skipped.append(("(supplementary files zip)", f"corrupt zip: {exc}"))
+        skipped.append((ZIP_SKIP_NAME, f"corrupt zip: {exc}"))
     if not files and not skipped:
-        skipped.append(("(supplementary files zip)", "none fetched (none exist, too large, or the fetch failed; see log)"))
+        skipped.append((ZIP_SKIP_NAME, "the zip held no files"))
     units = await asyncio.to_thread(supplement_units, files, skipped=skipped)
+    if len(units) > _MAX_UNITS_SCREENED:
+        for filename, n_cut in Counter(u.filename for u in units[_MAX_UNITS_SCREENED:]).items():
+            skipped.append((filename, f"{n_cut} unit(s) not screened (limit {_MAX_UNITS_SCREENED} units per study)"))
+        units = units[:_MAX_UNITS_SCREENED]
     if skipped:
         annotations["supplement_skipped"] = [{"file": name, "reason": reason} for name, reason in skipped]
     if not units:
@@ -754,19 +906,24 @@ async def supplement_experiments(
     log.info("supplements screened", n_units=len(units), n_routed=len(routed), n_one_vs_rest=n_one_vs_rest)
 
     errors: list[dict[str, str]] = []
+    unit_notes: dict[str, ExtractionNotes] = {}
     sem = asyncio.Semaphore(_EXTRACT_CONCURRENCY)
 
     async def extract(s: ScreenedUnit) -> list[SupplementComparison]:
         async with sem:
+            notes = ExtractionNotes()
             try:
                 # `Model.complete` is sync; threads keep the loop (and the other units) moving.
-                return await asyncio.to_thread(
+                comparisons = await asyncio.to_thread(
                     extract_comparisons,
                     s.unit,
                     model=model,
                     study_title=study_title,
                     one_vs_rest=s.arity == ONE_VS_REST,
+                    notes=notes,
                 )
+                unit_notes[s.unit.id] = notes
+                return comparisons
             except _EXPECTED_ERRORS as exc:
                 log.warning("supplement extraction failed; skipping the unit", unit=s.unit.id, error=repr(exc))
                 errors.append({"unit": s.unit.id, "error": repr(exc)})
@@ -778,16 +935,36 @@ async def supplement_experiments(
     except ExceptionGroup as group_error:
         raise unwrap_fan_out_failure(group_error, ()) from None
 
+    truncated = [{"unit": unit_id, "cut": cut} for unit_id, notes in unit_notes.items() for cut in notes.cuts]
+    if truncated:
+        annotations["supplement_truncated"] = truncated
+    rejected = [
+        {"unit": unit_id, "n_groups": notes.one_vs_rest_rejected_groups}
+        for unit_id, notes in unit_notes.items()
+        if notes.one_vs_rest_rejected_groups is not None
+    ]
+    if rejected:
+        annotations["supplement_one_vs_rest_rejected"] = rejected
+
     defaults = main_experiments[0][0] if main_experiments else None
     extracted: list[ExperimentRecord] = []
+    inherited: dict[int, dict[str, Any]] = {}  # by id() of the record, so only kept experiments are reported
     for s, task in zip(routed, tasks):
         try:
-            extracted += [
-                await resolve_comparison(
+            unit_records = []
+            for c in task.result():
+                record = await resolve_comparison(
                     c, s.unit, defaults=defaults, model=model, resolver=resolver, client=client
                 )
-                for c in task.result()
-            ]
+                unit_records.append(record)
+                if names := inherited_field_names(c, defaults):
+                    inherited[id(record)] = {
+                        "source": s.unit.provenance,
+                        "group_1_name": c.group_1_name,
+                        "fields": names,
+                        "from_main_experiment": 0,
+                    }
+            extracted += unit_records
         except _EXPECTED_ERRORS as exc:
             log.warning("supplement name resolution failed; skipping the unit", unit=s.unit.id, error=repr(exc))
             errors.append({"unit": s.unit.id, "error": repr(exc)})
@@ -795,6 +972,8 @@ async def supplement_experiments(
         annotations["supplement_extract_error"] = errors
 
     kept, dropped = drop_duplicate_experiments(extracted, main_experiments)
+    if kept_inherited := [inherited[id(record)] for record in kept if id(record) in inherited]:
+        annotations["supplement_inherited_fields"] = kept_inherited
     if dropped:
         annotations["supplement_dropped_duplicates"] = dropped
     log.info(
