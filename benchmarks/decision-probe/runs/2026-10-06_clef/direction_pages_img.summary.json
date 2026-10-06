@@ -1,0 +1,68 @@
+{
+  "binary": {
+    "at_0.5": {
+      "n_routed": 425,
+      "precision": 0.7341176470588235,
+      "recall": 0.8,
+      "tau": 0.5
+    },
+    "at_recall_0.95": {
+      "n_routed": 629,
+      "precision": 0.589825119236884,
+      "recall": 0.9512820512820512,
+      "tau": 0.2914
+    },
+    "at_recall_1.0": {
+      "n_routed": 792,
+      "precision": 0.49242424242424243,
+      "recall": 1.0,
+      "tau": 0.0529
+    },
+    "auprc": 0.8521706575254737,
+    "auroc": 0.8449895018133231,
+    "brier": 0.16812723907944505,
+    "n": 793,
+    "n_pos": 390
+  },
+  "cost": {
+    "calls": 71,
+    "input_tokens": 181106,
+    "mean_latency_ms": 1155.8
+  },
+  "coverage_at_confidence": [
+    {
+      "accuracy": 0.7591424968474149,
+      "coverage": 1.0,
+      "n": 793,
+      "tau": 0.0
+    },
+    {
+      "accuracy": 0.9100719424460432,
+      "coverage": 0.3505674653215637,
+      "n": 278,
+      "tau": 0.5
+    },
+    {
+      "accuracy": 0.8636363636363636,
+      "coverage": 0.05548549810844893,
+      "n": 44,
+      "tau": 0.8
+    },
+    {
+      "accuracy": 1.0,
+      "coverage": 0.006305170239596469,
+      "n": 5,
+      "tau": 0.9
+    },
+    {
+      "accuracy": 1.0,
+      "coverage": 0.0012610340479192938,
+      "n": 1,
+      "tau": 0.95
+    }
+  ],
+  "n_signatures": 71,
+  "n_taxa": 793,
+  "signature_majority_correct": 0.8309859154929577,
+  "taxon_accuracy": 0.7591424968474149
+}

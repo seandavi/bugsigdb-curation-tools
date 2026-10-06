@@ -1,0 +1,3673 @@
+{
+ "units": [
+  {
+   "id": "bsdb:34620922/1/1",
+   "table": "25",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Pseudomonas",
+     "p_yes": 0.343
+    },
+    {
+     "taxon": "Acinetobacter",
+     "p_yes": 0.3736
+    },
+    {
+     "taxon": "Providencia",
+     "p_yes": 0.3808
+    },
+    {
+     "taxon": "Serratia",
+     "p_yes": 0.3224
+    },
+    {
+     "taxon": "Fusobacterium",
+     "p_yes": 0.2888
+    },
+    {
+     "taxon": "Staphylococcus",
+     "p_yes": 0.3057
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.5286
+    },
+    {
+     "taxon": "Enterococcus",
+     "p_yes": 0.2727
+    },
+    {
+     "taxon": "Lactobacillus",
+     "p_yes": 0.3432
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.2963
+    },
+    {
+     "taxon": "Carnobacterium",
+     "p_yes": 0.2796
+    },
+    {
+     "taxon": "Veillonella",
+     "p_yes": 0.2812
+    },
+    {
+     "taxon": "Leptotrichia",
+     "p_yes": 0.2667
+    },
+    {
+     "taxon": "Exiguobacterium",
+     "p_yes": 0.2582
+    },
+    {
+     "taxon": "Stenotrophomonas",
+     "p_yes": 0.3222
+    },
+    {
+     "taxon": "Bergeyella",
+     "p_yes": 0.2895
+    },
+    {
+     "taxon": "Delftia",
+     "p_yes": 0.3186
+    },
+    {
+     "taxon": "Turicibacter",
+     "p_yes": 0.3389
+    },
+    {
+     "taxon": "Chthoniobacterales",
+     "p_yes": 0.3172
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.3946
+    },
+    {
+     "taxon": "Rodentibacter",
+     "p_yes": 0.2968
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/1/2",
+   "table": "25",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.7098
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.1549
+    },
+    {
+     "taxon": "Butyrivibrio",
+     "p_yes": 0.3293
+    },
+    {
+     "taxon": "Roseburia",
+     "p_yes": 0.2896
+    },
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.3349
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.2459
+    },
+    {
+     "taxon": "Eubacterium oxidoreducens",
+     "p_yes": 0.4568
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.2443
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.3103
+    },
+    {
+     "taxon": "[Eubacterium] brachy",
+     "p_yes": 0.306
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.34
+    },
+    {
+     "taxon": "Bilophila",
+     "p_yes": 0.2139
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.2432
+    },
+    {
+     "taxon": "Odoribacter",
+     "p_yes": 0.2116
+    },
+    {
+     "taxon": "Eubacterium coprostanoligenes",
+     "p_yes": 0.2266
+    },
+    {
+     "taxon": "Parabacteroides",
+     "p_yes": 0.1819
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.3683
+    },
+    {
+     "taxon": "Cerasicoccus",
+     "p_yes": 0.1218
+    },
+    {
+     "taxon": "Blautia",
+     "p_yes": 0.2019
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.2567
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.2176
+    },
+    {
+     "taxon": "Intestinimonas",
+     "p_yes": 0.357
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.3092
+    },
+    {
+     "taxon": "Lachnoclostridium",
+     "p_yes": 0.2335
+    },
+    {
+     "taxon": "Tyzzerella",
+     "p_yes": 0.3925
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.1768
+    },
+    {
+     "taxon": "Candidatus Gastranaerophilales",
+     "p_yes": 0.3274
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.2392
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/2/1",
+   "table": "25",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Pseudomonas",
+     "p_yes": 0.3957
+    },
+    {
+     "taxon": "Acinetobacter",
+     "p_yes": 0.3856
+    },
+    {
+     "taxon": "Providencia",
+     "p_yes": 0.3729
+    },
+    {
+     "taxon": "Serratia",
+     "p_yes": 0.3327
+    },
+    {
+     "taxon": "Fusobacterium",
+     "p_yes": 0.3114
+    },
+    {
+     "taxon": "Staphylococcus",
+     "p_yes": 0.2834
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.3795
+    },
+    {
+     "taxon": "Enterococcus",
+     "p_yes": 0.2988
+    },
+    {
+     "taxon": "Gemella",
+     "p_yes": 0.2314
+    },
+    {
+     "taxon": "Lactobacillus",
+     "p_yes": 0.3006
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.3227
+    },
+    {
+     "taxon": "Carnobacterium",
+     "p_yes": 0.2917
+    },
+    {
+     "taxon": "Veillonella",
+     "p_yes": 0.4087
+    },
+    {
+     "taxon": "Leptotrichia",
+     "p_yes": 0.3263
+    },
+    {
+     "taxon": "Stenotrophomonas",
+     "p_yes": 0.3301
+    },
+    {
+     "taxon": "Bergeyella",
+     "p_yes": 0.2967
+    },
+    {
+     "taxon": "Delftia",
+     "p_yes": 0.3964
+    },
+    {
+     "taxon": "Turicibacter",
+     "p_yes": 0.4571
+    },
+    {
+     "taxon": "Enterorhabdus",
+     "p_yes": 0.1302
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.1664
+    },
+    {
+     "taxon": "Rodentibacter",
+     "p_yes": 0.3611
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/2/2",
+   "table": "25",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.7136
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.1785
+    },
+    {
+     "taxon": "Butyrivibrio",
+     "p_yes": 0.315
+    },
+    {
+     "taxon": "Roseburia",
+     "p_yes": 0.3187
+    },
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.3409
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.271
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.2495
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.3188
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.3267
+    },
+    {
+     "taxon": "Bilophila",
+     "p_yes": 0.2112
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.4375
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.3335
+    },
+    {
+     "taxon": "Odoribacter",
+     "p_yes": 0.2722
+    },
+    {
+     "taxon": "Eubacterium coprostanoligenes",
+     "p_yes": 0.289
+    },
+    {
+     "taxon": "Parabacteroides",
+     "p_yes": 0.1975
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.4808
+    },
+    {
+     "taxon": "Blautia",
+     "p_yes": 0.1971
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.2717
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.2911
+    },
+    {
+     "taxon": "Intestinimonas",
+     "p_yes": 0.3966
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.3326
+    },
+    {
+     "taxon": "Candidatus Soleaferrea",
+     "p_yes": 0.4153
+    },
+    {
+     "taxon": "Lachnoclostridium",
+     "p_yes": 0.2823
+    },
+    {
+     "taxon": "Tyzzerella",
+     "p_yes": 0.4343
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.4541
+    },
+    {
+     "taxon": "Candidatus Gastranaerophilales",
+     "p_yes": 0.1694
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.513
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/3/1",
+   "table": "25",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Pseudomonas",
+     "p_yes": 0.3525
+    },
+    {
+     "taxon": "Acinetobacter",
+     "p_yes": 0.368
+    },
+    {
+     "taxon": "Providencia",
+     "p_yes": 0.3643
+    },
+    {
+     "taxon": "Serratia",
+     "p_yes": 0.3166
+    },
+    {
+     "taxon": "Fusobacterium",
+     "p_yes": 0.3349
+    },
+    {
+     "taxon": "Staphylococcus",
+     "p_yes": 0.2976
+    },
+    {
+     "taxon": "Enterococcus",
+     "p_yes": 0.345
+    },
+    {
+     "taxon": "Lactobacillus",
+     "p_yes": 0.2952
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.3747
+    },
+    {
+     "taxon": "Carnobacterium",
+     "p_yes": 0.2957
+    },
+    {
+     "taxon": "Veillonella",
+     "p_yes": 0.5726
+    },
+    {
+     "taxon": "Leptotrichia",
+     "p_yes": 0.3462
+    },
+    {
+     "taxon": "Stenotrophomonas",
+     "p_yes": 0.3526
+    },
+    {
+     "taxon": "Bergeyella",
+     "p_yes": 0.3287
+    },
+    {
+     "taxon": "Delftia",
+     "p_yes": 0.4473
+    },
+    {
+     "taxon": "Turicibacter",
+     "p_yes": 0.4847
+    },
+    {
+     "taxon": "Rodentibacter",
+     "p_yes": 0.5435
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/3/2",
+   "table": "25",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.753
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.1857
+    },
+    {
+     "taxon": "Butyrivibrio",
+     "p_yes": 0.3093
+    },
+    {
+     "taxon": "Roseburia",
+     "p_yes": 0.317
+    },
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.3395
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.2865
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.2605
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.3561
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.3256
+    },
+    {
+     "taxon": "Bilophila",
+     "p_yes": 0.2233
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.7585
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.6052
+    },
+    {
+     "taxon": "Odoribacter",
+     "p_yes": 0.3727
+    },
+    {
+     "taxon": "Eubacterium coprostanoligenes",
+     "p_yes": 0.2818
+    },
+    {
+     "taxon": "Parabacteroides",
+     "p_yes": 0.2314
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.5084
+    },
+    {
+     "taxon": "Blautia",
+     "p_yes": 0.2085
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.2954
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.375
+    },
+    {
+     "taxon": "Intestinimonas",
+     "p_yes": 0.4146
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.3263
+    },
+    {
+     "taxon": "Candidatus Soleaferrea",
+     "p_yes": 0.26
+    },
+    {
+     "taxon": "Lachnoclostridium",
+     "p_yes": 0.3325
+    },
+    {
+     "taxon": "Tyzzerella",
+     "p_yes": 0.3193
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.5989
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.6985
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/4/1",
+   "table": "26",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.6916
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.3553
+    },
+    {
+     "taxon": "Lachnoclostridium",
+     "p_yes": 0.3399
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.4104
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/4/2",
+   "table": "24",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Ruminococcus",
+     "p_yes": 0.4985
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.6275
+    },
+    {
+     "taxon": "Gemella",
+     "p_yes": 0.2521
+    },
+    {
+     "taxon": "Enterorhabdus",
+     "p_yes": 0.2461
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/5/1",
+   "table": "26",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.6196
+    },
+    {
+     "taxon": "Gemella",
+     "p_yes": 0.5139
+    },
+    {
+     "taxon": "Lactobacillus",
+     "p_yes": 0.3284
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/5/2",
+   "table": "26",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.4707
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/6/1",
+   "table": "26",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.3698
+    },
+    {
+     "taxon": "Cerasicoccus",
+     "p_yes": 0.3377
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.3092
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/6/2",
+   "table": "24",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.5102
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.2353
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.1833
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.359
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/7/1",
+   "table": "27",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Campylobacter",
+     "p_yes": 0.4169
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.0725
+    },
+    {
+     "taxon": "Roseburia",
+     "p_yes": 0.3245
+    },
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.2642
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.2518
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.2582
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.1567
+    },
+    {
+     "taxon": "Odoribacter",
+     "p_yes": 0.152
+    },
+    {
+     "taxon": "Eubacterium coprostanoligenes",
+     "p_yes": 0.3196
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.3974
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.4439
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.2555
+    },
+    {
+     "taxon": "Intestinimonas",
+     "p_yes": 0.4631
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.2215
+    },
+    {
+     "taxon": "Tyzzerella",
+     "p_yes": 0.3533
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.0554
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.2162
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/7/2",
+   "table": "27",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Pseudomonas",
+     "p_yes": 0.8189
+    },
+    {
+     "taxon": "Coxiella",
+     "p_yes": 0.4754
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.606
+    },
+    {
+     "taxon": "Gemella",
+     "p_yes": 0.4599
+    },
+    {
+     "taxon": "Lactobacillus",
+     "p_yes": 0.9049
+    },
+    {
+     "taxon": "Veillonella",
+     "p_yes": 0.3141
+    },
+    {
+     "taxon": "Leptotrichia",
+     "p_yes": 0.4454
+    },
+    {
+     "taxon": "Rodentibacter",
+     "p_yes": 0.3627
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/8/1",
+   "table": "27",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Pseudomonas",
+     "p_yes": 0.8257
+    },
+    {
+     "taxon": "Coxiella",
+     "p_yes": 0.5688
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.6116
+    },
+    {
+     "taxon": "Gemella",
+     "p_yes": 0.413
+    },
+    {
+     "taxon": "Lactobacillus",
+     "p_yes": 0.8843
+    },
+    {
+     "taxon": "Bifidobacterium",
+     "p_yes": 0.3671
+    },
+    {
+     "taxon": "Mycoplasma",
+     "p_yes": 0.7585
+    },
+    {
+     "taxon": "Veillonella",
+     "p_yes": 0.3622
+    },
+    {
+     "taxon": "Leptotrichia",
+     "p_yes": 0.4516
+    },
+    {
+     "taxon": "Rodentibacter",
+     "p_yes": 0.3532
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/8/2",
+   "table": "27",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Campylobacter",
+     "p_yes": 0.5698
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.1584
+    },
+    {
+     "taxon": "Roseburia",
+     "p_yes": 0.3178
+    },
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.2387
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.3351
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.2738
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.3451
+    },
+    {
+     "taxon": "Bilophila",
+     "p_yes": 0.179
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.3342
+    },
+    {
+     "taxon": "Odoribacter",
+     "p_yes": 0.1727
+    },
+    {
+     "taxon": "Eubacterium coprostanoligenes",
+     "p_yes": 0.3491
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.4162
+    },
+    {
+     "taxon": "Blautia",
+     "p_yes": 0.1373
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.402
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.354
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.4238
+    },
+    {
+     "taxon": "Intestinimonas",
+     "p_yes": 0.4924
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.2365
+    },
+    {
+     "taxon": "Lachnoclostridium",
+     "p_yes": 0.217
+    },
+    {
+     "taxon": "Tyzzerella",
+     "p_yes": 0.251
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.1616
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.3231
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/9/1",
+   "table": "27",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Pseudomonas",
+     "p_yes": 0.8123
+    },
+    {
+     "taxon": "Coxiella",
+     "p_yes": 0.5626
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.6213
+    },
+    {
+     "taxon": "Gemella",
+     "p_yes": 0.4158
+    },
+    {
+     "taxon": "Lactobacillus",
+     "p_yes": 0.8843
+    },
+    {
+     "taxon": "Veillonella",
+     "p_yes": 0.4057
+    },
+    {
+     "taxon": "Leptotrichia",
+     "p_yes": 0.4024
+    },
+    {
+     "taxon": "Rodentibacter",
+     "p_yes": 0.094
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/9/2",
+   "table": "27",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Campylobacter",
+     "p_yes": 0.4295
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.0881
+    },
+    {
+     "taxon": "Roseburia",
+     "p_yes": 0.2835
+    },
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.2716
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.3169
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.3126
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.3051
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.3736
+    },
+    {
+     "taxon": "Odoribacter",
+     "p_yes": 0.2042
+    },
+    {
+     "taxon": "Eubacterium coprostanoligenes",
+     "p_yes": 0.28
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.3985
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.2598
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.3109
+    },
+    {
+     "taxon": "Intestinimonas",
+     "p_yes": 0.3195
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.2222
+    },
+    {
+     "taxon": "Tyzzerella",
+     "p_yes": 0.1245
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.2618
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.2896
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/10/1",
+   "table": "28",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Campylobacter",
+     "p_yes": 0.4408
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/10/2",
+   "table": "28",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Rodentibacter",
+     "p_yes": 0.294
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/11/1",
+   "table": "28",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.1924
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/12/1",
+   "table": "29",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.7517
+    },
+    {
+     "taxon": "Acinetobacter",
+     "p_yes": 0.2875
+    },
+    {
+     "taxon": "Coxiella",
+     "p_yes": 0.3637
+    },
+    {
+     "taxon": "Rickettsia",
+     "p_yes": 0.4713
+    },
+    {
+     "taxon": "Fusobacterium",
+     "p_yes": 0.2634
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.4139
+    },
+    {
+     "taxon": "Ehrlichia",
+     "p_yes": 0.2465
+    },
+    {
+     "taxon": "Staphylococcus",
+     "p_yes": 0.3471
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.3814
+    },
+    {
+     "taxon": "Enterococcus",
+     "p_yes": 0.4135
+    },
+    {
+     "taxon": "Lactobacillus",
+     "p_yes": 0.7932
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.7901
+    },
+    {
+     "taxon": "Carnobacterium",
+     "p_yes": 0.3688
+    },
+    {
+     "taxon": "Veillonella",
+     "p_yes": 0.3885
+    },
+    {
+     "taxon": "Exiguobacterium",
+     "p_yes": 0.2728
+    },
+    {
+     "taxon": "Enterorhabdus",
+     "p_yes": 0.1568
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.2692
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.2681
+    },
+    {
+     "taxon": "Rodentibacter",
+     "p_yes": 0.2082
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/12/2",
+   "table": "29",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Butyrivibrio",
+     "p_yes": 0.3465
+    },
+    {
+     "taxon": "Roseburia",
+     "p_yes": 0.4086
+    },
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.2883
+    },
+    {
+     "taxon": "Eubacterium oxidoreducens",
+     "p_yes": 0.6134
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.2433
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.345
+    },
+    {
+     "taxon": "Brachyspira",
+     "p_yes": 0.2323
+    },
+    {
+     "taxon": "Bilophila",
+     "p_yes": 0.3257
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.3556
+    },
+    {
+     "taxon": "Anaerovorax",
+     "p_yes": 0.394
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.3794
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.2372
+    },
+    {
+     "taxon": "Odoribacter",
+     "p_yes": 0.4034
+    },
+    {
+     "taxon": "Eubacterium coprostanoligenes",
+     "p_yes": 0.3609
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.452
+    },
+    {
+     "taxon": "Cerasicoccus",
+     "p_yes": 0.2411
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.1489
+    },
+    {
+     "taxon": "Intestinimonas",
+     "p_yes": 0.2682
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.271
+    },
+    {
+     "taxon": "Candidatus Soleaferrea",
+     "p_yes": 0.2943
+    },
+    {
+     "taxon": "Tyzzerella",
+     "p_yes": 0.311
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.1508
+    },
+    {
+     "taxon": "Harryflintia",
+     "p_yes": 0.3093
+    },
+    {
+     "taxon": "Pygmaiobacter",
+     "p_yes": 0.3785
+    },
+    {
+     "taxon": "Allofournierella",
+     "p_yes": 0.117
+    },
+    {
+     "taxon": "Millionella",
+     "p_yes": 0.3852
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/13/1",
+   "table": "29",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.7111
+    },
+    {
+     "taxon": "Coxiella",
+     "p_yes": 0.3726
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.4343
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.3256
+    },
+    {
+     "taxon": "Lactobacillus",
+     "p_yes": 0.8244
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.6973
+    },
+    {
+     "taxon": "Carnobacterium",
+     "p_yes": 0.3455
+    },
+    {
+     "taxon": "Veillonella",
+     "p_yes": 0.4026
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.2823
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/13/2",
+   "table": "29",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Butyrivibrio",
+     "p_yes": 0.3463
+    },
+    {
+     "taxon": "Roseburia",
+     "p_yes": 0.4131
+    },
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.3217
+    },
+    {
+     "taxon": "Eubacterium oxidoreducens",
+     "p_yes": 0.536
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.3119
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.4125
+    },
+    {
+     "taxon": "Brachyspira",
+     "p_yes": 0.2393
+    },
+    {
+     "taxon": "[Eubacterium] brachy",
+     "p_yes": 0.3764
+    },
+    {
+     "taxon": "Bilophila",
+     "p_yes": 0.453
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.4215
+    },
+    {
+     "taxon": "Eubacterium ruminantium",
+     "p_yes": 0.2752
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.4572
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.292
+    },
+    {
+     "taxon": "Odoribacter",
+     "p_yes": 0.4701
+    },
+    {
+     "taxon": "Eubacterium coprostanoligenes",
+     "p_yes": 0.3885
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.4656
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.2523
+    },
+    {
+     "taxon": "Intestinimonas",
+     "p_yes": 0.3475
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.3592
+    },
+    {
+     "taxon": "Candidatus Soleaferrea",
+     "p_yes": 0.3212
+    },
+    {
+     "taxon": "Lachnoclostridium",
+     "p_yes": 0.1456
+    },
+    {
+     "taxon": "Tyzzerella",
+     "p_yes": 0.3613
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.2577
+    },
+    {
+     "taxon": "Harryflintia",
+     "p_yes": 0.3592
+    },
+    {
+     "taxon": "Pygmaiobacter",
+     "p_yes": 0.3997
+    },
+    {
+     "taxon": "Angelakisella",
+     "p_yes": 0.1486
+    },
+    {
+     "taxon": "Allofournierella",
+     "p_yes": 0.1252
+    },
+    {
+     "taxon": "Millionella",
+     "p_yes": 0.455
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/14/1",
+   "table": "29",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.7456
+    },
+    {
+     "taxon": "Coxiella",
+     "p_yes": 0.3663
+    },
+    {
+     "taxon": "Fusobacterium",
+     "p_yes": 0.2175
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.3075
+    },
+    {
+     "taxon": "Lactobacillus",
+     "p_yes": 0.6618
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.6813
+    },
+    {
+     "taxon": "Carnobacterium",
+     "p_yes": 0.3417
+    },
+    {
+     "taxon": "Veillonella",
+     "p_yes": 0.3944
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.2632
+    },
+    {
+     "taxon": "Rodentibacter",
+     "p_yes": 0.2231
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/14/2",
+   "table": "29",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Butyrivibrio",
+     "p_yes": 0.3708
+    },
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.277
+    },
+    {
+     "taxon": "Quinella",
+     "p_yes": 0.1647
+    },
+    {
+     "taxon": "Eubacterium oxidoreducens",
+     "p_yes": 0.4811
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.2935
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.3642
+    },
+    {
+     "taxon": "Brachyspira",
+     "p_yes": 0.2509
+    },
+    {
+     "taxon": "Bilophila",
+     "p_yes": 0.3096
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.3431
+    },
+    {
+     "taxon": "Eubacterium ruminantium",
+     "p_yes": 0.312
+    },
+    {
+     "taxon": "Anaerofilum",
+     "p_yes": 0.2182
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.2495
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.278
+    },
+    {
+     "taxon": "Odoribacter",
+     "p_yes": 0.3888
+    },
+    {
+     "taxon": "Eubacterium coprostanoligenes",
+     "p_yes": 0.3403
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.3102
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.2108
+    },
+    {
+     "taxon": "Intestinimonas",
+     "p_yes": 0.3273
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.3624
+    },
+    {
+     "taxon": "Candidatus Soleaferrea",
+     "p_yes": 0.287
+    },
+    {
+     "taxon": "Lachnoclostridium",
+     "p_yes": 0.1764
+    },
+    {
+     "taxon": "Tyzzerella",
+     "p_yes": 0.3481
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.3503
+    },
+    {
+     "taxon": "Harryflintia",
+     "p_yes": 0.2883
+    },
+    {
+     "taxon": "Pygmaiobacter",
+     "p_yes": 0.3848
+    },
+    {
+     "taxon": "Allofournierella",
+     "p_yes": 0.1117
+    },
+    {
+     "taxon": "Millionella",
+     "p_yes": 0.3904
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/15/1",
+   "table": "30",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.7182
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/15/2",
+   "table": "30",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.7124
+    },
+    {
+     "taxon": "Pygmaiobacter",
+     "p_yes": 0.4355
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/16/1",
+   "table": "30",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.4308
+    },
+    {
+     "taxon": "Brachyspira",
+     "p_yes": 0.4109
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.204
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/17/1",
+   "table": "30",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Coxiella",
+     "p_yes": 0.3056
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.6603
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.4759
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.7068
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.4644
+    },
+    {
+     "taxon": "Pygmaiobacter",
+     "p_yes": 0.3229
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/18/1",
+   "table": "34",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Fusobacterium",
+     "p_yes": 0.4991
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.3222
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.4266
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/18/2",
+   "table": "34",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Campylobacter",
+     "p_yes": 0.2674
+    },
+    {
+     "taxon": "Bradyrhizobium",
+     "p_yes": 0.2729
+    },
+    {
+     "taxon": "Methylobacterium",
+     "p_yes": 0.2987
+    },
+    {
+     "taxon": "Providencia",
+     "p_yes": 0.1341
+    },
+    {
+     "taxon": "Coxiella",
+     "p_yes": 0.3115
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.4522
+    },
+    {
+     "taxon": "Gemella",
+     "p_yes": 0.355
+    },
+    {
+     "taxon": "Lactobacillus",
+     "p_yes": 0.6951
+    },
+    {
+     "taxon": "Bifidobacterium",
+     "p_yes": 0.2229
+    },
+    {
+     "taxon": "Streptomyces",
+     "p_yes": 0.3748
+    },
+    {
+     "taxon": "Mycoplasma",
+     "p_yes": 0.1443
+    },
+    {
+     "taxon": "Sphingomonas",
+     "p_yes": 0.4226
+    },
+    {
+     "taxon": "Phyllobacterium",
+     "p_yes": 0.3198
+    },
+    {
+     "taxon": "Brachyspira",
+     "p_yes": 0.1244
+    },
+    {
+     "taxon": "Leptotrichia",
+     "p_yes": 0.2615
+    },
+    {
+     "taxon": "Variovorax",
+     "p_yes": 0.3009
+    },
+    {
+     "taxon": "Chryseobacterium",
+     "p_yes": 0.4579
+    },
+    {
+     "taxon": "Haliangium",
+     "p_yes": 0.3435
+    },
+    {
+     "taxon": "Gemmatimonas",
+     "p_yes": 0.3269
+    },
+    {
+     "taxon": "Aquicella",
+     "p_yes": 0.1783
+    },
+    {
+     "taxon": "Paludibacter",
+     "p_yes": 0.3079
+    },
+    {
+     "taxon": "Pelosinus",
+     "p_yes": 0.4087
+    },
+    {
+     "taxon": "Phaselicystis",
+     "p_yes": 0.3763
+    },
+    {
+     "taxon": "Ilumatobacter",
+     "p_yes": 0.3062
+    },
+    {
+     "taxon": "Sandaracinus",
+     "p_yes": 0.4168
+    },
+    {
+     "taxon": "Minicystis",
+     "p_yes": 0.3484
+    },
+    {
+     "taxon": "Rodentibacter",
+     "p_yes": 0.3215
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/19/1",
+   "table": "34",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Coxiella",
+     "p_yes": 0.3545
+    },
+    {
+     "taxon": "Rickettsia",
+     "p_yes": 0.7808
+    },
+    {
+     "taxon": "Roseburia",
+     "p_yes": 0.5394
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.5018
+    },
+    {
+     "taxon": "Lactobacillus",
+     "p_yes": 0.7491
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.2847
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.4771
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.2923
+    },
+    {
+     "taxon": "Candidatus Cardinium",
+     "p_yes": 0.4323
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.3058
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.6923
+    },
+    {
+     "taxon": "Allofournierella",
+     "p_yes": 0.361
+    },
+    {
+     "taxon": "Millionella",
+     "p_yes": 0.4077
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/19/2",
+   "table": "34",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Acinetobacter",
+     "p_yes": 0.4567
+    },
+    {
+     "taxon": "Serratia",
+     "p_yes": 0.7109
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.4765
+    },
+    {
+     "taxon": "Porphyromonas",
+     "p_yes": 0.8262
+    },
+    {
+     "taxon": "Fusobacterium",
+     "p_yes": 0.4792
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.4398
+    },
+    {
+     "taxon": "Gemella",
+     "p_yes": 0.4121
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.2982
+    },
+    {
+     "taxon": "Leptotrichia",
+     "p_yes": 0.3013
+    },
+    {
+     "taxon": "Bergeyella",
+     "p_yes": 0.329
+    },
+    {
+     "taxon": "Delftia",
+     "p_yes": 0.3843
+    },
+    {
+     "taxon": "Turicibacter",
+     "p_yes": 0.3892
+    },
+    {
+     "taxon": "Odoribacter",
+     "p_yes": 0.3674
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.463
+    },
+    {
+     "taxon": "Anaerobacillus",
+     "p_yes": 0.5853
+    },
+    {
+     "taxon": "Faecalibaculum",
+     "p_yes": 0.471
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.3139
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.4999
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/20/1",
+   "table": "34",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Roseburia",
+     "p_yes": 0.158
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.5827
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.7302
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.455
+    },
+    {
+     "taxon": "Enterorhabdus",
+     "p_yes": 0.6462
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.2967
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/20/2",
+   "table": "34",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Pirellula",
+     "p_yes": 0.5541
+    },
+    {
+     "taxon": "Campylobacter",
+     "p_yes": 0.2869
+    },
+    {
+     "taxon": "Pseudomonas",
+     "p_yes": 0.3419
+    },
+    {
+     "taxon": "Bradyrhizobium",
+     "p_yes": 0.7249
+    },
+    {
+     "taxon": "Methylobacterium",
+     "p_yes": 0.3136
+    },
+    {
+     "taxon": "Providencia",
+     "p_yes": 0.3571
+    },
+    {
+     "taxon": "Coxiella",
+     "p_yes": 0.3306
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.1785
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.4484
+    },
+    {
+     "taxon": "Gemella",
+     "p_yes": 0.2337
+    },
+    {
+     "taxon": "Bifidobacterium",
+     "p_yes": 0.2528
+    },
+    {
+     "taxon": "Streptomyces",
+     "p_yes": 0.2013
+    },
+    {
+     "taxon": "Mycoplasma",
+     "p_yes": 0.8759
+    },
+    {
+     "taxon": "Brochothrix",
+     "p_yes": 0.1908
+    },
+    {
+     "taxon": "Phyllobacterium",
+     "p_yes": 0.1242
+    },
+    {
+     "taxon": "Leptotrichia",
+     "p_yes": 0.4421
+    },
+    {
+     "taxon": "Variovorax",
+     "p_yes": 0.3358
+    },
+    {
+     "taxon": "Weissella",
+     "p_yes": 0.2188
+    },
+    {
+     "taxon": "Devosia",
+     "p_yes": 0.3583
+    },
+    {
+     "taxon": "Candidatus Xiphinematobacter",
+     "p_yes": 0.604
+    },
+    {
+     "taxon": "Haliangium",
+     "p_yes": 0.1912
+    },
+    {
+     "taxon": "Gemmatimonas",
+     "p_yes": 0.3298
+    },
+    {
+     "taxon": "Turicibacter",
+     "p_yes": 0.2796
+    },
+    {
+     "taxon": "Paludibacter",
+     "p_yes": 0.5506
+    },
+    {
+     "taxon": "Pelosinus",
+     "p_yes": 0.2972
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.2389
+    },
+    {
+     "taxon": "Phaselicystis",
+     "p_yes": 0.3977
+    },
+    {
+     "taxon": "Ilumatobacter",
+     "p_yes": 0.6289
+    },
+    {
+     "taxon": "Sandaracinus",
+     "p_yes": 0.305
+    },
+    {
+     "taxon": "Gaiella",
+     "p_yes": 0.4459
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.2086
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.0829
+    },
+    {
+     "taxon": "Rodentibacter",
+     "p_yes": 0.7321
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/21/1",
+   "table": "35",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.5813
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.2402
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.4365
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.4663
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.2846
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/21/2",
+   "table": "35",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Campylobacter",
+     "p_yes": 0.6514
+    },
+    {
+     "taxon": "Rickettsia",
+     "p_yes": 0.2656
+    },
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.3276
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.3876
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.3367
+    },
+    {
+     "taxon": "Brachyspira",
+     "p_yes": 0.291
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/22/1",
+   "table": "35",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.4887
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.4874
+    },
+    {
+     "taxon": "Quinella",
+     "p_yes": 0.4672
+    },
+    {
+     "taxon": "Eubacterium oxidoreducens",
+     "p_yes": 0.5603
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.4778
+    },
+    {
+     "taxon": "Brachyspira",
+     "p_yes": 0.5721
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.4804
+    },
+    {
+     "taxon": "Eubacterium ruminantium",
+     "p_yes": 0.3444
+    },
+    {
+     "taxon": "Anaerostipes",
+     "p_yes": 0.4189
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.1463
+    },
+    {
+     "taxon": "Candidatus Soleaferrea",
+     "p_yes": 0.2765
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.2121
+    },
+    {
+     "taxon": "Harryflintia",
+     "p_yes": 0.2786
+    },
+    {
+     "taxon": "Pygmaiobacter",
+     "p_yes": 0.3182
+    },
+    {
+     "taxon": "Allofournierella",
+     "p_yes": 0.2006
+    },
+    {
+     "taxon": "Millionella",
+     "p_yes": 0.3676
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/22/2",
+   "table": "35",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.8384
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.2821
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.4054
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.4376
+    },
+    {
+     "taxon": "Bilophila",
+     "p_yes": 0.4126
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.489
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.3554
+    },
+    {
+     "taxon": "Parabacteroides",
+     "p_yes": 0.3737
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.5384
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.4427
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.1198
+    },
+    {
+     "taxon": "Intestinimonas",
+     "p_yes": 0.3384
+    },
+    {
+     "taxon": "Lachnoclostridium",
+     "p_yes": 0.2415
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.4154
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.3057
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/23/1",
+   "table": "28",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Rodentibacter",
+     "p_yes": 0.5051
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/24/1",
+   "table": "37",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.6376
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.4447
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.2626
+    },
+    {
+     "taxon": "Bilophila",
+     "p_yes": 0.2714
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.3962
+    },
+    {
+     "taxon": "Enterorhabdus",
+     "p_yes": 0.1949
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/24/2",
+   "table": "37",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Campylobacter",
+     "p_yes": 0.2939
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.3945
+    },
+    {
+     "taxon": "Brachyspira",
+     "p_yes": 0.3683
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/25/1",
+   "table": "37",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.363
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.2664
+    },
+    {
+     "taxon": "Quinella",
+     "p_yes": 0.4694
+    },
+    {
+     "taxon": "Anaeroplasma",
+     "p_yes": 0.2672
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.3525
+    },
+    {
+     "taxon": "Brachyspira",
+     "p_yes": 0.4617
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.3637
+    },
+    {
+     "taxon": "Eubacterium ruminantium",
+     "p_yes": 0.2796
+    },
+    {
+     "taxon": "Anaerofilum",
+     "p_yes": 0.3443
+    },
+    {
+     "taxon": "Anaerostipes",
+     "p_yes": 0.2494
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.2267
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.2664
+    },
+    {
+     "taxon": "Candidatus Soleaferrea",
+     "p_yes": 0.2872
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.3511
+    },
+    {
+     "taxon": "Harryflintia",
+     "p_yes": 0.1936
+    },
+    {
+     "taxon": "Pygmaiobacter",
+     "p_yes": 0.31
+    },
+    {
+     "taxon": "Allofournierella",
+     "p_yes": 0.2236
+    },
+    {
+     "taxon": "Millionella",
+     "p_yes": 0.3201
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/25/2",
+   "table": "37",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.7913
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.1988
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.5496
+    },
+    {
+     "taxon": "Mycoplasma",
+     "p_yes": 0.095
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.3478
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.2734
+    },
+    {
+     "taxon": "Turicibacter",
+     "p_yes": 0.3213
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.2628
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.4275
+    },
+    {
+     "taxon": "Parabacteroides",
+     "p_yes": 0.283
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.2419
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.3344
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.4124
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.3182
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.2673
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/26/1",
+   "table": "37",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.6386
+    },
+    {
+     "taxon": "Anaeroplasma",
+     "p_yes": 0.6721
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.3923
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.3337
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.43
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.5296
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.5448
+    },
+    {
+     "taxon": "Candidatus Soleaferrea",
+     "p_yes": 0.3617
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.5354
+    },
+    {
+     "taxon": "Pygmaiobacter",
+     "p_yes": 0.1861
+    },
+    {
+     "taxon": "Allofournierella",
+     "p_yes": 0.1667
+    },
+    {
+     "taxon": "Millionella",
+     "p_yes": 0.6545
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/26/2",
+   "table": "37",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Campylobacter",
+     "p_yes": 0.8625
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.8794
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.468
+    },
+    {
+     "taxon": "Mycoplasma",
+     "p_yes": 0.8978
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.7137
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.5554
+    },
+    {
+     "taxon": "Turicibacter",
+     "p_yes": 0.266
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.8962
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.3379
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.2081
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.5061
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.57
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/27/1",
+   "table": "35",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.3676
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.4619
+    },
+    {
+     "taxon": "Anaeroplasma",
+     "p_yes": 0.8569
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.5048
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.4716
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.2717
+    },
+    {
+     "taxon": "Eubacterium ruminantium",
+     "p_yes": 0.374
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.8227
+    },
+    {
+     "taxon": "Candidatus Soleaferrea",
+     "p_yes": 0.6846
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.8362
+    },
+    {
+     "taxon": "Harryflintia",
+     "p_yes": 0.2199
+    },
+    {
+     "taxon": "Pygmaiobacter",
+     "p_yes": 0.3362
+    },
+    {
+     "taxon": "Allofournierella",
+     "p_yes": 0.1495
+    },
+    {
+     "taxon": "Millionella",
+     "p_yes": 0.3702
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/27/2",
+   "table": "35",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.8217
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.673
+    },
+    {
+     "taxon": "Mycoplasma",
+     "p_yes": 0.9032
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.7194
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.4211
+    },
+    {
+     "taxon": "Turicibacter",
+     "p_yes": 0.6607
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.7755
+    },
+    {
+     "taxon": "Blautia",
+     "p_yes": 0.6328
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.3051
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.6826
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.3993
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.6556
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/28/1",
+   "table": "36",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.5763
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.4283
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.4291
+    },
+    {
+     "taxon": "Eubacterium coprostanoligenes",
+     "p_yes": 0.4863
+    },
+    {
+     "taxon": "Enterorhabdus",
+     "p_yes": 0.3461
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/29/1",
+   "table": "36",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.5738
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.381
+    },
+    {
+     "taxon": "Quinella",
+     "p_yes": 0.4186
+    },
+    {
+     "taxon": "Anaeroplasma",
+     "p_yes": 0.3309
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.4117
+    },
+    {
+     "taxon": "Brachyspira",
+     "p_yes": 0.365
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.4291
+    },
+    {
+     "taxon": "Eubacterium ruminantium",
+     "p_yes": 0.4135
+    },
+    {
+     "taxon": "Anaerovorax",
+     "p_yes": 0.365
+    },
+    {
+     "taxon": "Anaerostipes",
+     "p_yes": 0.5286
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.111
+    },
+    {
+     "taxon": "Candidatus Soleaferrea",
+     "p_yes": 0.2981
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.16
+    },
+    {
+     "taxon": "Harryflintia",
+     "p_yes": 0.2501
+    },
+    {
+     "taxon": "Pygmaiobacter",
+     "p_yes": 0.4258
+    },
+    {
+     "taxon": "Allofournierella",
+     "p_yes": 0.2184
+    },
+    {
+     "taxon": "Millionella",
+     "p_yes": 0.3506
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/29/2",
+   "table": "36",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.8589
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.1653
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.4965
+    },
+    {
+     "taxon": "Gemella",
+     "p_yes": 0.2887
+    },
+    {
+     "taxon": "Mycoplasma",
+     "p_yes": 0.1075
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.3088
+    },
+    {
+     "taxon": "Leptotrichia",
+     "p_yes": 0.2099
+    },
+    {
+     "taxon": "[Eubacterium] brachy",
+     "p_yes": 0.3019
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.1645
+    },
+    {
+     "taxon": "Turicibacter",
+     "p_yes": 0.2917
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.1057
+    },
+    {
+     "taxon": "Parabacteroides",
+     "p_yes": 0.2409
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.3226
+    },
+    {
+     "taxon": "Cerasicoccus",
+     "p_yes": 0.2292
+    },
+    {
+     "taxon": "Blautia",
+     "p_yes": 0.2711
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.2974
+    },
+    {
+     "taxon": "Enterorhabdus",
+     "p_yes": 0.4135
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.2379
+    },
+    {
+     "taxon": "Lachnoclostridium",
+     "p_yes": 0.2315
+    },
+    {
+     "taxon": "Tyzzerella",
+     "p_yes": 0.497
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.2604
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.4108
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/30/1",
+   "table": "36",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.7457
+    },
+    {
+     "taxon": "Anaeroplasma",
+     "p_yes": 0.6227
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.3479
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.4278
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.3428
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.3343
+    },
+    {
+     "taxon": "Eubacterium coprostanoligenes",
+     "p_yes": 0.4601
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.8121
+    },
+    {
+     "taxon": "Candidatus Soleaferrea",
+     "p_yes": 0.232
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.8033
+    },
+    {
+     "taxon": "Pygmaiobacter",
+     "p_yes": 0.2384
+    },
+    {
+     "taxon": "Allofournierella",
+     "p_yes": 0.1973
+    },
+    {
+     "taxon": "Millionella",
+     "p_yes": 0.4166
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/30/2",
+   "table": "36",
+   "increased": false,
+   "taxa": [
+    {
+     "taxon": "Campylobacter",
+     "p_yes": 0.7082
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.8869
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.4554
+    },
+    {
+     "taxon": "Mycoplasma",
+     "p_yes": 0.9065
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.7682
+    },
+    {
+     "taxon": "Leptotrichia",
+     "p_yes": 0.6595
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.597
+    },
+    {
+     "taxon": "Turicibacter",
+     "p_yes": 0.4237
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.8698
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.3456
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.3916
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/31/1",
+   "table": "24",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.3528
+    },
+    {
+     "taxon": "Intestinimonas",
+     "p_yes": 0.3424
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.5191
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/32/1",
+   "table": "24",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Campylobacter",
+     "p_yes": 0.1723
+    },
+    {
+     "taxon": "Roseburia",
+     "p_yes": 0.1541
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.2092
+    },
+    {
+     "taxon": "Odoribacter",
+     "p_yes": 0.2033
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.2115
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.1786
+    },
+    {
+     "taxon": "Tyzzerella",
+     "p_yes": 0.1649
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/33/1",
+   "table": "24",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.3134
+    },
+    {
+     "taxon": "Lactobacillus",
+     "p_yes": 0.7354
+    },
+    {
+     "taxon": "Veillonella",
+     "p_yes": 0.1122
+    },
+    {
+     "taxon": "Rodentibacter",
+     "p_yes": 0.3322
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/34/1",
+   "table": "24",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.1223
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.275
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.1472
+    },
+    {
+     "taxon": "Eubacterium coprostanoligenes",
+     "p_yes": 0.2328
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.1157
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.2332
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/37/1",
+   "table": "33",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Serratia",
+     "p_yes": 0.4966
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.2469
+    },
+    {
+     "taxon": "Fusobacterium",
+     "p_yes": 0.3148
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.4124
+    },
+    {
+     "taxon": "Bergeyella",
+     "p_yes": 0.6281
+    },
+    {
+     "taxon": "Turicibacter",
+     "p_yes": 0.4528
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.4189
+    },
+    {
+     "taxon": "Odoribacter",
+     "p_yes": 0.3397
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.4164
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.3442
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/38/1",
+   "table": "33",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Providencia",
+     "p_yes": 0.4652
+    },
+    {
+     "taxon": "Coxiella",
+     "p_yes": 0.3527
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.362
+    },
+    {
+     "taxon": "Gemella",
+     "p_yes": 0.2919
+    },
+    {
+     "taxon": "Lactobacillus",
+     "p_yes": 0.5499
+    },
+    {
+     "taxon": "Leptotrichia",
+     "p_yes": 0.2663
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.4258
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/39/1",
+   "table": "33",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Roseburia",
+     "p_yes": 0.2372
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.3071
+    },
+    {
+     "taxon": "Ureaplasma",
+     "p_yes": 0.1898
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.2851
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.4546
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/40/1",
+   "table": "33",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.6715
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.3374
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.3504
+    },
+    {
+     "taxon": "Bilophila",
+     "p_yes": 0.2497
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.3784
+    },
+    {
+     "taxon": "Oscillibacter",
+     "p_yes": 0.5253
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.2604
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.3474
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/41/1",
+   "table": "33",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.3927
+    },
+    {
+     "taxon": "Brachyspira",
+     "p_yes": 0.3212
+    },
+    {
+     "taxon": "Turicibacter",
+     "p_yes": 0.3425
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.4241
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.2982
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.4275
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/42/1",
+   "table": "33",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.272
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.2756
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.2787
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.3366
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.24
+    },
+    {
+     "taxon": "Candidatus Soleaferrea",
+     "p_yes": 0.3315
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.4361
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/43/1",
+   "table": "33",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.6912
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.3325
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.3366
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.2944
+    },
+    {
+     "taxon": "Turicibacter",
+     "p_yes": 0.2189
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.3413
+    },
+    {
+     "taxon": "Parabacteroides",
+     "p_yes": 0.2086
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.2689
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.2545
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.1571
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.2854
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/44/1",
+   "table": "33",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Mycoplasma",
+     "p_yes": 0.357
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.3657
+    },
+    {
+     "taxon": "Brachyspira",
+     "p_yes": 0.2584
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.3249
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/45/1",
+   "table": "33",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.2742
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.3098
+    },
+    {
+     "taxon": "Anaeroplasma",
+     "p_yes": 0.3943
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.3131
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.2472
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.2313
+    },
+    {
+     "taxon": "Acetatifactor",
+     "p_yes": 0.3553
+    },
+    {
+     "taxon": "Candidatus Soleaferrea",
+     "p_yes": 0.4254
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.3141
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/46/1",
+   "table": "33",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Helicobacter",
+     "p_yes": 0.6186
+    },
+    {
+     "taxon": "Bacteroides",
+     "p_yes": 0.2714
+    },
+    {
+     "taxon": "Streptococcus",
+     "p_yes": 0.3248
+    },
+    {
+     "taxon": "[Eubacterium] nodatum",
+     "p_yes": 0.3363
+    },
+    {
+     "taxon": "Turicibacter",
+     "p_yes": 0.2595
+    },
+    {
+     "taxon": "Mucispirillum",
+     "p_yes": 0.3267
+    },
+    {
+     "taxon": "Cerasicoccus",
+     "p_yes": 0.1714
+    },
+    {
+     "taxon": "Blautia",
+     "p_yes": 0.1255
+    },
+    {
+     "taxon": "Enterorhabdus",
+     "p_yes": 0.19
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "p_yes": 0.3082
+    },
+    {
+     "taxon": "Lachnoclostridium",
+     "p_yes": 0.1176
+    },
+    {
+     "taxon": "Tyzzerella",
+     "p_yes": 0.3604
+    },
+    {
+     "taxon": "Muribaculum",
+     "p_yes": 0.2429
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/47/1",
+   "table": "33",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Mycoplasma",
+     "p_yes": 0.4319
+    },
+    {
+     "taxon": "Rikenella",
+     "p_yes": 0.4754
+    },
+    {
+     "taxon": "Brachyspira",
+     "p_yes": 0.2422
+    },
+    {
+     "taxon": "Alistipes",
+     "p_yes": 0.3715
+    },
+    {
+     "taxon": "Parasutterella",
+     "p_yes": 0.297
+    },
+    {
+     "taxon": "Escherichia/Shigella sp.",
+     "p_yes": 0.5591
+    }
+   ]
+  },
+  {
+   "id": "bsdb:34620922/48/1",
+   "table": "33",
+   "increased": true,
+   "taxa": [
+    {
+     "taxon": "Oxalobacter",
+     "p_yes": 0.3191
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "p_yes": 0.333
+    },
+    {
+     "taxon": "Anaeroplasma",
+     "p_yes": 0.3826
+    },
+    {
+     "taxon": "Peptococcus",
+     "p_yes": 0.336
+    },
+    {
+     "taxon": "Eubacterium xylanophilum",
+     "p_yes": 0.3031
+    },
+    {
+     "taxon": "Candidatus Saccharimonas",
+     "p_yes": 0.2612
+    },
+    {
+     "taxon": "Candidatus Soleaferrea",
+     "p_yes": 0.4022
+    },
+    {
+     "taxon": "Ruminiclostridium",
+     "p_yes": 0.3887
+    }
+   ]
+  }
+ ]
+}
