@@ -111,3 +111,14 @@ def _reset_global_logging_state():
         third_party_logger.handlers.clear()
         third_party_logger.setLevel(logging.NOTSET)
         third_party_logger.propagate = True
+
+
+@pytest.fixture(autouse=True)
+def _isolated_pmc_html_cache(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory) -> None:
+    """Point the PMC article-HTML cache at a throwaway dir so tests never read/write `data/curator/pmc_html`,
+    and give each test a fresh, interval-free request limiter (no real 3 s sleeps)."""
+    monkeypatch.setenv("BUGSIGDB_PMC_HTML_CACHE", str(tmp_path_factory.mktemp("pmc_html")))
+    from bugsigdb_curation.curator import evidence
+
+    monkeypatch.setattr(evidence, "PMC_LIMITER", evidence.PmcRequestLimiter(min_interval=0.0))
+    monkeypatch.setattr(evidence, "PMC_HTML_BACKOFF", (0.0, 0.0, 0.0))
