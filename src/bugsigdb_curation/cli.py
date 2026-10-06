@@ -42,6 +42,7 @@ from bugsigdb_curation.curator.resolve import resolve as resolve_pmid
 from bugsigdb_curation.curator.smoke import smoke_study_ids
 from bugsigdb_curation.curator.taxonomy import DEFAULT_CACHE_PATH as CURATE_DEFAULT_TAXONOMY_CACHE
 from bugsigdb_curation.curator.taxonomy import NcbiTaxonomyResolver
+from bugsigdb_curation.decision import open_decision_model
 from bugsigdb_curation.eval.gold import load_gold, to_nested_dict
 from bugsigdb_curation.eval.report import ScoringError, write_reports
 from bugsigdb_curation.eval.score import StudyScore, aggregate_scores, score_study
@@ -101,6 +102,14 @@ class SelectGroup(str, Enum):
     dump = "dump"
     gmt = "gmt"
     all = "all"
+
+
+class DecisionBackend(str, Enum):
+    """`curate --decision-model`: which System One decision model (if any) routes the cheap judgments."""
+
+    none = "none"
+    clef = "clef"
+    clef_flash = "clef-flash"
 
 
 class LogFormat(str, Enum):
@@ -602,6 +611,19 @@ def curate_command(
         "--taxonomy-release",
         help="Release label for locating the default cached taxonomy DB (ignored once --taxonomy-db/BUGSIGDB_TAXONOMY_DB apply).",
     ),
+    decision_backend: DecisionBackend = typer.Option(
+        DecisionBackend.none,
+        "--decision-model",
+        help=(
+            "Route the cheap judgments (today: S5a artifact ranking) through a Cloudflare decision "
+            "model. Needs CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN in .env; ignored with --mock."
+        ),
+    ),
+    decision_archive: Path | None = typer.Option(
+        None,
+        "--decision-archive",
+        help="JSONL file recording every decision-model call (default: next to --out, if given).",
+    ),
     log_format: LogFormat | None = _LOG_FORMAT_OPTION,
     log_level: str | None = _LOG_LEVEL_OPTION,
 ) -> None:
@@ -624,6 +646,10 @@ def curate_command(
 
     model = _build_model(mock, model_name)
     run_id = uuid.uuid4().hex[:12]
+    decision_name: str | None = None if decision_backend is DecisionBackend.none else decision_backend.value
+    if mock and decision_name is not None:
+        error_console.print("[yellow]--decision-model ignored with --mock (no offline decision backend).[/yellow]")
+        decision_name = None
 
     if smoke:
         if out is None:
@@ -631,7 +657,18 @@ def curate_command(
             raise typer.Exit(code=2)
         asyncio.run(
             _run_curate_smoke(
-                model, config, design, email, taxonomy_cache, taxonomy_db, taxonomy_release, out, console, run_id
+                model,
+                config,
+                design,
+                email,
+                taxonomy_cache,
+                taxonomy_db,
+                taxonomy_release,
+                out,
+                console,
+                run_id,
+                decision_name=decision_name,
+                decision_archive=decision_archive or out / "decision.jsonl",
             )
         )
         return
@@ -652,6 +689,9 @@ def curate_command(
             console,
             error_console,
             run_id,
+            decision_name=decision_name,
+            decision_archive=decision_archive
+            or (out.with_suffix(".decision.jsonl") if out is not None else None),
         )
     )
 
@@ -670,19 +710,24 @@ async def _run_curate_one(
     console: Console,
     error_console: Console,
     run_id: str | None = None,
+    *,
+    decision_name: str | None = None,
+    decision_archive: Path | None = None,
 ) -> None:
     try:
-        result = await curate_async(
-            pmid,
-            model=model,
-            config=config,
-            design=design,
-            email=email,
-            taxonomy_cache_path=taxonomy_cache,
-            taxonomy_db_path=taxonomy_db,
-            taxonomy_db_release=taxonomy_release,
-            run_id=run_id,
-        )
+        async with open_decision_model(decision_name, archive=decision_archive) as decision_model:
+            result = await curate_async(
+                pmid,
+                model=model,
+                config=config,
+                design=design,
+                email=email,
+                taxonomy_cache_path=taxonomy_cache,
+                taxonomy_db_path=taxonomy_db,
+                taxonomy_db_release=taxonomy_release,
+                run_id=run_id,
+                decision_model=decision_model,
+            )
     except Exception as exc:  # noqa: BLE001 -- surface any stage failure as a clean CLI error, not a traceback
         error_console.print(f"[red]Error curating PMID {pmid}:[/red] {escape(str(exc))}")
         raise typer.Exit(code=1) from None
@@ -694,6 +739,10 @@ async def _run_curate_one(
 
     if out is not None:
         out.write_text(text, encoding="utf-8")
+        if result.annotations:
+            out.with_suffix(".annotations.json").write_text(
+                json.dumps(result.annotations, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
     else:
         sys.stdout.write(text)
 
@@ -713,6 +762,9 @@ async def _run_curate_smoke(
     out_dir: Path,
     console: Console,
     run_id: str | None = None,
+    *,
+    decision_name: str | None = None,
+    decision_archive: Path | None = None,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     ids = smoke_study_ids()
@@ -735,7 +787,10 @@ async def _run_curate_smoke(
     # loop otherwise still risks. save_cache() runs once after the loop
     # instead of once per study.
     resolver = NcbiTaxonomyResolver.load(cache_path=taxonomy_cache, db_path=taxonomy_db, db_release=taxonomy_release)
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with (
+        httpx.AsyncClient(timeout=30.0) as client,
+        open_decision_model(decision_name, archive=decision_archive) as decision_model,
+    ):
         for study_id in ids:
             try:
                 result = await curate_async(
@@ -748,6 +803,7 @@ async def _run_curate_smoke(
                     taxonomy_cache_path=taxonomy_cache,
                     resolver=resolver,
                     run_id=run_id,
+                    decision_model=decision_model,
                 )
             except Exception as exc:  # noqa: BLE001 -- one bad study must not abort the whole batch
                 n_errors += 1
@@ -759,6 +815,12 @@ async def _run_curate_smoke(
             (out_dir / f"{study_id}.json").write_text(
                 json.dumps(result.record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
             )
+            if result.annotations:
+                # In a subdirectory so `eval score --pred <dir>` (which reads *.json here) never sees it.
+                (out_dir / "_annotations").mkdir(exist_ok=True)
+                (out_dir / "_annotations" / f"{study_id}.json").write_text(
+                    json.dumps(result.annotations, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+                )
             # Per-study progress is already in the structured log stream
             # (curate_async's own S0-S9 events and its final `study_done`,
             # all bound with this study's study_id/run_id) -- no separate
