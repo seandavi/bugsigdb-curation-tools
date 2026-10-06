@@ -46,8 +46,8 @@ from bugsigdb_curation.curator.reconcile import reconcile_names
 from bugsigdb_curation.curator.routing import DECISION_CALL_ERRORS, unwrap_fan_out_failure
 from bugsigdb_curation.curator.signature import ExtractedSignature
 from bugsigdb_curation.curator.taxonomy import NcbiTaxonomyResolver
-from bugsigdb_curation.loader import SEQUENCING_TYPE_VALUES, STATISTICAL_TEST_VALUES, normalize_enum
 from bugsigdb_curation.decision import Choice, ChoiceAnswer, DecisionModel, Noul, NoulAnswer
+from bugsigdb_curation.loader import SEQUENCING_TYPE_VALUES, STATISTICAL_TEST_VALUES, normalize_enum
 from bugsigdb_curation.supplements import ZIP_SKIP_NAME, SupplementFile, fetch_supplements, supplement_to_text
 from bugsigdb_curation.taxonomy.normalize import normalize_taxon_name
 
@@ -108,9 +108,11 @@ _LEGACY_SUFFIXES = (".xls", ".doc")
 #: What a lever step can raise for a failed call or a bad generative response, beyond a bug in our code.
 #: `ModelCallError` (a transport/provider failure or malformed completion) is a `ModelError`, so it is covered.
 _EXPECTED_ERRORS = (*DECISION_CALL_ERRORS, ModelError)
-#: Jaccard overlap (of resolved taxon sets, same direction) at or above which a supplement experiment is
-#: considered already reported by the main text.
+#: Jaccard overlap (of resolved taxon sets, same direction) at or above which a supplement signature is
+#: considered already reported (by the main text or an earlier supplement experiment) ...
 DUPLICATE_JACCARD = 0.5
+#: ... provided both sets have at least this many taxa (a 1-2 taxon set trivially matches).
+DUPLICATE_MIN_TAXA = 3
 
 UnitKind = Literal["sheet", "delimited", "docx", "pdf_text", "pdf_image"]
 
@@ -803,48 +805,67 @@ def _taxon_keys(signature: ExtractedSignature) -> frozenset[str]:
     )
 
 
-def _jaccard(a: frozenset[str], b: frozenset[str]) -> float:
-    return len(a & b) / len(a | b) if a | b else 0.0
+def _overlap(a: frozenset[str], b: frozenset[str]) -> float:
+    """Jaccard overlap of two taxon sets, or 0.0 when either has fewer than :data:`DUPLICATE_MIN_TAXA` taxa."""
+    if min(len(a), len(b)) < DUPLICATE_MIN_TAXA:
+        return 0.0
+    return len(a & b) / len(a | b)
 
 
 def drop_duplicate_experiments(
     supplement: Sequence[ExperimentRecord], main: Sequence[ExperimentRecord]
 ) -> tuple[list[ExperimentRecord], list[dict[str, Any]]]:
-    """Drop supplement experiments the main text already reports.
+    """Drop supplement signatures the main text -- or an earlier supplement experiment -- already reports.
 
-    An experiment is a duplicate when one of its signatures overlaps a main-text signature *of the same direction*
-    with Jaccard >= :data:`DUPLICATE_JACCARD` over resolved taxa. Returns ``(kept, dropped)``; each `dropped`
-    entry names the source, groups, direction, matched main experiment index and the overlap.
+    Decided per signature: one is a duplicate when it overlaps a signature *of the same direction* in the main text
+    or in an earlier *kept* supplement experiment with Jaccard >= :data:`DUPLICATE_JACCARD` over resolved taxa, both
+    sets having at least :data:`DUPLICATE_MIN_TAXA` taxa. A duplicate signature is removed; the experiment is
+    dropped only when every one of its signatures was. Returns ``(kept, dropped)``; each `dropped` entry (one per
+    dropped signature) names the source, groups, direction, the matched main experiment index (None for a
+    supplement match, which is then named in ``matched_supplement``), the overlap and whether the whole
+    experiment went (``experiment_dropped``). A kept experiment keeps its original `ExperimentFields` object.
     """
-    main_sets = [
-        (index, sig.direction, _taxon_keys(sig)) for index, (_, sigs, _) in enumerate(main) for sig in sigs
+    pool: list[tuple[dict[str, Any], str, frozenset[str]]] = [
+        ({"main_experiment_index": index}, sig.direction, _taxon_keys(sig))
+        for index, (_, sigs, _) in enumerate(main)
+        for sig in sigs
     ]
     kept: list[ExperimentRecord] = []
     dropped: list[dict[str, Any]] = []
-    for record in supplement:
-        fields, signatures, source = record
-        match = next(
-            (
-                (index, sig.direction, jaccard)
-                for sig in signatures
-                for index, direction, keys in main_sets
-                if direction == sig.direction and (jaccard := _jaccard(_taxon_keys(sig), keys)) >= DUPLICATE_JACCARD
-            ),
-            None,
-        )
-        if match is None:
-            kept.append(record)
+    for fields, signatures, source in supplement:
+        remaining: list[ExtractedSignature] = []
+        entries: list[dict[str, Any]] = []
+        for sig in signatures:
+            keys = _taxon_keys(sig)
+            match = next(
+                (
+                    (where, jaccard)
+                    for where, direction, pooled in pool
+                    if direction == sig.direction and (jaccard := _overlap(keys, pooled)) >= DUPLICATE_JACCARD
+                ),
+                None,
+            )
+            if match is None:
+                remaining.append(sig)
+                continue
+            where, jaccard = match
+            entries.append(
+                {
+                    "source": source,
+                    "group_0_name": fields.group_0_name,
+                    "group_1_name": fields.group_1_name,
+                    "direction": sig.direction,
+                    "main_experiment_index": where.get("main_experiment_index"),
+                    "jaccard": round(jaccard, 3),
+                    **({"matched_supplement": where["supplement"]} if "supplement" in where else {}),
+                }
+            )
+        dropped += [{**entry, "experiment_dropped": not remaining} for entry in entries]
+        if not remaining:
             continue
-        dropped.append(
-            {
-                "source": source,
-                "group_0_name": fields.group_0_name,
-                "group_1_name": fields.group_1_name,
-                "direction": match[1],
-                "main_experiment_index": match[0],
-                "jaccard": round(match[2], 3),
-            }
-        )
+        kept.append((fields, remaining, source) if entries else (fields, signatures, source))
+        origin = {"supplement": {"source": source, "group_0_name": fields.group_0_name, "group_1_name": fields.group_1_name}}
+        pool += [(origin, sig.direction, _taxon_keys(sig)) for sig in remaining]
     return kept, dropped
 
 
@@ -948,7 +969,7 @@ async def supplement_experiments(
 
     defaults = main_experiments[0][0] if main_experiments else None
     extracted: list[ExperimentRecord] = []
-    inherited: dict[int, dict[str, Any]] = {}  # by id() of the record, so only kept experiments are reported
+    inherited: dict[int, dict[str, Any]] = {}  # by id() of the record's fields (kept by dedupe), so only kept experiments report
     for s, task in zip(routed, tasks):
         try:
             unit_records = []
@@ -958,7 +979,7 @@ async def supplement_experiments(
                 )
                 unit_records.append(record)
                 if names := inherited_field_names(c, defaults):
-                    inherited[id(record)] = {
+                    inherited[id(record[0])] = {
                         "source": s.unit.provenance,
                         "group_1_name": c.group_1_name,
                         "fields": names,
@@ -972,7 +993,7 @@ async def supplement_experiments(
         annotations["supplement_extract_error"] = errors
 
     kept, dropped = drop_duplicate_experiments(extracted, main_experiments)
-    if kept_inherited := [inherited[id(record)] for record in kept if id(record) in inherited]:
+    if kept_inherited := [inherited[id(record[0])] for record in kept if id(record[0]) in inherited]:
         annotations["supplement_inherited_fields"] = kept_inherited
     if dropped:
         annotations["supplement_dropped_duplicates"] = dropped

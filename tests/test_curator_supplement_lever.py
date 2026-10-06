@@ -28,10 +28,10 @@ from bugsigdb_curation.curator.pipeline import CurationResult, curate_async
 from bugsigdb_curation.curator.signature import ExtractedSignature, ExtractedTaxon
 from bugsigdb_curation.curator.supplement_lever import (
     MAX_IMAGE_BYTES,
-    ExtractionNotes,
     ONE_VS_REST,
     SCREEN_QUESTIONS,
     SCREEN_THRESHOLD,
+    ExtractionNotes,
     ScreenedUnit,
     SupplementComparison,
     SupplementScreenError,
@@ -789,28 +789,81 @@ def _record(direction: str, *taxa: tuple[str, int | None], source: str = "S1.xls
     return _fields(), [sig], source
 
 
+def _taxa(*ids: int) -> tuple[tuple[str, int], ...]:
+    return tuple((f"Taxon {i}", i) for i in ids)
+
+
 def test_dedupe_drops_supplement_experiments_overlapping_a_main_signature_of_the_same_direction():
-    main = [_record("increased", ("Escherichia coli", 562), ("Klebsiella", 570), source="Table 2")]
-    dup = _record("increased", ("E. coli", 562), ("Klebsiella", 570))  # same ids under a synonym
-    below_threshold = _record("increased", ("Escherichia coli", 562), ("Other", 1), ("Else", 2), ("More", 3))  # 1 of 5 shared: 0.2
-    jaccard_half = _record("increased", ("Escherichia coli", 562))  # 1/2 = 0.5, inclusive
-    other_direction = _record("decreased", ("Escherichia coli", 562), ("Klebsiella", 570))
-    disjoint = _record("increased", ("Bacteroides", 816))
-    kept, dropped = drop_duplicate_experiments([dup, below_threshold, jaccard_half, other_direction, disjoint], main)
-    assert kept == [below_threshold, other_direction, disjoint]
-    assert [d["jaccard"] for d in dropped] == [1.0, 0.5]
-    assert dropped[0] == {
-        "source": "S1.xlsx :: DA", "group_0_name": "Control", "group_1_name": "Case", "direction": "increased",
-        "main_experiment_index": 0, "jaccard": 1.0,
-    }
+    main = [_record("increased", ("Escherichia coli", 562), ("Klebsiella", 570), ("Proteus", 584), source="Table 2")]
+    dup = _record("increased", ("E. coli", 562), ("Klebsiella", 570), ("Proteus", 584))  # same ids under a synonym
+    below_threshold = _record("increased", *_taxa(562, 1, 2, 3, 4))  # 1 of 7 shared
+    jaccard_half = _record("increased", *_taxa(562, 570, 584, 1, 2, 3))  # 3/6 = 0.5, inclusive
+    other_direction = _record("decreased", *_taxa(562, 570, 584))
+    disjoint = _record("increased", ("Bacteroides", 816), ("Prevotella", 838), ("Alistipes", 239759))
+    too_small = _record("increased", *_taxa(562, 570))  # identical-looking but only 2 taxa: not enough to call a duplicate
+    kept, dropped = drop_duplicate_experiments(
+        [dup, below_threshold, jaccard_half, other_direction, disjoint, too_small], main
+    )
+    assert kept == [below_threshold, other_direction, disjoint, too_small]
+    assert dropped == [
+        {
+            "source": "S1.xlsx :: DA", "group_0_name": "Control", "group_1_name": "Case", "direction": "increased",
+            "main_experiment_index": 0, "jaccard": 1.0, "experiment_dropped": True,
+        },
+        {
+            "source": "S1.xlsx :: DA", "group_0_name": "Control", "group_1_name": "Case", "direction": "increased",
+            "main_experiment_index": 0, "jaccard": 0.5, "experiment_dropped": True,
+        },
+    ]
     json.dumps(dropped)
 
 
+def test_dedupe_is_per_signature_and_drops_the_experiment_only_when_every_signature_is_a_duplicate():
+    main = [_record("increased", *_taxa(1, 2, 3, 4))]
+    new_decreased = ExtractedSignature("decreased", tuple(ExtractedTaxon(n, "decreased", i) for n, i in _taxa(7, 8, 9, 10)))
+    dup_increased = _record("increased", *_taxa(1, 2, 3, 4))[1][0]
+    fields = _fields()
+    mixed = (fields, [dup_increased, new_decreased], "S3.xlsx :: DA")
+    all_dup = (_fields(group_1_name="Dup"), [dup_increased], "S4.xlsx :: DA")
+    kept, dropped = drop_duplicate_experiments([mixed, all_dup], main)
+    assert kept == [(fields, [new_decreased], "S3.xlsx :: DA")]  # the new decreased set survives; the duplicate signature is gone
+    assert [(d["source"], d["direction"], d["experiment_dropped"]) for d in dropped] == [
+        ("S3.xlsx :: DA", "increased", False), ("S4.xlsx :: DA", "increased", True),
+    ]
+
+
+def test_dedupe_also_compares_supplement_experiments_against_each_other():
+    pdf = _record("increased", *_taxa(1, 2, 3, 4), source="S2.pdf :: page 3")
+    xlsx = _record("increased", *_taxa(1, 2, 3, 4), source="S2.xlsx :: Table 3")
+    distinct = _record("increased", *_taxa(20, 21, 22), source="S2.xlsx :: Table 4")
+    kept, dropped = drop_duplicate_experiments([pdf, xlsx, distinct], [])
+    assert kept == [pdf, distinct]
+    assert dropped == [
+        {
+            "source": "S2.xlsx :: Table 3", "group_0_name": "Control", "group_1_name": "Case", "direction": "increased",
+            "main_experiment_index": None, "jaccard": 1.0, "experiment_dropped": True,
+            "matched_supplement": {"source": "S2.pdf :: page 3", "group_0_name": "Control", "group_1_name": "Case"},
+        }
+    ]
+
+
+def test_a_signature_dropped_as_a_duplicate_does_not_join_the_comparison_pool():
+    main = [_record("increased", *_taxa(1, 2, 3, 4))]
+    first = _record("increased", *_taxa(1, 2, 3, 4), source="a")  # dropped against the main text
+    second = _record("increased", *_taxa(1, 2, 3, 4), source="b")  # also dropped, but against the main text, not "a"
+    _, dropped = drop_duplicate_experiments([first, second], main)
+    assert [d["main_experiment_index"] for d in dropped] == [0, 0] and all("matched_supplement" not in d for d in dropped)
+
+
 def test_dedupe_compares_unresolved_taxa_by_normalized_name_and_ignores_empty_sets():
-    main = [_record("increased", ("Escherichia  coli", None))]
-    kept, dropped = drop_duplicate_experiments([_record("increased", ("escherichia coli", None))], main)
-    assert kept == [] and len(dropped) == 1
-    assert drop_duplicate_experiments([_record("increased")], [_record("increased")])[0] != []  # empty vs empty: not a match
+    names = ("Escherichia  coli", "Klebsiella pneumoniae", "Proteus mirabilis")
+    main = [_record("increased", *((n, None) for n in names))]
+    same = _record("increased", ("escherichia coli", None), ("KLEBSIELLA pneumoniae", None), ("proteus  mirabilis", None))
+    kept, dropped = drop_duplicate_experiments([same], main)
+    assert kept == [] and [d["jaccard"] for d in dropped] == [1.0]
+    empty = _record("increased")
+    kept, dropped = drop_duplicate_experiments([empty], [_record("increased")])
+    assert kept == [empty] and dropped == []  # empty vs empty: not a match
 
 
 # --- the lever end to end (offline) ---------------------------------------------------------------------
@@ -820,11 +873,11 @@ DA_TAXA = [
         "group_0_name": "Control", "group_1_name": "Crohn", "body_site": ["Feces"], "condition": ["Crohn disease"],
         "taxa": [{"name": "Bacteroides fragilis", "direction": "increased"}, {"name": "Prevotella copri", "direction": "decreased"}],
     },
-    {  # {Escherichia coli, Klebsiella pneumoniae} vs the main text's increased {Escherichia coli}: Jaccard 0.5 -> dropped
+    {  # kept: the main text's signatures are single taxa, too small to call a duplicate
         "group_0_name": "Control", "group_1_name": "Treated",
         "taxa": [{"name": "Escherichia coli", "direction": "increased"}, {"name": "Klebsiella pneumoniae", "direction": "increased"}],
     },
-    {  # 1/3 overlap: kept
+    {  # kept
         "group_0_name": "Control", "group_1_name": "Other",
         "taxa": [
             {"name": "Escherichia coli", "direction": "increased"},
@@ -887,7 +940,8 @@ def _extract_answers(messages):
     assert "S2.pdf :: page 1" in text  # nothing else is ever extracted
     return {
         "comparisons": [
-            {"group_0_name": "Colon", "group_1_name": "Ileum", "taxa": [{"name": "Prevotella copri", "direction": "decreased"}]}
+            {"group_0_name": "Colon", "group_1_name": "Ileum", "taxa": [{"name": "Prevotella copri", "direction": "decreased"}]},
+            DA_TAXA[2] | {"group_0_name": "Ctl", "group_1_name": "Same table as DA"},  # the sheet's table again, as a PDF page
         ]
     }
 
@@ -969,13 +1023,16 @@ def test_e2e_routes_extracts_expands_and_dedupes(httpx_mock, tmp_path):
     assert [c["images"] != [] for c in decision.calls if c["stage"] == "s1b_screen" and c["state"].get("page") == 2] == [True]
     assert sum(1 for c in model.calls if c["stage"] == "supplement_extract") == 3
 
-    # DA unit: 3 comparisons, one dropped as a duplicate of the main text (Jaccard 0.5); OVR unit: 3 groups -> 3
-    # experiments; PDF page 1: 1 experiment
-    assert [e["group_1_name"] for e in supplement] == ["Crohn", "Other", "Cluster1", "Cluster2", "Cluster3", "Ileum"]
-    assert [e["signatures"][0]["source"] for e in supplement] == [
-        "S1.xlsx :: DA", "S1.xlsx :: DA", "S1.xlsx :: OVR", "S1.xlsx :: OVR", "S1.xlsx :: OVR", "S2.pdf :: page 1",
+    # DA unit: 3 comparisons; OVR unit: 3 groups -> 3 experiments; PDF page 1: 2 comparisons, one of which repeats
+    # the DA sheet's third table and is dropped as a duplicate of that supplement experiment
+    assert [e["group_1_name"] for e in supplement] == [
+        "Crohn", "Treated", "Other", "Cluster1", "Cluster2", "Cluster3", "Ileum",
     ]
-    ovr = supplement[2:5]
+    assert [e["signatures"][0]["source"] for e in supplement] == [
+        "S1.xlsx :: DA", "S1.xlsx :: DA", "S1.xlsx :: DA", "S1.xlsx :: OVR", "S1.xlsx :: OVR", "S1.xlsx :: OVR",
+        "S2.pdf :: page 1",
+    ]
+    ovr = supplement[3:6]
     assert [e["group_0_name"] for e in ovr] == [f"all other groups (not Cluster{i})" for i in (1, 2, 3)]
     assert all([s["abundance_in_group_1"] for s in e["signatures"]] == ["increased"] for e in ovr)
     assert [t["ncbi_id"] for t in ovr[0]["signatures"][0]["taxa"]] == [301301, 40520]  # ids from the authority path
@@ -985,13 +1042,19 @@ def test_e2e_routes_extracts_expands_and_dedupes(httpx_mock, tmp_path):
     assert result.annotations["supplement_inherited_fields"] == [
         {"source": source, "group_1_name": group_1, "fields": all_four, "from_main_experiment": 0}
         for source, group_1 in [
-            ("S1.xlsx :: DA", "Crohn"), ("S1.xlsx :: DA", "Other"), ("S1.xlsx :: OVR", "Cluster1"),
-            ("S1.xlsx :: OVR", "Cluster2"), ("S1.xlsx :: OVR", "Cluster3"), ("S2.pdf :: page 1", "Ileum"),
+            ("S1.xlsx :: DA", "Crohn"), ("S1.xlsx :: DA", "Treated"), ("S1.xlsx :: DA", "Other"),
+            ("S1.xlsx :: OVR", "Cluster1"), ("S1.xlsx :: OVR", "Cluster2"), ("S1.xlsx :: OVR", "Cluster3"),
+            ("S2.pdf :: page 1", "Ileum"),
         ]
-    ]  # the dropped duplicate ("Treated") is not listed
+    ]  # the dropped duplicate ("Same table as DA") is not listed
 
-    (dropped,) = result.annotations["supplement_dropped_duplicates"]
-    assert dropped["group_1_name"] == "Treated" and dropped["jaccard"] == 0.5 and dropped["main_experiment_index"] == 0
+    assert result.annotations["supplement_dropped_duplicates"] == [
+        {
+            "source": "S2.pdf :: page 1", "group_0_name": "Ctl", "group_1_name": "Same table as DA", "direction": "increased",
+            "main_experiment_index": None, "jaccard": 1.0, "experiment_dropped": True,
+            "matched_supplement": {"source": "S1.xlsx :: DA", "group_0_name": "Control", "group_1_name": "Other"},
+        }
+    ]
     skipped = {s["file"]: s["reason"] for s in result.annotations["supplement_skipped"]}
     assert set(skipped) == {"fig.png", "movie.mp4"}
     assert not {"supplement_screen_error", "supplement_extract_error"} & set(result.annotations)
@@ -1063,7 +1126,7 @@ def test_a_failed_extraction_skips_only_that_unit(httpx_mock, tmp_path):
     (failure,) = result.annotations["supplement_extract_error"]
     assert failure["unit"] == "S1.xlsx::DA" and "malformed JSON" in failure["error"]
     groups = [e.get("group_1_name") for e in result.record["experiments"][1:]]
-    assert groups == ["Cluster1", "Cluster2", "Cluster3", "Ileum"]  # the other routed units still landed
+    assert groups == ["Cluster1", "Cluster2", "Cluster3", "Ileum", "Same table as DA"]  # the other routed units landed
 
 
 def test_a_model_transport_error_in_extraction_skips_only_that_unit_and_keeps_the_main_text(httpx_mock, tmp_path):
@@ -1085,7 +1148,7 @@ def test_a_model_transport_error_in_extraction_skips_only_that_unit_and_keeps_th
     main_experiments = baseline.record["experiments"]
     assert experiments[: len(main_experiments)] == main_experiments  # the main-text record survives untouched
     assert [e.get("group_1_name") for e in experiments[len(main_experiments) :]] == [
-        "Cluster1", "Cluster2", "Cluster3", "Ileum",
+        "Cluster1", "Cluster2", "Cluster3", "Ileum", "Same table as DA",  # (its duplicate source, the DA unit, failed)
     ]  # and so do the other routed units
 
 
@@ -1185,6 +1248,32 @@ def test_cuts_and_a_rejected_one_vs_rest_label_are_recorded_in_the_annotations(h
     assert [fields.group_0_name for fields, _, _ in kept[:1]] == ["c0"]  # two_groups.csv read as a two-group table
     assert len(kept) == 51  # 1 + the first 50 of many.csv, no duplicates among them (distinct taxa)
     json.dumps(annotations)
+
+
+def test_the_lever_dedupes_against_the_main_text_and_annotates_what_it_dropped(httpx_mock):
+    main = [(_fields(), _record("increased", ("Bacteroides", 816), ("Prevotella", 838), ("Alistipes", 239759))[1], "Table 2")]
+    names = ["Bacteroides", "Prevotella", "Alistipes"]
+
+    def extract(messages):
+        taxa = [{"name": n, "direction": "increased"} for n in names] + [
+            {"name": "Roseburia", "direction": "decreased"}, {"name": "Blautia", "direction": "decreased"},
+            {"name": "Dorea", "direction": "decreased"},
+        ]
+        return {"comparisons": [{"group_0_name": "Ctl", "group_1_name": "Case", "taxa": taxa}]}
+
+    resolver = _cached(bacteroides=816, prevotella=838, alistipes=239759, roseburia=841, blautia=572511, dorea=189330)
+    kept, annotations = _run_lever(
+        httpx_mock, {"t.csv": "a,b\n1,2\n"}, decision=MockDecisionModel({"s1b_screen": lambda s, q: _answers(0.9)}),
+        model=MockModel({"supplement_extract": extract}), resolver=resolver, main_experiments=main,
+    )
+    ((_, signatures, source),) = kept  # the increased signature repeats the main text; the new decreased one survives
+    assert source == "t.csv" and [(sig.direction, [t.ncbi_id for t in sig.taxa]) for sig in signatures] == [
+        ("decreased", [841, 572511, 189330])
+    ]
+    (entry,) = annotations["supplement_dropped_duplicates"]
+    assert (entry["direction"], entry["main_experiment_index"], entry["jaccard"], entry["experiment_dropped"]) == (
+        "increased", 0, 1.0, False,
+    )
 
 
 def test_a_name_resolution_failure_skips_only_that_unit_and_is_recorded(httpx_mock):
