@@ -1,0 +1,85 @@
+{
+  "choice_accuracy_given_present": 0.975609756097561,
+  "choice_accuracy_weighted_by_experiments": 0.9933110367892977,
+  "cost": {
+    "calls": 205,
+    "input_tokens": 119106,
+    "mean_latency_ms": 418.8
+  },
+  "coverage_at_confidence": [
+    {
+      "accuracy": 0.975609756097561,
+      "coverage": 1.0,
+      "n": 205,
+      "tau": 0.0
+    },
+    {
+      "accuracy": 0.994475138121547,
+      "coverage": 0.8829268292682927,
+      "n": 181,
+      "tau": 0.5
+    },
+    {
+      "accuracy": 0.9929078014184397,
+      "coverage": 0.6878048780487804,
+      "n": 141,
+      "tau": 0.7
+    },
+    {
+      "accuracy": 1.0,
+      "coverage": 0.28292682926829266,
+      "n": 58,
+      "tau": 0.9
+    },
+    {
+      "accuracy": 1.0,
+      "coverage": 0.12195121951219512,
+      "n": 25,
+      "tau": 0.95
+    }
+  ],
+  "end_to_end_accuracy": 0.970873786407767,
+  "errors": [
+    {
+      "conf": 0.185,
+      "gold": "UBERON:0006984",
+      "label": "Anatomical surface",
+      "picked": "UBERON:0036215"
+    },
+    {
+      "conf": 0.285,
+      "gold": "UBERON:0002394",
+      "label": "Bile duct",
+      "picked": "UBERON:0003704"
+    },
+    {
+      "conf": 0.332,
+      "gold": "UBERON:0002113",
+      "label": "Kidney",
+      "picked": "UBERON:0007132"
+    },
+    {
+      "conf": 0.832,
+      "gold": "UBERON:0002048",
+      "label": "Lung",
+      "picked": "UBERON:0000170"
+    },
+    {
+      "conf": 0.126,
+      "gold": "UBERON:0002547",
+      "label": "Tadpole",
+      "picked": "UBERON:0004728"
+    }
+  ],
+  "n_absent": 0,
+  "n_present": 205,
+  "n_units": 206,
+  "none_of_these_rate_when_absent": null,
+  "retrieval_recall_at_10": 0.9951456310679612,
+  "retrieval_recall_by_ontology": {
+    "UBERON": {
+      "n": 206,
+      "recall": 0.9951456310679612
+    }
+  }
+}

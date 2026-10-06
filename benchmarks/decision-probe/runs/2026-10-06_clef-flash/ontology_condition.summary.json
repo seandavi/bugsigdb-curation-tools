@@ -1,0 +1,281 @@
+{
+  "choice_accuracy_given_present": 0.8736196319018404,
+  "choice_accuracy_weighted_by_experiments": 0.8579848442323884,
+  "cost": {
+    "calls": 880,
+    "input_tokens": 512054,
+    "mean_latency_ms": 449.8
+  },
+  "coverage_at_confidence": [
+    {
+      "accuracy": 0.8736196319018404,
+      "coverage": 1.0,
+      "n": 815,
+      "tau": 0.0
+    },
+    {
+      "accuracy": 0.9609236234458259,
+      "coverage": 0.69079754601227,
+      "n": 563,
+      "tau": 0.5
+    },
+    {
+      "accuracy": 0.9834905660377359,
+      "coverage": 0.5202453987730061,
+      "n": 424,
+      "tau": 0.7
+    },
+    {
+      "accuracy": 1.0,
+      "coverage": 0.22699386503067484,
+      "n": 185,
+      "tau": 0.9
+    },
+    {
+      "accuracy": 1.0,
+      "coverage": 0.10306748466257669,
+      "n": 84,
+      "tau": 0.95
+    }
+  ],
+  "end_to_end_accuracy": 0.7824175824175824,
+  "errors": [
+    {
+      "conf": 0.399,
+      "gold": "EFO:0004599",
+      "label": "Acute graft vs. host disease",
+      "picked": "MONDO:0020546"
+    },
+    {
+      "conf": 0.193,
+      "gold": "MONDO:0006502",
+      "label": "Acute respiratory distress syndrome",
+      "picked": "HP:0033677"
+    },
+    {
+      "conf": 0.596,
+      "gold": "MONDO:0008226",
+      "label": "Aggressive periodontitis",
+      "picked": "MONDO:0980757"
+    },
+    {
+      "conf": 0.354,
+      "gold": "MONDO:0002280",
+      "label": "Anemia",
+      "picked": "HP:0001903"
+    },
+    {
+      "conf": 0.447,
+      "gold": "MONDO:0006651",
+      "label": "Anterior uveitis",
+      "picked": "HP:0012122"
+    },
+    {
+      "conf": 0.138,
+      "gold": "EFO:0000264",
+      "label": "Antibody",
+      "picked": "none_of_these"
+    },
+    {
+      "conf": 0.199,
+      "gold": "CHEBI:33281",
+      "label": "Antimicrobial agent",
+      "picked": "ECTO:0000544"
+    },
+    {
+      "conf": 0.261,
+      "gold": "HP:0000739",
+      "label": "Anxiety",
+      "picked": "MONDO:0011918"
+    },
+    {
+      "conf": 0.626,
+      "gold": "MONDO:0005618",
+      "label": "Anxiety disorder",
+      "picked": "MONDO:0001942"
+    },
+    {
+      "conf": 0.833,
+      "gold": "MONDO:0005654",
+      "label": "Ascariasis",
+      "picked": "MONDO:1014801"
+    },
+    {
+      "conf": 0.405,
+      "gold": "MONDO:0006665",
+      "label": "Atrophic gastritis",
+      "picked": "HP:0002582"
+    },
+    {
+      "conf": 0.363,
+      "gold": "MONDO:0005260",
+      "label": "Autism",
+      "picked": "HP:0000717"
+    },
+    {
+      "conf": 0.351,
+      "gold": "MONDO:0016264",
+      "label": "Autoimmune Hepatitis",
+      "picked": "HP:5210421"
+    },
+    {
+      "conf": 0.688,
+      "gold": "MONDO:0005113",
+      "label": "Bacterial disease",
+      "picked": "MONDO:0700050"
+    },
+    {
+      "conf": 0.159,
+      "gold": "GO:0007610",
+      "label": "Behavior",
+      "picked": "none_of_these"
+    },
+    {
+      "conf": 0.271,
+      "gold": "MONDO:0008867",
+      "label": "Biliary atresia",
+      "picked": "HP:0005912"
+    },
+    {
+      "conf": 0.417,
+      "gold": "MONDO:0004785",
+      "label": "Blepharitis",
+      "picked": "HP:0000498"
+    },
+    {
+      "conf": 0.464,
+      "gold": "EFO:0010283",
+      "label": "Blood disease",
+      "picked": "MONDO:0005570"
+    },
+    {
+      "conf": 0.378,
+      "gold": "OBA:VT0001253",
+      "label": "Body height",
+      "picked": "HP:0004322"
+    },
+    {
+      "conf": 0.432,
+      "gold": "EFO:0005238",
+      "label": "Breed",
+      "picked": "none_of_these"
+    },
+    {
+      "conf": 0.724,
+      "gold": "HP:0004326",
+      "label": "Cachexia",
+      "picked": "MONDO:1017591"
+    },
+    {
+      "conf": 0.144,
+      "gold": "EFO:0007658",
+      "label": "Carrier status",
+      "picked": "none_of_these"
+    },
+    {
+      "conf": 0.335,
+      "gold": "MONDO:0005130",
+      "label": "Celiac disease",
+      "picked": "HP:0002608"
+    },
+    {
+      "conf": 0.189,
+      "gold": "GO:0019538",
+      "label": "Cellular protein metabolic process",
+      "picked": "none_of_these"
+    },
+    {
+      "conf": 0.318,
+      "gold": "MONDO:0002974",
+      "label": "Cervical cancer",
+      "picked": "MONDO:0005131"
+    }
+  ],
+  "n_absent": 65,
+  "n_present": 815,
+  "n_units": 910,
+  "none_of_these_rate_when_absent": 0.15384615384615385,
+  "retrieval_recall_at_10": 0.8956043956043956,
+  "retrieval_recall_by_ontology": {
+    "BTO": {
+      "n": 1,
+      "recall": 1.0
+    },
+    "CHEBI": {
+      "n": 33,
+      "recall": 0.7272727272727273
+    },
+    "CL": {
+      "n": 7,
+      "recall": 1.0
+    },
+    "EFO": {
+      "n": 355,
+      "recall": 0.9774647887323944
+    },
+    "ENVO": {
+      "n": 1,
+      "recall": 0.0
+    },
+    "EXO": {
+      "n": 1,
+      "recall": 0.0
+    },
+    "GO": {
+      "n": 28,
+      "recall": 0.9285714285714286
+    },
+    "GSSO": {
+      "n": 2,
+      "recall": 0.5
+    },
+    "HP": {
+      "n": 57,
+      "recall": 1.0
+    },
+    "IDOMAL": {
+      "n": 1,
+      "recall": 0.0
+    },
+    "MONDO": {
+      "n": 356,
+      "recall": 0.9410112359550562
+    },
+    "MP": {
+      "n": 1,
+      "recall": 1.0
+    },
+    "NCBITAXON": {
+      "n": 13,
+      "recall": 0.0
+    },
+    "NCIT": {
+      "n": 1,
+      "recall": 0.0
+    },
+    "OBA": {
+      "n": 42,
+      "recall": 0.16666666666666666
+    },
+    "OBI": {
+      "n": 4,
+      "recall": 1.0
+    },
+    "PATO": {
+      "n": 3,
+      "recall": 1.0
+    },
+    "PO": {
+      "n": 1,
+      "recall": 1.0
+    },
+    "PR": {
+      "n": 1,
+      "recall": 1.0
+    },
+    "XCO": {
+      "n": 2,
+      "recall": 0.0
+    }
+  }
+}

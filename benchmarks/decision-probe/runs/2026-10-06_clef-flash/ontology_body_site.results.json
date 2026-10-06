@@ -1,0 +1,3040 @@
+{
+ "field": "body_site",
+ "units": [
+  {
+   "label": "Abdomen",
+   "gold_id": "UBERON:0000916",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0000916",
+    "UBERON:0003488",
+    "UBERON:0003567",
+    "UBERON:0001416",
+    "UBERON:0002343",
+    "UBERON:0002378",
+    "UBERON:0007809",
+    "UBERON:0005462",
+    "UBERON:0003429",
+    "UBERON:0003497"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000916",
+   "confidence": 0.7158
+  },
+  {
+   "label": "Accessory nerve root",
+   "gold_id": "UBERON:0014615",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0014615"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0014615",
+   "confidence": 0.0346
+  },
+  {
+   "label": "Actinopterygian pyloric caecum",
+   "gold_id": "UBERON:4300174",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:4300174"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:4300174",
+   "confidence": 0.8561
+  },
+  {
+   "label": "Alveolus of lung",
+   "gold_id": "UBERON:0002299",
+   "n_experiments": 6,
+   "candidates": [
+    "UBERON:0002299",
+    "UBERON:0004862",
+    "UBERON:0002172",
+    "UBERON:0004861",
+    "GO:1904654",
+    "GO:1904655",
+    "GO:1904653",
+    "GO:0048286",
+    "CL:0000322"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002299",
+   "confidence": 0.807
+  },
+  {
+   "label": "Amniotic fluid",
+   "gold_id": "UBERON:0000173",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0000173"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000173",
+   "confidence": 0.9277
+  },
+  {
+   "label": "Anatomical surface",
+   "gold_id": "UBERON:0006984",
+   "n_experiments": 7,
+   "candidates": [
+    "UBERON:0006984",
+    "UBERON:0036215",
+    "UBERON:0003102",
+    "UBERON:0035085"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0036215",
+   "confidence": 0.1855
+  },
+  {
+   "label": "Anterior naris",
+   "gold_id": "UBERON:2001427",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:2001427",
+    "UBERON:0005928",
+    "UBERON:0010893"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:2001427",
+   "confidence": 0.6777
+  },
+  {
+   "label": "Ascending colon",
+   "gold_id": "UBERON:0001156",
+   "n_experiments": 16,
+   "candidates": [
+    "UBERON:0001156",
+    "UBERON:0004990",
+    "UBERON:7770005",
+    "UBERON:8600134",
+    "UBERON:0004929",
+    "CL:1000282"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001156",
+   "confidence": 0.8649
+  },
+  {
+   "label": "Axilla",
+   "gold_id": "UBERON:0009472",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0009472",
+    "UBERON:0035289",
+    "UBERON:0001394",
+    "UBERON:0013699",
+    "UBERON:0037500",
+    "UBERON:0001097",
+    "UBERON:0001493",
+    "UBERON:0015474",
+    "UBERON:0018232",
+    "UBERON:0037501"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0009472",
+   "confidence": 0.7012
+  },
+  {
+   "label": "Axilla skin",
+   "gold_id": "UBERON:0015474",
+   "n_experiments": 17,
+   "candidates": [
+    "UBERON:0015474"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0015474",
+   "confidence": 0.9743
+  },
+  {
+   "label": "Bile",
+   "gold_id": "UBERON:0001970",
+   "n_experiments": 5,
+   "candidates": [
+    "UBERON:0001970",
+    "UBERON:0005000",
+    "UBERON:0004822",
+    "UBERON:0004823",
+    "UBERON:0001283",
+    "UBERON:0004939",
+    "UBERON:0001282",
+    "UBERON:0003703",
+    "UBERON:0002394",
+    "UBERON:0003704"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001970",
+   "confidence": 0.4765
+  },
+  {
+   "label": "Bile duct",
+   "gold_id": "UBERON:0002394",
+   "n_experiments": 8,
+   "candidates": [
+    "UBERON:0002394",
+    "UBERON:0005000",
+    "UBERON:0004822",
+    "UBERON:0004823",
+    "UBERON:0004939",
+    "UBERON:0001282",
+    "UBERON:0004820",
+    "UBERON:0003703",
+    "UBERON:0003704",
+    "UBERON:0001246"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0003704",
+   "confidence": 0.2847
+  },
+  {
+   "label": "Blood",
+   "gold_id": "UBERON:0000178",
+   "n_experiments": 28,
+   "candidates": [
+    "UBERON:0000178",
+    "UBERON:0003508",
+    "UBERON:0002443",
+    "UBERON:0004115",
+    "UBERON:0003519",
+    "UBERON:0003506",
+    "UBERON:0003515",
+    "UBERON:0003518",
+    "UBERON:0003522",
+    "UBERON:0004237"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000178",
+   "confidence": 0.9127
+  },
+  {
+   "label": "Blood plasma",
+   "gold_id": "UBERON:0001969",
+   "n_experiments": 6,
+   "candidates": [
+    "UBERON:0001969"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001969",
+   "confidence": 0.9741
+  },
+  {
+   "label": "Blood serum",
+   "gold_id": "UBERON:0001977",
+   "n_experiments": 9,
+   "candidates": [
+    "UBERON:0001977"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001977",
+   "confidence": 0.9263
+  },
+  {
+   "label": "Body external integument structure",
+   "gold_id": "UBERON:3000977",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:3000977"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:3000977",
+   "confidence": 0.4348
+  },
+  {
+   "label": "Body proper",
+   "gold_id": "UBERON:0013702",
+   "n_experiments": 6,
+   "candidates": [
+    "UBERON:0013702",
+    "UBERON:0006861",
+    "UBERON:0001137",
+    "UBERON:0010940",
+    "UBERON:0013235"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0013702",
+   "confidence": 0.6871
+  },
+  {
+   "label": "Brachialis muscle",
+   "gold_id": "UBERON:0001506",
+   "n_experiments": 5,
+   "candidates": [
+    "UBERON:0001506",
+    "UBERON:0001507"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001506",
+   "confidence": 0.698
+  },
+  {
+   "label": "Brain",
+   "gold_id": "UBERON:0000955",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0000955",
+    "UBERON:0002616",
+    "UBERON:0003528",
+    "UBERON:0003544",
+    "UBERON:0013150",
+    "UBERON:0014891",
+    "UBERON:0003547",
+    "UBERON:0003549",
+    "UBERON:0003558",
+    "UBERON:0006238"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000955",
+   "confidence": 0.65
+  },
+  {
+   "label": "Breast",
+   "gold_id": "UBERON:0000310",
+   "n_experiments": 34,
+   "candidates": [
+    "UBERON:0000310",
+    "UBERON:0012103",
+    "UBERON:0004180",
+    "UBERON:0018540",
+    "UBERON:0035328",
+    "UBERON:0035365",
+    "UBERON:0035477",
+    "UBERON:0035542",
+    "UBERON:0035634",
+    "UBERON:0018538"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000310",
+   "confidence": 0.5076
+  },
+  {
+   "label": "Bronchoalveolar duct junction",
+   "gold_id": "UBERON:0004903",
+   "n_experiments": 10,
+   "candidates": [
+    "UBERON:0004903"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0004903",
+   "confidence": 0.959
+  },
+  {
+   "label": "Bronchus",
+   "gold_id": "UBERON:0002185",
+   "n_experiments": 9,
+   "candidates": [
+    "UBERON:0002185",
+    "UBERON:0004241",
+    "UBERON:0005036",
+    "UBERON:0005034",
+    "UBERON:0005035",
+    "UBERON:0002340",
+    "UBERON:0005037",
+    "UBERON:0005038",
+    "UBERON:0003518",
+    "UBERON:0003590"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002185",
+   "confidence": 0.5963
+  },
+  {
+   "label": "Buccal mucosa",
+   "gold_id": "UBERON:0006956",
+   "n_experiments": 28,
+   "candidates": [
+    "UBERON:0006956",
+    "UBERON:0003729",
+    "CL:0002336"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0006956",
+   "confidence": 0.9136
+  },
+  {
+   "label": "Bulbar conjunctiva",
+   "gold_id": "UBERON:0010306",
+   "n_experiments": 12,
+   "candidates": [
+    "UBERON:0010306"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0010306",
+   "confidence": 0.9224
+  },
+  {
+   "label": "Caecum",
+   "gold_id": "UBERON:0001153",
+   "n_experiments": 93,
+   "candidates": [
+    "UBERON:0001153",
+    "UBERON:0000314",
+    "UBERON:0004927",
+    "UBERON:8600139",
+    "UBERON:4300174",
+    "UBERON:0005636",
+    "UBERON:0005677",
+    "UBERON:0005686",
+    "UBERON:0009855",
+    "UBERON:0001761"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001153",
+   "confidence": 0.2029
+  },
+  {
+   "label": "Cardia of stomach",
+   "gold_id": "UBERON:0001162",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0001162",
+    "UBERON:0004996",
+    "UBERON:0004935",
+    "UBERON:0008250",
+    "UBERON:0008827",
+    "UBERON:0037494"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001162",
+   "confidence": 0.8206
+  },
+  {
+   "label": "Carina of trachea",
+   "gold_id": "UBERON:0006679",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0006679"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0006679",
+   "confidence": 0.9487
+  },
+  {
+   "label": "Carpal bone",
+   "gold_id": "UBERON:0001435",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0001435",
+    "UBERON:0001430",
+    "UBERON:0001431",
+    "UBERON:0001433",
+    "UBERON:0001432",
+    "UBERON:0012290",
+    "UBERON:0009880",
+    "UBERON:0010739",
+    "UBERON:0001480",
+    "UBERON:0015085"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001435",
+   "confidence": 0.5814
+  },
+  {
+   "label": "Cavity of pharynx",
+   "gold_id": "UBERON:0001731",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0001731"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001731",
+   "confidence": 0.9231
+  },
+  {
+   "label": "Cecum mucosa",
+   "gold_id": "UBERON:0000314",
+   "n_experiments": 29,
+   "candidates": [
+    "UBERON:0000314"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000314",
+   "confidence": 0.7968
+  },
+  {
+   "label": "Cervical cavity",
+   "gold_id": "UBERON:0013761",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0013761"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0013761",
+   "confidence": 0.9715
+  },
+  {
+   "label": "Cervical mucus",
+   "gold_id": "UBERON:0000316",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0000316"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000316",
+   "confidence": 0.946
+  },
+  {
+   "label": "Cervix epithelium",
+   "gold_id": "UBERON:0004801",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0004801",
+    "UBERON:0012250",
+    "UBERON:0006922"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0004801",
+   "confidence": 0.4108
+  },
+  {
+   "label": "Cheek",
+   "gold_id": "UBERON:0001567",
+   "n_experiments": 4,
+   "candidates": [
+    "UBERON:0001567",
+    "UBERON:7500108",
+    "UBERON:0008803",
+    "UBERON:7500114",
+    "UBERON:0008802",
+    "UBERON:0018312",
+    "UBERON:0018313",
+    "UBERON:0012167",
+    "UBERON:0013640",
+    "UBERON:0013641"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001567",
+   "confidence": 0.4673
+  },
+  {
+   "label": "Colon",
+   "gold_id": "UBERON:0001155",
+   "n_experiments": 65,
+   "candidates": [
+    "UBERON:0001155",
+    "UBERON:0004990",
+    "UBERON:0004991",
+    "UBERON:0004992",
+    "UBERON:0004993",
+    "UBERON:0000317",
+    "UBERON:0003335",
+    "UBERON:0012489",
+    "UBERON:0000397",
+    "UBERON:0007177"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001155",
+   "confidence": 0.7025
+  },
+  {
+   "label": "Colonic mucosa",
+   "gold_id": "UBERON:0000317",
+   "n_experiments": 12,
+   "candidates": [
+    "UBERON:0000317",
+    "UBERON:0004990",
+    "UBERON:0004992",
+    "UBERON:0004991",
+    "UBERON:0004993",
+    "UBERON:0007178",
+    "UBERON:0007177"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000317",
+   "confidence": 0.742
+  },
+  {
+   "label": "Colorectal mucosa",
+   "gold_id": "UBERON:0013067",
+   "n_experiments": 22,
+   "candidates": [
+    "UBERON:0013067"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0013067",
+   "confidence": 0.9484
+  },
+  {
+   "label": "Colorectum",
+   "gold_id": "UBERON:0012652",
+   "n_experiments": 9,
+   "candidates": [
+    "UBERON:0012652"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0012652",
+   "confidence": 0.9757
+  },
+  {
+   "label": "Colostrum",
+   "gold_id": "UBERON:0001914",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0001914"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001914",
+   "confidence": 0.9304
+  },
+  {
+   "label": "Conjunctiva",
+   "gold_id": "UBERON:0001811",
+   "n_experiments": 16,
+   "candidates": [
+    "UBERON:0001811",
+    "UBERON:0010209",
+    "UBERON:0001812",
+    "UBERON:0010305",
+    "UBERON:0010306",
+    "UBERON:0010307",
+    "UBERON:0006763",
+    "UBERON:0005908",
+    "UBERON:0010366",
+    "CL:0002550"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001811",
+   "confidence": 0.6362
+  },
+  {
+   "label": "Conjunctival fornix",
+   "gold_id": "UBERON:0010307",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0010307"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0010307",
+   "confidence": 0.9595
+  },
+  {
+   "label": "Conjunctival sac",
+   "gold_id": "UBERON:0005908",
+   "n_experiments": 9,
+   "candidates": [
+    "UBERON:0005908",
+    "UBERON:0015155",
+    "UBERON:0001811"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0005908",
+   "confidence": 0.574
+  },
+  {
+   "label": "Dental plaque",
+   "gold_id": "UBERON:0016482",
+   "n_experiments": 39,
+   "candidates": [
+    "UBERON:0016482",
+    "UBERON:0016484",
+    "UBERON:0016485"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0016482",
+   "confidence": 0.4161
+  },
+  {
+   "label": "Dental pulp",
+   "gold_id": "UBERON:0001754",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0001754",
+    "UBERON:0015837",
+    "UBERON:0015853",
+    "UBERON:0015838",
+    "CL:4030035",
+    "CL:0002148"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001754",
+   "confidence": 0.8966
+  },
+  {
+   "label": "Dentine",
+   "gold_id": "UBERON:0001751",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0001751",
+    "UBERON:0011587",
+    "UBERON:4000106",
+    "UBERON:0001091",
+    "UBERON:0001763",
+    "UBERON:7500085",
+    "UBERON:0003268",
+    "GO:0042475",
+    "GO:0042487",
+    "GO:0042488"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001751",
+   "confidence": 0.7286
+  },
+  {
+   "label": "Dermis",
+   "gold_id": "UBERON:0002067",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0002067",
+    "UBERON:0001992",
+    "UBERON:0003426",
+    "UBERON:0003585",
+    "UBERON:0001993",
+    "UBERON:0007377",
+    "UBERON:0010083",
+    "UBERON:0011806",
+    "UBERON:0000412",
+    "UBERON:0002199"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002067",
+   "confidence": 0.6558
+  },
+  {
+   "label": "Digestive tract",
+   "gold_id": "UBERON:0001555",
+   "n_experiments": 5,
+   "candidates": [
+    "UBERON:0001555",
+    "UBERON:0018261",
+    "UBERON:0003929",
+    "UBERON:0006909",
+    "UBERON:0003408",
+    "UBERON:0006866",
+    "UBERON:0035118",
+    "UBERON:0000328",
+    "UBERON:0004908",
+    "UBERON:0004907"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001555",
+   "confidence": 0.6813
+  },
+  {
+   "label": "Dorsum of tongue",
+   "gold_id": "UBERON:0009471",
+   "n_experiments": 16,
+   "candidates": [
+    "UBERON:0009471",
+    "UBERON:0010033",
+    "UBERON:0010052"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0009471",
+   "confidence": 0.8385
+  },
+  {
+   "label": "Duodenal mucosa",
+   "gold_id": "UBERON:0000320",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0000320",
+    "UBERON:0012494",
+    "UBERON:0015834"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000320",
+   "confidence": 0.7985
+  },
+  {
+   "label": "Duodenum",
+   "gold_id": "UBERON:0002114",
+   "n_experiments": 14,
+   "candidates": [
+    "UBERON:0002114",
+    "UBERON:0003336",
+    "UBERON:0012488",
+    "UBERON:0015834",
+    "UBERON:0000642",
+    "UBERON:0003332",
+    "UBERON:0003397",
+    "UBERON:0012494",
+    "UBERON:0000320",
+    "UBERON:0003286"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002114",
+   "confidence": 0.7579
+  },
+  {
+   "label": "Ear",
+   "gold_id": "UBERON:0001690",
+   "n_experiments": 6,
+   "candidates": [
+    "UBERON:0001690",
+    "UBERON:0005026",
+    "UBERON:0001459",
+    "UBERON:0004115",
+    "UBERON:0004116",
+    "UBERON:0001686",
+    "UBERON:0003325",
+    "UBERON:0035130",
+    "UBERON:0001756",
+    "UBERON:0001847"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001690",
+   "confidence": 0.6752
+  },
+  {
+   "label": "Endocervix",
+   "gold_id": "UBERON:0000458",
+   "n_experiments": 14,
+   "candidates": [
+    "UBERON:0000458",
+    "UBERON:0013761",
+    "CL:0002152"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000458",
+   "confidence": 0.8068
+  },
+  {
+   "label": "Endometrium",
+   "gold_id": "UBERON:0001295",
+   "n_experiments": 5,
+   "candidates": [
+    "UBERON:0001295",
+    "UBERON:0004811",
+    "UBERON:0022355",
+    "UBERON:0022356",
+    "UBERON:0012276",
+    "UBERON:0011949",
+    "UBERON:0002337",
+    "UBERON:0015172",
+    "UBERON:0002450",
+    "UBERON:0002451"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001295",
+   "confidence": 0.8036
+  },
+  {
+   "label": "Endothelium of trachea",
+   "gold_id": "UBERON:0003279",
+   "n_experiments": 6,
+   "candidates": [
+    "UBERON:0003279"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0003279",
+   "confidence": 0.8731
+  },
+  {
+   "label": "Entire surface of organism",
+   "gold_id": "UBERON:0035159",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0035159"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0035159",
+   "confidence": 0.9053
+  },
+  {
+   "label": "Epithelium of oropharynx",
+   "gold_id": "UBERON:0001952",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0001952"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001952",
+   "confidence": 0.8098
+  },
+  {
+   "label": "Esophagus",
+   "gold_id": "UBERON:0001043",
+   "n_experiments": 26,
+   "candidates": [
+    "UBERON:0001043",
+    "UBERON:0002112",
+    "UBERON:0001974",
+    "UBERON:0001972",
+    "UBERON:0001975",
+    "UBERON:0002469",
+    "UBERON:0001096",
+    "UBERON:0001976",
+    "UBERON:0004648",
+    "UBERON:0009960"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001043",
+   "confidence": 0.6066
+  },
+  {
+   "label": "External ear",
+   "gold_id": "UBERON:0001691",
+   "n_experiments": 4,
+   "candidates": [
+    "UBERON:0001691",
+    "UBERON:0001459",
+    "UBERON:0001867",
+    "UBERON:1000004",
+    "UBERON:0022279",
+    "UBERON:0006616",
+    "UBERON:0006617",
+    "UBERON:0003325",
+    "UBERON:1000005",
+    "UBERON:1000017"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001691",
+   "confidence": 0.5438
+  },
+  {
+   "label": "External female genitalia",
+   "gold_id": "UBERON:0005056",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0005056"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0005056",
+   "confidence": 0.8938
+  },
+  {
+   "label": "Eyelid",
+   "gold_id": "UBERON:0001711",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0001711",
+    "UBERON:0003844",
+    "UBERON:0003845",
+    "UBERON:0004773",
+    "UBERON:0004774",
+    "UBERON:0001457",
+    "UBERON:0003857",
+    "UBERON:0003858",
+    "UBERON:0003660",
+    "UBERON:0004772"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001711",
+   "confidence": 0.7661
+  },
+  {
+   "label": "Fallopian tube",
+   "gold_id": "UBERON:0003889",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0003889",
+    "UBERON:0005048",
+    "UBERON:0005012",
+    "UBERON:0005011",
+    "UBERON:0004245",
+    "UBERON:0012648",
+    "UBERON:8410010",
+    "UBERON:0004804",
+    "UBERON:0012331",
+    "UBERON:8930065"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0003889",
+   "confidence": 0.4296
+  },
+  {
+   "label": "Feces",
+   "gold_id": "UBERON:0001988",
+   "n_experiments": 5510,
+   "candidates": [
+    "UBERON:0001988"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001988",
+   "confidence": 0.9577
+  },
+  {
+   "label": "Female urethra",
+   "gold_id": "UBERON:0001334",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0001334",
+    "UBERON:0005014",
+    "UBERON:0011380",
+    "UBERON:0016520",
+    "UBERON:0010187",
+    "UBERON:0037455",
+    "UBERON:0006565",
+    "UBERON:0012301",
+    "UBERON:0001338",
+    "UBERON:0000461"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001334",
+   "confidence": 0.6166
+  },
+  {
+   "label": "Forelimb",
+   "gold_id": "UBERON:0002102",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0002102",
+    "UBERON:0002386",
+    "UBERON:0003822",
+    "UBERON:0003839",
+    "UBERON:0004312",
+    "UBERON:0001440",
+    "UBERON:0005417",
+    "UBERON:0010703",
+    "UBERON:0008962",
+    "UBERON:0003441"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002102",
+   "confidence": 0.5051
+  },
+  {
+   "label": "Forelimb skin",
+   "gold_id": "UBERON:0003531",
+   "n_experiments": 6,
+   "candidates": [
+    "UBERON:0003531",
+    "UBERON:0010855"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0003531",
+   "confidence": 0.7476
+  },
+  {
+   "label": "Gastric juice",
+   "gold_id": "UBERON:0001971",
+   "n_experiments": 4,
+   "candidates": [
+    "UBERON:0001971"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001971",
+   "confidence": 0.9483
+  },
+  {
+   "label": "Gastric pit",
+   "gold_id": "UBERON:0000424",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0000424"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000424",
+   "confidence": 0.9441
+  },
+  {
+   "label": "Gastrointestinal system mucosa",
+   "gold_id": "UBERON:0004786",
+   "n_experiments": 9,
+   "candidates": [
+    "UBERON:0004786"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0004786",
+   "confidence": 0.6475
+  },
+  {
+   "label": "Gingiva",
+   "gold_id": "UBERON:0001828",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0001828",
+    "UBERON:0011601",
+    "UBERON:0011602",
+    "UBERON:0001949",
+    "UBERON:0008805",
+    "UBERON:0013195",
+    "CL:0002552"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001828",
+   "confidence": 0.6781
+  },
+  {
+   "label": "Gingiva of upper jaw",
+   "gold_id": "UBERON:0011601",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0011601"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0011601",
+   "confidence": 0.9117
+  },
+  {
+   "label": "Gingival groove",
+   "gold_id": "UBERON:0008805",
+   "n_experiments": 17,
+   "candidates": [
+    "UBERON:0008805"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0008805",
+   "confidence": 0.923
+  },
+  {
+   "label": "Hindgut",
+   "gold_id": "UBERON:0001046",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0001046",
+    "UBERON:0003353",
+    "UBERON:0003260",
+    "UBERON:0003394",
+    "UBERON:0007148",
+    "UBERON:0009503",
+    "UBERON:0001155",
+    "GO:0043133",
+    "GO:0061525",
+    "GO:0007442"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001046",
+   "confidence": 0.7237
+  },
+  {
+   "label": "Hindlimb skin",
+   "gold_id": "UBERON:0003532",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0003532",
+    "UBERON:0004262",
+    "UBERON:0004264"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0003532",
+   "confidence": 0.6585
+  },
+  {
+   "label": "Hypopharynx",
+   "gold_id": "UBERON:0001051",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0001051",
+    "UBERON:0004987",
+    "UBERON:0004925",
+    "UBERON:0035313"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001051",
+   "confidence": 0.7887
+  },
+  {
+   "label": "Ileal mucosa",
+   "gold_id": "UBERON:0000331",
+   "n_experiments": 18,
+   "candidates": [
+    "UBERON:0000331"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000331",
+   "confidence": 0.8732
+  },
+  {
+   "label": "Ileum",
+   "gold_id": "UBERON:0002116",
+   "n_experiments": 47,
+   "candidates": [
+    "UBERON:0002116",
+    "UBERON:0000331",
+    "UBERON:0014390",
+    "UBERON:0004946",
+    "UBERON:8600035",
+    "UBERON:0022357",
+    "UBERON:0008344",
+    "UBERON:0013481",
+    "UBERON:0008345",
+    "CL:1000278"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002116",
+   "confidence": 0.854
+  },
+  {
+   "label": "Inferior nasal concha",
+   "gold_id": "UBERON:0005922",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0005922",
+    "UBERON:0005869",
+    "UBERON:0005925"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0005922",
+   "confidence": 0.7075
+  },
+  {
+   "label": "Ingested food",
+   "gold_id": "UBERON:0012112",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0012112",
+    "UBERON:0012113"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0012112",
+   "confidence": 0.7376
+  },
+  {
+   "label": "Inguinal part of abdomen",
+   "gold_id": "UBERON:0008337",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0008337",
+    "UBERON:0035410",
+    "UBERON:0035505"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0008337",
+   "confidence": 0.6112
+  },
+  {
+   "label": "Internal cheek pouch",
+   "gold_id": "UBERON:0013640",
+   "n_experiments": 11,
+   "candidates": [
+    "UBERON:0013640"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0013640",
+   "confidence": 0.8387
+  },
+  {
+   "label": "Intestinal mucosa",
+   "gold_id": "UBERON:0001242",
+   "n_experiments": 29,
+   "candidates": [
+    "UBERON:0001242",
+    "UBERON:0000333",
+    "UBERON:0001204",
+    "UBERON:0001207",
+    "UBERON:0000314",
+    "UBERON:0001210",
+    "UBERON:0001239",
+    "UBERON:0001238",
+    "UBERON:0001240",
+    "UBERON:2005273"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001242",
+   "confidence": 0.7282
+  },
+  {
+   "label": "Intestine",
+   "gold_id": "UBERON:0000160",
+   "n_experiments": 46,
+   "candidates": [
+    "UBERON:0000160",
+    "UBERON:0001243",
+    "UBERON:0000333",
+    "UBERON:0001241",
+    "UBERON:0001204",
+    "UBERON:0001207",
+    "UBERON:0001242",
+    "UBERON:0004221",
+    "UBERON:0001206",
+    "UBERON:0001213"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000160",
+   "confidence": 0.5997
+  },
+  {
+   "label": "Intestine secretion",
+   "gold_id": "UBERON:0002466",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0002466",
+    "CL:1001598"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002466",
+   "confidence": 0.9303
+  },
+  {
+   "label": "Jejunum",
+   "gold_id": "UBERON:0002115",
+   "n_experiments": 21,
+   "candidates": [
+    "UBERON:0002115",
+    "UBERON:0000399",
+    "UBERON:0003337",
+    "UBERON:0012377",
+    "UBERON:0003333",
+    "UBERON:0003398",
+    "UBERON:0016517",
+    "UBERON:8600034",
+    "UBERON:0008343",
+    "UBERON:0013483"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002115",
+   "confidence": 0.8233
+  },
+  {
+   "label": "Kidney",
+   "gold_id": "UBERON:0002113",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0002113",
+    "UBERON:0003527",
+    "UBERON:0004788",
+    "UBERON:0005006",
+    "UBERON:0004775",
+    "UBERON:0004819",
+    "UBERON:0005215",
+    "UBERON:8410073",
+    "UBERON:0007132",
+    "UBERON:7770009"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0007132",
+   "confidence": 0.3315
+  },
+  {
+   "label": "Large intestine",
+   "gold_id": "UBERON:0000059",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0000059",
+    "UBERON:0001207",
+    "UBERON:0004220",
+    "UBERON:0001209",
+    "UBERON:0001984",
+    "UBERON:0001278",
+    "UBERON:0001169",
+    "UBERON:0003453",
+    "UBERON:0011189",
+    "UBERON:0001208"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000059",
+   "confidence": 0.7077
+  },
+  {
+   "label": "Lateral lumbar region of abdomen",
+   "gold_id": "UBERON:0000180",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0000180",
+    "UBERON:8480023"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000180",
+   "confidence": 0.2541
+  },
+  {
+   "label": "Liver",
+   "gold_id": "UBERON:0002107",
+   "n_experiments": 10,
+   "candidates": [
+    "UBERON:0002107",
+    "UBERON:0001117",
+    "UBERON:0006727",
+    "UBERON:8400024",
+    "UBERON:0001281",
+    "UBERON:0003894",
+    "UBERON:8400023",
+    "UBERON:0001113",
+    "UBERON:0001280",
+    "UBERON:0006877"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002107",
+   "confidence": 0.5913
+  },
+  {
+   "label": "Lower part of vagina",
+   "gold_id": "UBERON:0015243",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0015243"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0015243",
+   "confidence": 0.9504
+  },
+  {
+   "label": "Lumen of duodenum",
+   "gold_id": "UBERON:0016512",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0016512"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0016512",
+   "confidence": 0.9757
+  },
+  {
+   "label": "Lung",
+   "gold_id": "UBERON:0002048",
+   "n_experiments": 37,
+   "candidates": [
+    "UBERON:0002048",
+    "UBERON:0002174",
+    "UBERON:0002170",
+    "UBERON:0002171",
+    "UBERON:0003615",
+    "UBERON:0000102",
+    "UBERON:0000170",
+    "UBERON:0004887",
+    "UBERON:0004888",
+    "UBERON:0008953"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000170",
+   "confidence": 0.8319
+  },
+  {
+   "label": "Mammary gland",
+   "gold_id": "UBERON:0001911",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0001911",
+    "UBERON:0004180",
+    "UBERON:0006539",
+    "UBERON:0001912",
+    "UBERON:0003584",
+    "UBERON:0003488",
+    "UBERON:0003326",
+    "UBERON:0003214",
+    "UBERON:0005200",
+    "UBERON:0003244"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001911",
+   "confidence": 0.2871
+  },
+  {
+   "label": "Manual digit skin",
+   "gold_id": "UBERON:0003533",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0003533"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0003533",
+   "confidence": 0.8746
+  },
+  {
+   "label": "Margin of eyelid",
+   "gold_id": "UBERON:0034772",
+   "n_experiments": 4,
+   "candidates": [
+    "UBERON:0034772"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0034772",
+   "confidence": 0.963
+  },
+  {
+   "label": "Marsupium",
+   "gold_id": "UBERON:0009118",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0009118"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0009118",
+   "confidence": 0.9717
+  },
+  {
+   "label": "Material entity in digestive tract",
+   "gold_id": "UBERON:0035118",
+   "n_experiments": 6,
+   "candidates": [
+    "UBERON:0035118"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0035118",
+   "confidence": 0.9242
+  },
+  {
+   "label": "Meconium",
+   "gold_id": "UBERON:0007109",
+   "n_experiments": 31,
+   "candidates": [
+    "UBERON:0007109"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0007109",
+   "confidence": 0.9528
+  },
+  {
+   "label": "Meibum",
+   "gold_id": "UBERON:0019315",
+   "n_experiments": 4,
+   "candidates": [
+    "UBERON:0019315"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0019315",
+   "confidence": 0.9312
+  },
+  {
+   "label": "Mesenteric lymph node",
+   "gold_id": "UBERON:0002509",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0002509",
+    "UBERON:0037514",
+    "UBERON:0038727",
+    "UBERON:0037515"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002509",
+   "confidence": 0.7447
+  },
+  {
+   "label": "Middle ear",
+   "gold_id": "UBERON:0001756",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0001756",
+    "UBERON:0005026",
+    "UBERON:0004115",
+    "UBERON:0004116",
+    "UBERON:0004114",
+    "UBERON:0009506",
+    "UBERON:0001686",
+    "UBERON:0018154",
+    "UBERON:0015813",
+    "UBERON:0035130"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001756",
+   "confidence": 0.5339
+  },
+  {
+   "label": "Middle lobe of lung",
+   "gold_id": "UBERON:0008955",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0008955",
+    "UBERON:0002174",
+    "UBERON:0004900",
+    "UBERON:0012068",
+    "UBERON:0012063",
+    "UBERON:0008954"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0008955",
+   "confidence": 0.5762
+  },
+  {
+   "label": "Middle nasal meatus",
+   "gold_id": "UBERON:0015219",
+   "n_experiments": 5,
+   "candidates": [
+    "UBERON:0015219"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0015219",
+   "confidence": 0.897
+  },
+  {
+   "label": "Midgut",
+   "gold_id": "UBERON:0001045",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0001045",
+    "UBERON:0003352",
+    "UBERON:0003259",
+    "UBERON:0003284",
+    "UBERON:0007147",
+    "UBERON:0009478",
+    "UBERON:0009483",
+    "UBERON:0013158",
+    "UBERON:0003287",
+    "UBERON:0004163"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001045",
+   "confidence": 0.7598
+  },
+  {
+   "label": "Milk",
+   "gold_id": "UBERON:0001913",
+   "n_experiments": 16,
+   "candidates": [
+    "UBERON:0001913",
+    "UBERON:0001911",
+    "UBERON:0005333",
+    "UBERON:0007116",
+    "UBERON:0008425",
+    "UBERON:0012422",
+    "GO:0060156",
+    "CL:0000314",
+    "GO:0007595"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001913",
+   "confidence": 0.3799
+  },
+  {
+   "label": "Mouth",
+   "gold_id": "UBERON:0000165",
+   "n_experiments": 67,
+   "candidates": [
+    "UBERON:0000165",
+    "UBERON:0003729",
+    "UBERON:0003343",
+    "UBERON:0005019",
+    "UBERON:0006264",
+    "UBERON:0035804",
+    "UBERON:0003679",
+    "UBERON:0034722",
+    "UBERON:0000930",
+    "UBERON:0007375"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000165",
+   "confidence": 0.6264
+  },
+  {
+   "label": "Mouth mucosa",
+   "gold_id": "UBERON:0003729",
+   "n_experiments": 15,
+   "candidates": [
+    "UBERON:0003729",
+    "UBERON:0005019",
+    "UBERON:0003343",
+    "UBERON:0002424"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0003729",
+   "confidence": 0.7199
+  },
+  {
+   "label": "Mucosa",
+   "gold_id": "UBERON:0000344",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0000344",
+    "UBERON:0005009",
+    "UBERON:0004986",
+    "UBERON:0005016",
+    "UBERON:0004996",
+    "UBERON:0005010",
+    "UBERON:0003342",
+    "UBERON:0005036",
+    "UBERON:0000333",
+    "UBERON:0003343"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000344",
+   "confidence": 0.5551
+  },
+  {
+   "label": "Mucosa of ascending colon",
+   "gold_id": "UBERON:0004990",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0004990"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0004990",
+   "confidence": 0.8549
+  },
+  {
+   "label": "Mucosa of body of stomach",
+   "gold_id": "UBERON:0004995",
+   "n_experiments": 6,
+   "candidates": [
+    "UBERON:0004995"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0004995",
+   "confidence": 0.8438
+  },
+  {
+   "label": "Mucosa of nasopharynx",
+   "gold_id": "UBERON:0005022",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0005022"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0005022",
+   "confidence": 0.8557
+  },
+  {
+   "label": "Mucosa of oral region",
+   "gold_id": "UBERON:0003343",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0003343"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0003343",
+   "confidence": 0.8815
+  },
+  {
+   "label": "Mucosa of oropharynx",
+   "gold_id": "UBERON:0005023",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0005023"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0005023",
+   "confidence": 0.8566
+  },
+  {
+   "label": "Mucosa of pyloric antrum",
+   "gold_id": "UBERON:0004997",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0004997"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0004997",
+   "confidence": 0.8192
+  },
+  {
+   "label": "Mucosa of rectum",
+   "gold_id": "UBERON:0003346",
+   "n_experiments": 11,
+   "candidates": [
+    "UBERON:0003346",
+    "UBERON:0012497"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0003346",
+   "confidence": 0.8386
+  },
+  {
+   "label": "Mucosa of sigmoid colon",
+   "gold_id": "UBERON:0004993",
+   "n_experiments": 7,
+   "candidates": [
+    "UBERON:0004993"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0004993",
+   "confidence": 0.8404
+  },
+  {
+   "label": "Mucosa of small intestine",
+   "gold_id": "UBERON:0001204",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0001204",
+    "UBERON:0001238",
+    "UBERON:0001210"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001204",
+   "confidence": 0.7432
+  },
+  {
+   "label": "Mucosa of stomach",
+   "gold_id": "UBERON:0001199",
+   "n_experiments": 6,
+   "candidates": [
+    "UBERON:0001199",
+    "UBERON:0004996",
+    "UBERON:0004997",
+    "UBERON:0004998",
+    "UBERON:0004994",
+    "UBERON:0004995",
+    "UBERON:0001203",
+    "UBERON:0006931",
+    "UBERON:0016501",
+    "UBERON:0016511"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001199",
+   "confidence": 0.6703
+  },
+  {
+   "label": "Mucosa of vagina",
+   "gold_id": "UBERON:0004983",
+   "n_experiments": 5,
+   "candidates": [
+    "UBERON:0004983"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0004983",
+   "confidence": 0.861
+  },
+  {
+   "label": "Mucus",
+   "gold_id": "UBERON:0000912",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0000912",
+    "UBERON:0000316",
+    "UBERON:0016553",
+    "UBERON:0002306",
+    "UBERON:0000414",
+    "UBERON:0010152",
+    "UBERON:0016926",
+    "UBERON:0016927",
+    "UBERON:0004790",
+    "UBERON:0014717"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000912",
+   "confidence": 0.5976
+  },
+  {
+   "label": "Nasal cavity",
+   "gold_id": "UBERON:0001707",
+   "n_experiments": 30,
+   "candidates": [
+    "UBERON:0001707",
+    "UBERON:8480070",
+    "UBERON:0001826",
+    "UBERON:0005384",
+    "UBERON:0000402",
+    "UBERON:0013732",
+    "UBERON:0005385",
+    "UBERON:0001997",
+    "CL:4052036",
+    "CL:4052038"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001707",
+   "confidence": 0.7382
+  },
+  {
+   "label": "Nasal cavity mucosa",
+   "gold_id": "UBERON:0001826",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0001826"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001826",
+   "confidence": 0.9551
+  },
+  {
+   "label": "Nasal mucus",
+   "gold_id": "UBERON:0002306",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0002306"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002306",
+   "confidence": 0.8249
+  },
+  {
+   "label": "Nasopharyngeal gland",
+   "gold_id": "UBERON:0008310",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0008310"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0008310",
+   "confidence": 0.5875
+  },
+  {
+   "label": "Nasopharynx",
+   "gold_id": "UBERON:0001728",
+   "n_experiments": 80,
+   "candidates": [
+    "UBERON:0001728",
+    "UBERON:0005022",
+    "UBERON:0003582",
+    "UBERON:0001951",
+    "UBERON:0035270",
+    "UBERON:0010061",
+    "UBERON:0035383",
+    "UBERON:0035401",
+    "CL:1001573"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001728",
+   "confidence": 0.7865
+  },
+  {
+   "label": "Nose",
+   "gold_id": "UBERON:0000004",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0000004",
+    "UBERON:0006906",
+    "UBERON:0012128",
+    "UBERON:0015476",
+    "UBERON:0007827",
+    "UBERON:0019307",
+    "UBERON:0011931",
+    "UBERON:0016464",
+    "UBERON:1000012",
+    "UBERON:1000013"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000004",
+   "confidence": 0.6362
+  },
+  {
+   "label": "Nose epithelium",
+   "gold_id": "UBERON:0019306",
+   "n_experiments": 5,
+   "candidates": [
+    "UBERON:0019306",
+    "UBERON:0019307"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0019306",
+   "confidence": 0.6988
+  },
+  {
+   "label": "Nose skin",
+   "gold_id": "UBERON:0015476",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0015476",
+    "UBERON:0019307"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0015476",
+   "confidence": 0.8766
+  },
+  {
+   "label": "Ocular surface region",
+   "gold_id": "UBERON:0010409",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0010409"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0010409",
+   "confidence": 0.9268
+  },
+  {
+   "label": "Omentum",
+   "gold_id": "UBERON:0003688",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0003688",
+    "UBERON:0005448",
+    "UBERON:0002399",
+    "UBERON:0005670",
+    "CL:0002579",
+    "CL:0002615"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0003688",
+   "confidence": 0.7345
+  },
+  {
+   "label": "Oral cavity",
+   "gold_id": "UBERON:0000167",
+   "n_experiments": 85,
+   "candidates": [
+    "UBERON:0000167",
+    "UBERON:0010047",
+    "UBERON:0007375",
+    "UBERON:0000165",
+    "UBERON:0000930",
+    "CL:1001576"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000167",
+   "confidence": 0.4084
+  },
+  {
+   "label": "Oral epithelium",
+   "gold_id": "UBERON:0002424",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0002424",
+    "UBERON:0011642"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002424",
+   "confidence": 0.8832
+  },
+  {
+   "label": "Oral opening",
+   "gold_id": "UBERON:0000166",
+   "n_experiments": 4,
+   "candidates": [
+    "UBERON:0000166",
+    "UBERON:0003343",
+    "UBERON:0018149",
+    "UBERON:0010047"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000166",
+   "confidence": 0.8665
+  },
+  {
+   "label": "Oropharynx",
+   "gold_id": "UBERON:0001729",
+   "n_experiments": 23,
+   "candidates": [
+    "UBERON:0001729",
+    "UBERON:0005023",
+    "UBERON:0001952",
+    "UBERON:0009959",
+    "UBERON:0003410",
+    "UBERON:0035240",
+    "UBERON:0035286",
+    "UBERON:0010426"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001729",
+   "confidence": 0.6002
+  },
+  {
+   "label": "Ovary",
+   "gold_id": "UBERON:0000992",
+   "n_experiments": 8,
+   "candidates": [
+    "UBERON:0000992",
+    "UBERON:0000037",
+    "UBERON:0006960",
+    "UBERON:0000035",
+    "UBERON:0001304",
+    "UBERON:0001305",
+    "UBERON:0000036",
+    "UBERON:0001145",
+    "UBERON:0008847",
+    "UBERON:0013192"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000992",
+   "confidence": 0.755
+  },
+  {
+   "label": "Oviduct",
+   "gold_id": "UBERON:0000993",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0000993",
+    "UBERON:0005011",
+    "UBERON:0005012",
+    "UBERON:0004804",
+    "UBERON:0006642",
+    "UBERON:0013515",
+    "UBERON:0018343",
+    "UBERON:0034735",
+    "UBERON:0007589",
+    "UBERON:0007590"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000993",
+   "confidence": 0.4675
+  },
+  {
+   "label": "Palatine tonsil",
+   "gold_id": "UBERON:0002373",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0002373"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002373",
+   "confidence": 0.9353
+  },
+  {
+   "label": "Palpebral conjunctiva",
+   "gold_id": "UBERON:0001812",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0001812"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001812",
+   "confidence": 0.8458
+  },
+  {
+   "label": "Pancreas",
+   "gold_id": "UBERON:0001264",
+   "n_experiments": 4,
+   "candidates": [
+    "UBERON:0001264",
+    "UBERON:0002070",
+    "UBERON:0003923",
+    "UBERON:0004690",
+    "UBERON:0010373",
+    "UBERON:0001151",
+    "UBERON:0003924",
+    "UBERON:0015865",
+    "UBERON:0001064",
+    "UBERON:0005429"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001264",
+   "confidence": 0.8188
+  },
+  {
+   "label": "Penis",
+   "gold_id": "UBERON:0000989",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0000989",
+    "UBERON:0001340",
+    "UBERON:0004713",
+    "UBERON:0004812",
+    "UBERON:0013128",
+    "UBERON:0008321",
+    "UBERON:0019197",
+    "UBERON:0001331",
+    "UBERON:0004803",
+    "UBERON:0006639"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000989",
+   "confidence": 0.7184
+  },
+  {
+   "label": "Perineum",
+   "gold_id": "UBERON:0002356",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0002356",
+    "UBERON:0004231",
+    "UBERON:0004832",
+    "UBERON:0006654",
+    "UBERON:0002379",
+    "UBERON:0004486",
+    "UBERON:0006867",
+    "UBERON:0035106"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002356",
+   "confidence": 0.2338
+  },
+  {
+   "label": "Peritoneal fluid",
+   "gold_id": "UBERON:0001268",
+   "n_experiments": 6,
+   "candidates": [
+    "UBERON:0001268"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001268",
+   "confidence": 0.9759
+  },
+  {
+   "label": "Pharynx",
+   "gold_id": "UBERON:0006562",
+   "n_experiments": 12,
+   "candidates": [
+    "UBERON:0006562",
+    "UBERON:0000355",
+    "UBERON:0004987",
+    "UBERON:0005022",
+    "UBERON:0005023",
+    "UBERON:0003384",
+    "UBERON:0003582",
+    "UBERON:0004924",
+    "UBERON:0000933",
+    "UBERON:0003351"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0006562",
+   "confidence": 0.298
+  },
+  {
+   "label": "Pinna",
+   "gold_id": "UBERON:0001757",
+   "n_experiments": 4,
+   "candidates": [
+    "UBERON:0001757",
+    "UBERON:0003325",
+    "UBERON:0001847",
+    "UBERON:0006203",
+    "UBERON:0008879",
+    "UBERON:0006938",
+    "UBERON:0015147",
+    "UBERON:0035648",
+    "UBERON:0001848",
+    "UBERON:0002488"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001757",
+   "confidence": 0.6346
+  },
+  {
+   "label": "Placenta",
+   "gold_id": "UBERON:0001987",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0001987",
+    "UBERON:0002450",
+    "UBERON:0007106",
+    "UBERON:0036153",
+    "UBERON:0004183",
+    "UBERON:0003946",
+    "UBERON:0036154",
+    "UBERON:0003972",
+    "UBERON:0008855",
+    "UBERON:0010006"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001987",
+   "confidence": 0.111
+  },
+  {
+   "label": "Pleural fluid",
+   "gold_id": "UBERON:0001087",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0001087"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001087",
+   "confidence": 0.9742
+  },
+  {
+   "label": "Posterior fornix of vagina",
+   "gold_id": "UBERON:0016486",
+   "n_experiments": 33,
+   "candidates": [
+    "UBERON:0016486"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0016486",
+   "confidence": 0.9528
+  },
+  {
+   "label": "Posterior wall of oropharynx",
+   "gold_id": "UBERON:0035240",
+   "n_experiments": 5,
+   "candidates": [
+    "UBERON:0035240"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0035240",
+   "confidence": 0.935
+  },
+  {
+   "label": "Prostate gland",
+   "gold_id": "UBERON:0002367",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0002367",
+    "UBERON:0004243",
+    "UBERON:0000428",
+    "UBERON:0001329",
+    "UBERON:0013637",
+    "UBERON:0004184",
+    "UBERON:0004796",
+    "UBERON:0001328",
+    "UBERON:0008807",
+    "UBERON:0004179"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002367",
+   "confidence": 0.7742
+  },
+  {
+   "label": "Prostate gland secretion",
+   "gold_id": "UBERON:0004796",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0004796"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0004796",
+   "confidence": 0.9578
+  },
+  {
+   "label": "Rectal lumen",
+   "gold_id": "UBERON:0009670",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0009670"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0009670",
+   "confidence": 0.9478
+  },
+  {
+   "label": "Rectosigmoid junction",
+   "gold_id": "UBERON:0036214",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0036214"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0036214",
+   "confidence": 0.9845
+  },
+  {
+   "label": "Rectum",
+   "gold_id": "UBERON:0001052",
+   "n_experiments": 59,
+   "candidates": [
+    "UBERON:0001052",
+    "UBERON:0003346",
+    "UBERON:0017626",
+    "UBERON:0003334",
+    "UBERON:0003354",
+    "UBERON:0018111",
+    "UBERON:0018112",
+    "UBERON:0003330",
+    "UBERON:0003395",
+    "UBERON:8600140"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001052",
+   "confidence": 0.7398
+  },
+  {
+   "label": "Renal pelvis/ureter",
+   "gold_id": "UBERON:0036295",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0036295",
+    "UBERON:0005006",
+    "UBERON:0004788",
+    "UBERON:0018115",
+    "UBERON:0001224"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0036295",
+   "confidence": 0.7396
+  },
+  {
+   "label": "Right colon",
+   "gold_id": "UBERON:0008972",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0008972",
+    "UBERON:0022277"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0008972",
+   "confidence": 0.8164
+  },
+  {
+   "label": "Right lung middle lobe bronchiole",
+   "gold_id": "UBERON:0012068",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0012068"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0012068",
+   "confidence": 0.9187
+  },
+  {
+   "label": "Rumen",
+   "gold_id": "UBERON:0007365",
+   "n_experiments": 7,
+   "candidates": [
+    "UBERON:0007365",
+    "UBERON:0008285",
+    "UBERON:8480046",
+    "UBERON:0010153",
+    "UBERON:0007364"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0007365",
+   "confidence": 0.6141
+  },
+  {
+   "label": "Ruminal fluid",
+   "gold_id": "UBERON:0010228",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0010228"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0010228",
+   "confidence": 0.9089
+  },
+  {
+   "label": "Saliva",
+   "gold_id": "UBERON:0001836",
+   "n_experiments": 446,
+   "candidates": [
+    "UBERON:0001836",
+    "UBERON:0002872",
+    "UBERON:0001044",
+    "UBERON:0002149",
+    "UBERON:0004809",
+    "UBERON:0015766",
+    "UBERON:8000010",
+    "UBERON:0001837",
+    "UBERON:0001830",
+    "UBERON:0011850"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001836",
+   "confidence": 0.8175
+  },
+  {
+   "label": "Scalp",
+   "gold_id": "UBERON:0000403",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0000403",
+    "UBERON:8300000",
+    "UBERON:8420000",
+    "UBERON:0016446",
+    "CL:4006001",
+    "CL:2000083"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000403",
+   "confidence": 0.6432
+  },
+  {
+   "label": "Semen",
+   "gold_id": "UBERON:0001968",
+   "n_experiments": 5,
+   "candidates": [
+    "UBERON:0001968",
+    "UBERON:0010148"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001968",
+   "confidence": 0.8977
+  },
+  {
+   "label": "Sigmoid colon",
+   "gold_id": "UBERON:0001159",
+   "n_experiments": 4,
+   "candidates": [
+    "UBERON:0001159",
+    "UBERON:0004993",
+    "UBERON:0035805",
+    "UBERON:7770008",
+    "UBERON:8600136",
+    "UBERON:0004932",
+    "UBERON:8410016",
+    "CL:1000285"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001159",
+   "confidence": 0.644
+  },
+  {
+   "label": "Skin epidermis",
+   "gold_id": "UBERON:0001003",
+   "n_experiments": 15,
+   "candidates": [
+    "UBERON:0001003",
+    "UBERON:0002025",
+    "UBERON:0002199",
+    "UBERON:0010402",
+    "GO:0098773",
+    "CL:4052061",
+    "CL:0000362"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001003",
+   "confidence": 0.8609
+  },
+  {
+   "label": "Skin epithelium",
+   "gold_id": "UBERON:0019204",
+   "n_experiments": 4,
+   "candidates": [
+    "UBERON:0019204",
+    "UBERON:0011272",
+    "UBERON:0019307"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0019204",
+   "confidence": 0.8658
+  },
+  {
+   "label": "Skin of abdomen",
+   "gold_id": "UBERON:0001416",
+   "n_experiments": 5,
+   "candidates": [
+    "UBERON:0001416",
+    "UBERON:8480023",
+    "CL:2000013"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001416",
+   "confidence": 0.7909
+  },
+  {
+   "label": "Skin of body",
+   "gold_id": "UBERON:0002097",
+   "n_experiments": 48,
+   "candidates": [
+    "UBERON:0002097",
+    "UBERON:0004790",
+    "UBERON:0001418",
+    "UBERON:0006003",
+    "UBERON:0011272"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002097",
+   "confidence": 0.9106
+  },
+  {
+   "label": "Skin of cheek",
+   "gold_id": "UBERON:0008803",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0008803"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0008803",
+   "confidence": 0.8617
+  },
+  {
+   "label": "Skin of elbow",
+   "gold_id": "UBERON:0001517",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0001517"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001517",
+   "confidence": 0.8536
+  },
+  {
+   "label": "Skin of eyelid",
+   "gold_id": "UBERON:0001457",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0001457"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001457",
+   "confidence": 0.8421
+  },
+  {
+   "label": "Skin of forearm",
+   "gold_id": "UBERON:0003403",
+   "n_experiments": 7,
+   "candidates": [
+    "UBERON:0003403"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0003403",
+   "confidence": 0.9462
+  },
+  {
+   "label": "Skin of palm of manus",
+   "gold_id": "UBERON:0013777",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0013777",
+    "UBERON:0019246"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0013777",
+   "confidence": 0.8706
+  },
+  {
+   "label": "Skin of palmar/plantar part of autopod",
+   "gold_id": "UBERON:0013776",
+   "n_experiments": 3,
+   "candidates": [],
+   "gold_in_candidates": false,
+   "choice": null,
+   "confidence": null
+  },
+  {
+   "label": "Skin of penis",
+   "gold_id": "UBERON:0001331",
+   "n_experiments": 5,
+   "candidates": [
+    "UBERON:0001331",
+    "UBERON:0001471"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001331",
+   "confidence": 0.5381
+  },
+  {
+   "label": "Skin of scalp",
+   "gold_id": "UBERON:8300000",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:8300000",
+    "CL:4006001"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:8300000",
+   "confidence": 0.8534
+  },
+  {
+   "label": "Skin of sole of pes",
+   "gold_id": "UBERON:0013778",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0013778"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0013778",
+   "confidence": 0.9143
+  },
+  {
+   "label": "Skin sebaceous gland",
+   "gold_id": "UBERON:0003487",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0003487",
+    "CL:0002140"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0003487",
+   "confidence": 0.8631
+  },
+  {
+   "label": "Small intestine",
+   "gold_id": "UBERON:0002108",
+   "n_experiments": 11,
+   "candidates": [
+    "UBERON:0002108",
+    "UBERON:0001204",
+    "UBERON:0001241",
+    "UBERON:0001206",
+    "UBERON:0004239",
+    "UBERON:0001238",
+    "UBERON:0001902",
+    "UBERON:0001168",
+    "UBERON:0012402",
+    "UBERON:0012401"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002108",
+   "confidence": 0.8188
+  },
+  {
+   "label": "Soft palate",
+   "gold_id": "UBERON:0001733",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0001733",
+    "UBERON:0005024",
+    "UBERON:0003358",
+    "UBERON:0003417",
+    "UBERON:0011348",
+    "GO:0060023"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001733",
+   "confidence": 0.8454
+  },
+  {
+   "label": "Space surrounding organism",
+   "gold_id": "UBERON:0013514",
+   "n_experiments": 22,
+   "candidates": [
+    "UBERON:0013514"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0013514",
+   "confidence": 0.9275
+  },
+  {
+   "label": "Spleen",
+   "gold_id": "UBERON:0002106",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0002106",
+    "UBERON:0004238",
+    "UBERON:0010421",
+    "UBERON:0001249",
+    "UBERON:0005196",
+    "UBERON:0004641",
+    "UBERON:0001251",
+    "UBERON:0001265",
+    "UBERON:0006293",
+    "UBERON:0001248"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002106",
+   "confidence": 0.8089
+  },
+  {
+   "label": "Sputum",
+   "gold_id": "UBERON:0007311",
+   "n_experiments": 55,
+   "candidates": [
+    "UBERON:0007311"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0007311",
+   "confidence": 0.9682
+  },
+  {
+   "label": "Stomach",
+   "gold_id": "UBERON:0000945",
+   "n_experiments": 31,
+   "candidates": [
+    "UBERON:0000945",
+    "UBERON:0004996",
+    "UBERON:0001201",
+    "UBERON:0004994",
+    "UBERON:0004995",
+    "UBERON:0004997",
+    "UBERON:0004998",
+    "UBERON:0004222",
+    "UBERON:0001199",
+    "UBERON:0004935"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000945",
+   "confidence": 0.4727
+  },
+  {
+   "label": "Subgingival dental plaque",
+   "gold_id": "UBERON:0016484",
+   "n_experiments": 136,
+   "candidates": [
+    "UBERON:0016484"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0016484",
+   "confidence": 0.9659
+  },
+  {
+   "label": "Superior surface of tongue",
+   "gold_id": "UBERON:0007371",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0007371"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0007371",
+   "confidence": 0.9693
+  },
+  {
+   "label": "Supragingival dental plaque",
+   "gold_id": "UBERON:0016485",
+   "n_experiments": 53,
+   "candidates": [
+    "UBERON:0016485"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0016485",
+   "confidence": 0.9656
+  },
+  {
+   "label": "Surface of tongue",
+   "gold_id": "UBERON:0007367",
+   "n_experiments": 19,
+   "candidates": [
+    "UBERON:0007367",
+    "UBERON:0007371",
+    "UBERON:0007373",
+    "UBERON:0011877",
+    "UBERON:0010052"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0007367",
+   "confidence": 0.5225
+  },
+  {
+   "label": "Tadpole",
+   "gold_id": "UBERON:0002547",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0002547",
+    "UBERON:0009849",
+    "UBERON:0004728",
+    "UBERON:0002548"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0004728",
+   "confidence": 0.1264
+  },
+  {
+   "label": "Tear film",
+   "gold_id": "UBERON:0022287",
+   "n_experiments": 10,
+   "candidates": [
+    "UBERON:0022287"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0022287",
+   "confidence": 0.9621
+  },
+  {
+   "label": "Throat",
+   "gold_id": "UBERON:0000341",
+   "n_experiments": 45,
+   "candidates": [
+    "UBERON:0000341",
+    "UBERON:0016620",
+    "UBERON:0010854",
+    "UBERON:0010880"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000341",
+   "confidence": 0.7445
+  },
+  {
+   "label": "Thyroid gland",
+   "gold_id": "UBERON:0002046",
+   "n_experiments": 25,
+   "candidates": [
+    "UBERON:0002046",
+    "UBERON:0001118",
+    "UBERON:0001609",
+    "UBERON:0001747",
+    "UBERON:0001746",
+    "UBERON:0004827",
+    "UBERON:0001120",
+    "UBERON:0001119",
+    "UBERON:0010233",
+    "UBERON:0005305"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0002046",
+   "confidence": 0.7186
+  },
+  {
+   "label": "Tongue",
+   "gold_id": "UBERON:0001723",
+   "n_experiments": 25,
+   "candidates": [
+    "UBERON:0001723",
+    "UBERON:0010033",
+    "UBERON:0005020",
+    "UBERON:0010032",
+    "UBERON:0000378",
+    "UBERON:0003357",
+    "UBERON:0006699",
+    "UBERON:0011877",
+    "UBERON:0001576",
+    "UBERON:0006689"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001723",
+   "confidence": 0.3902
+  },
+  {
+   "label": "Tonsillar fossa",
+   "gold_id": "UBERON:0035228",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0035228"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0035228",
+   "confidence": 0.9317
+  },
+  {
+   "label": "Trachea",
+   "gold_id": "UBERON:0003126",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0003126",
+    "UBERON:0003617",
+    "UBERON:0000379",
+    "UBERON:0003604",
+    "UBERON:0006679",
+    "UBERON:0000031",
+    "UBERON:0003127",
+    "UBERON:6005037",
+    "UBERON:0001901",
+    "UBERON:0006832"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0003126",
+   "confidence": 0.631
+  },
+  {
+   "label": "Upper part of vagina",
+   "gold_id": "UBERON:0003974",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0003974"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0003974",
+   "confidence": 0.9434
+  },
+  {
+   "label": "Upper respiratory tract",
+   "gold_id": "UBERON:0001557",
+   "n_experiments": 3,
+   "candidates": [
+    "UBERON:0001557",
+    "UBERON:0004814",
+    "CL:0002631"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001557",
+   "confidence": 0.88
+  },
+  {
+   "label": "Urinary bladder",
+   "gold_id": "UBERON:0001255",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0001255",
+    "UBERON:0004230",
+    "UBERON:0004229",
+    "UBERON:0005009",
+    "UBERON:0005010",
+    "UBERON:0004228",
+    "UBERON:0001260",
+    "UBERON:0001261",
+    "UBERON:0006082",
+    "UBERON:0001259"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001255",
+   "confidence": 0.7083
+  },
+  {
+   "label": "Urine",
+   "gold_id": "UBERON:0001088",
+   "n_experiments": 39,
+   "candidates": [
+    "UBERON:0001088",
+    "UBERON:0004230",
+    "UBERON:0004229",
+    "UBERON:0005009",
+    "UBERON:0005010",
+    "UBERON:0004228",
+    "UBERON:0001260",
+    "UBERON:0000381",
+    "UBERON:0001259",
+    "UBERON:0001261"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001088",
+   "confidence": 0.8429
+  },
+  {
+   "label": "Uterine cervix",
+   "gold_id": "UBERON:0000002",
+   "n_experiments": 47,
+   "candidates": [
+    "UBERON:0000002",
+    "UBERON:0012253",
+    "UBERON:0013758",
+    "UBERON:0012249",
+    "CL:1001587",
+    "CL:1001575",
+    "CL:0002535"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000002",
+   "confidence": 0.7731
+  },
+  {
+   "label": "Uterovesical pouch",
+   "gold_id": "UBERON:0011049",
+   "n_experiments": 2,
+   "candidates": [
+    "UBERON:0011049"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0011049",
+   "confidence": 0.9291
+  },
+  {
+   "label": "Uterus",
+   "gold_id": "UBERON:0000995",
+   "n_experiments": 19,
+   "candidates": [
+    "UBERON:0000995",
+    "UBERON:0001297",
+    "UBERON:0006589",
+    "UBERON:0005798",
+    "UBERON:0000002",
+    "UBERON:0000459",
+    "UBERON:0005795",
+    "UBERON:0006834",
+    "UBERON:0005796",
+    "UBERON:0005797"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000995",
+   "confidence": 0.4803
+  },
+  {
+   "label": "Vagina",
+   "gold_id": "UBERON:0000996",
+   "n_experiments": 171,
+   "candidates": [
+    "UBERON:0000996",
+    "UBERON:0004223",
+    "UBERON:0004983",
+    "UBERON:0015243",
+    "UBERON:0003974",
+    "UBERON:0006650",
+    "UBERON:0012317",
+    "UBERON:0008330",
+    "UBERON:0001344",
+    "UBERON:0005344"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0000996",
+   "confidence": 0.2931
+  },
+  {
+   "label": "Vaginal fluid",
+   "gold_id": "UBERON:0036243",
+   "n_experiments": 22,
+   "candidates": [
+    "UBERON:0036243"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0036243",
+   "confidence": 0.9722
+  },
+  {
+   "label": "Venous blood",
+   "gold_id": "UBERON:0013756",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0013756",
+    "UBERON:0014401",
+    "UBERON:0003920",
+    "UBERON:0003476",
+    "GO:0060841",
+    "GO:0048845",
+    "CL:1000893",
+    "GO:0060577"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0013756",
+   "confidence": 0.9053
+  },
+  {
+   "label": "Ventral side of post-anal tail",
+   "gold_id": "UBERON:0018691",
+   "n_experiments": 6,
+   "candidates": [
+    "UBERON:0018691"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0018691",
+   "confidence": 0.9193
+  },
+  {
+   "label": "Wall of small intestine",
+   "gold_id": "UBERON:0001168",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0001168",
+    "UBERON:0022280",
+    "UBERON:0013744"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001168",
+   "confidence": 0.6942
+  },
+  {
+   "label": "Wall of vagina",
+   "gold_id": "UBERON:0036523",
+   "n_experiments": 9,
+   "candidates": [
+    "UBERON:0036523"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0036523",
+   "confidence": 0.9753
+  },
+  {
+   "label": "feces",
+   "gold_id": "UBERON:0001988",
+   "n_experiments": 1,
+   "candidates": [
+    "UBERON:0001988"
+   ],
+   "gold_in_candidates": true,
+   "choice": "UBERON:0001988",
+   "confidence": 0.8905
+  }
+ ]
+}

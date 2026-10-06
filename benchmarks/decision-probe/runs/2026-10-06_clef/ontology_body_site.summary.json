@@ -1,0 +1,121 @@
+{
+  "choice_accuracy_given_present": 0.9463414634146341,
+  "choice_accuracy_weighted_by_experiments": 0.9912804586717631,
+  "cost": {
+    "calls": 205,
+    "input_tokens": 119106,
+    "mean_latency_ms": 471.5
+  },
+  "coverage_at_confidence": [
+    {
+      "accuracy": 0.9463414634146341,
+      "coverage": 1.0,
+      "n": 205,
+      "tau": 0.0
+    },
+    {
+      "accuracy": 0.9797297297297297,
+      "coverage": 0.7219512195121951,
+      "n": 148,
+      "tau": 0.5
+    },
+    {
+      "accuracy": 0.9914529914529915,
+      "coverage": 0.5707317073170731,
+      "n": 117,
+      "tau": 0.7
+    },
+    {
+      "accuracy": 1.0,
+      "coverage": 0.3951219512195122,
+      "n": 81,
+      "tau": 0.9
+    },
+    {
+      "accuracy": 1.0,
+      "coverage": 0.1951219512195122,
+      "n": 40,
+      "tau": 0.95
+    }
+  ],
+  "end_to_end_accuracy": 0.941747572815534,
+  "errors": [
+    {
+      "conf": 0.237,
+      "gold": "UBERON:0006984",
+      "label": "Anatomical surface",
+      "picked": "UBERON:0036215"
+    },
+    {
+      "conf": 0.486,
+      "gold": "UBERON:0009472",
+      "label": "Axilla",
+      "picked": "UBERON:0015474"
+    },
+    {
+      "conf": 0.254,
+      "gold": "UBERON:0001567",
+      "label": "Cheek",
+      "picked": "UBERON:0008803"
+    },
+    {
+      "conf": 0.195,
+      "gold": "UBERON:0001690",
+      "label": "Ear",
+      "picked": "UBERON:0001756"
+    },
+    {
+      "conf": 0.669,
+      "gold": "UBERON:0001691",
+      "label": "External ear",
+      "picked": "UBERON:0001459"
+    },
+    {
+      "conf": 0.321,
+      "gold": "UBERON:0002113",
+      "label": "Kidney",
+      "picked": "UBERON:0007132"
+    },
+    {
+      "conf": 0.428,
+      "gold": "UBERON:0000180",
+      "label": "Lateral lumbar region of abdomen",
+      "picked": "UBERON:8480023"
+    },
+    {
+      "conf": 0.77,
+      "gold": "UBERON:0002048",
+      "label": "Lung",
+      "picked": "UBERON:0000170"
+    },
+    {
+      "conf": 0.573,
+      "gold": "UBERON:0001911",
+      "label": "Mammary gland",
+      "picked": "UBERON:0006539"
+    },
+    {
+      "conf": 0.365,
+      "gold": "UBERON:0001159",
+      "label": "Sigmoid colon",
+      "picked": "UBERON:0004993"
+    },
+    {
+      "conf": 0.088,
+      "gold": "UBERON:0002547",
+      "label": "Tadpole",
+      "picked": "UBERON:0009849"
+    }
+  ],
+  "n_absent": 0,
+  "n_present": 205,
+  "n_units": 206,
+  "none_of_these_rate_when_absent": null,
+  "retrieval_recall_at_10": 0.9951456310679612,
+  "retrieval_recall_by_ontology": {
+    "UBERON": {
+      "n": 206,
+      "recall": 0.9951456310679612
+    }
+  }
+}
