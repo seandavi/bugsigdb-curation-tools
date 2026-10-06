@@ -42,7 +42,7 @@ from bugsigdb_curation.curator.resolve import resolve as resolve_pmid
 from bugsigdb_curation.curator.smoke import smoke_study_ids
 from bugsigdb_curation.curator.taxonomy import DEFAULT_CACHE_PATH as CURATE_DEFAULT_TAXONOMY_CACHE
 from bugsigdb_curation.curator.taxonomy import NcbiTaxonomyResolver
-from bugsigdb_curation.decision import open_decision_model
+from bugsigdb_curation.decision import DecisionModelError, open_decision_model, require_credentials
 from bugsigdb_curation.eval.gold import load_gold, to_nested_dict
 from bugsigdb_curation.eval.report import ScoringError, write_reports
 from bugsigdb_curation.eval.score import StudyScore, aggregate_scores, score_study
@@ -650,6 +650,16 @@ def curate_command(
     if mock and decision_name is not None:
         error_console.print("[yellow]--decision-model ignored with --mock (no offline decision backend).[/yellow]")
         decision_name = None
+    if decision_name is not None:
+        try:
+            require_credentials()
+        except DecisionModelError as exc:
+            error_console.print(f"[red]Error:[/red] {escape(str(exc))} (needed for --decision-model).")
+            raise typer.Exit(code=2) from None
+        if decision_archive is None and out is None and not smoke:
+            error_console.print(
+                "[yellow]No --out/--decision-archive: decision-model calls will not be recorded.[/yellow]"
+            )
 
     if smoke:
         if out is None:
@@ -772,6 +782,7 @@ async def _run_curate_smoke(
 
     n_valid = 0
     n_errors = 0
+    n_regex_fallbacks = 0
     # One shared client for the whole batch (reused connection pool/keep-
     # alive) instead of curate_async creating and tearing down a fresh
     # client per study -- fewer connections churned, less NCBI/PMC
@@ -815,6 +826,8 @@ async def _run_curate_smoke(
             (out_dir / f"{study_id}.json").write_text(
                 json.dumps(result.record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
             )
+            if "artifact_ranking_error" in result.annotations:
+                n_regex_fallbacks += 1
             if result.annotations:
                 # In a subdirectory so `eval score --pred <dir>` (which reads *.json here) never sees it.
                 (out_dir / "_annotations").mkdir(exist_ok=True)
@@ -832,8 +845,17 @@ async def _run_curate_smoke(
     resolver.save_cache()
     resolver.close()  # this loop owns the shared resolver's TaxonomyDB handle; close it once, here.
     logger.bind(stage="cli", run_id=run_id).info(
-        "smoke run finished", n_studies=len(ids), n_valid=n_valid, n_errors=n_errors
+        "smoke run finished",
+        n_studies=len(ids),
+        n_valid=n_valid,
+        n_errors=n_errors,
+        n_decision_fallbacks=n_regex_fallbacks,
     )
+    if n_regex_fallbacks:
+        console.print(
+            f"[yellow]{n_regex_fallbacks} study(ies) fell back to the regex locate because the decision-model call "
+            "failed (see artifact_ranking_error in _annotations/).[/yellow]"
+        )
     console.print(
         f"[green]Curated {len(ids)} studies -> {out_dir}[/green] ({n_valid} valid, {n_errors} error(s))"
     )

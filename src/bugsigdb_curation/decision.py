@@ -474,6 +474,16 @@ class ClefDecisionModel:
             await asyncio.to_thread(_append)
 
 
+def require_credentials() -> None:
+    """Raise :class:`DecisionModelError` unless Cloudflare credentials are in the environment/``.env``.
+
+    For fail-fast checks before a long batch; the values are never returned or logged.
+    """
+    load_dotenv()
+    if not os.environ.get("CLOUDFLARE_ACCOUNT_ID") or not os.environ.get("CLOUDFLARE_API_TOKEN"):
+        raise DecisionModelError("CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN must be set")
+
+
 @asynccontextmanager
 async def open_decision_model(
     model: str | None, *, archive: Path | None = None, timeout: float = 90.0, **kwargs: Any

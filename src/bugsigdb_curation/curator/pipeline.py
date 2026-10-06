@@ -62,7 +62,7 @@ from bugsigdb_curation.curator.segment import segment_experiments
 from bugsigdb_curation.curator.signature import ExtractedSignature, extract_signatures
 from bugsigdb_curation.curator.taxonomy import DEFAULT_CACHE_PATH, NcbiTaxonomyResolver
 from bugsigdb_curation.curator.verify import verify_signatures
-from bugsigdb_curation.decision import DecisionModel
+from bugsigdb_curation.decision import DecisionModel, DecisionModelError
 from bugsigdb_curation.validate import Problem, default_schema_path, validate_instance
 
 #: The one source-config wired up for the walking skeleton (plan §6, decided
@@ -142,15 +142,27 @@ def _build_source_context(experiment_fields: ExperimentFields, artifact: Located
     return "; ".join(parts)
 
 
-async def _rank_or_none(bundle: EvidenceBundle, decision_model: DecisionModel | None) -> list[LocatedArtifact] | None:
+#: What a failed decision call can raise: the seam's own error (every Clef HTTP/schema failure), transport
+#: errors from the HTTP client, and ValueError from request validation. Anything else is a bug and must
+#: surface rather than silently turn into the regex locate.
+_DECISION_CALL_ERRORS = (DecisionModelError, httpx.HTTPError, ValueError)
+
+
+async def _rank_or_none(
+    bundle: EvidenceBundle, decision_model: DecisionModel | None, annotations: dict[str, Any] | None = None
+) -> list[LocatedArtifact] | None:
     """The decision-model artifact ranking, or None (=> regex locate) when there is no decision
-    model or its call fails. A routing failure must never abort a study."""
+    model or its call fails. A routing failure must never abort a study -- but it must not be silent
+    either: the failure is logged and, if `annotations` is given, recorded as `artifact_ranking_error`
+    so a run that quietly became regex-only (e.g. a rejected token) is visible in the output."""
     if decision_model is None:
         return None
     try:
         return await rank_artifacts(bundle, decision_model)
-    except Exception as exc:  # noqa: BLE001 -- best-effort optimization; any failure falls back to the regex
+    except _DECISION_CALL_ERRORS as exc:
         logger.bind(stage="S5a").warning("decision-model ranking failed; using regex locate", error=repr(exc))
+        if annotations is not None:
+            annotations["artifact_ranking_error"] = repr(exc)
         return None
 
 
@@ -301,7 +313,7 @@ async def curate_async(
                 annotations: dict[str, Any] = {}
                 study_fields = extract_study(bundle, resolved, model=model)
                 stubs = segment_experiments(bundle, model=model)
-                ranked = await _rank_or_none(bundle, decision_model)
+                ranked = await _rank_or_none(bundle, decision_model, annotations)
                 if ranked is not None:
                     annotations["artifact_ranking"] = [
                         {"artifact": a.provenance, "kind": a.kind, "p_da": a.p_da} for a in ranked

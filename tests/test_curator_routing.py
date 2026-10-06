@@ -166,6 +166,7 @@ def test_cli_decision_model_flag_is_ignored_with_mock(flag, tmp_path, monkeypatc
     res = CliRunner().invoke(
         app, ["curate", "--pmid", "1", "--mock", "--decision-model", flag, "--out", str(tmp_path / "o.json")]
     )
+    assert res.exit_code == 0, res.output
     assert "ignored with --mock" in res.output
     assert seen["decision_model"] is None
 
@@ -186,3 +187,111 @@ def test_cli_writes_annotations_sidecar_next_to_out(tmp_path, monkeypatch):
     assert res.exit_code == 0, res.output
     sidecar = json.loads((tmp_path / "o.annotations.json").read_text())
     assert sidecar["artifact_ranking"][0]["p_da"] == 0.9
+
+
+# --- reviewer follow-ups (PR #22): visible fallback, narrowed except, cancellation, CLI edges ----------
+
+
+def test_fallback_on_transport_error_records_the_error_annotation():
+    class Down:
+        async def decide(self, **_):
+            raise httpx.ConnectError("no route")
+
+    annotations: dict = {}
+    assert asyncio.run(_rank_or_none(_bundle([_table("1", "x")]), Down(), annotations)) is None  # type: ignore[arg-type]
+    assert "ConnectError" in annotations["artifact_ranking_error"]
+
+
+def test_programming_errors_are_not_swallowed_by_the_fallback():
+    class Broken:
+        async def decide(self, **_):
+            return {}  # missing the answer -> KeyError in rank_artifacts: a bug, must surface
+
+    with pytest.raises(KeyError):
+        asyncio.run(_rank_or_none(_bundle([_table("1", "x")]), Broken()))  # type: ignore[arg-type]
+
+
+def test_first_failure_cancels_the_sibling_calls():
+    started: list[str] = []
+    cancelled: list[str] = []
+
+    class Mixed:
+        async def decide(self, *, state, **_):
+            started.append(state["artifact"])
+            if state["artifact"] == "Table 1.":
+                raise DecisionModelError("boom")
+            try:
+                await asyncio.sleep(5)
+            except asyncio.CancelledError:
+                cancelled.append(state["artifact"])
+                raise
+            return {"is_da_artifact": NoulAnswer(0.5)}
+
+    bundle = _bundle([_table("1", "x"), _table("2", "y"), _table("3", "z")])
+    with pytest.raises(DecisionModelError, match="boom"):
+        asyncio.run(rank_artifacts(bundle, Mixed()))  # type: ignore[arg-type]
+    assert sorted(cancelled) == ["Table 2.", "Table 3."]
+
+
+def test_curate_async_falls_back_to_the_regex_choice_when_decisions_fail(httpx_mock, tmp_path):
+    class Down:
+        async def decide(self, **_):
+            raise DecisionModelError("401")
+
+    async def run(decision, tag):
+        e2e._mock_idconv(httpx_mock)
+        e2e._mock_fulltext(httpx_mock)
+        e2e._mock_taxonomy(httpx_mock)
+        async with httpx.AsyncClient() as client:
+            return await curate_async(
+                e2e.PMID, model=MockModel(), client=client, decision_model=decision, taxonomy_cache_path=tmp_path / f"{tag}.json"
+            )
+
+    baseline = asyncio.run(run(None, "base"))
+    failed = asyncio.run(run(Down(), "failed"))
+    assert failed.record == baseline.record  # same artifact chosen
+    assert set(failed.annotations) == {"artifact_ranking_error"} and "401" in failed.annotations["artifact_ranking_error"]
+
+
+def test_cli_fails_fast_without_credentials(monkeypatch, tmp_path):
+    import bugsigdb_curation.decision as decision_module
+
+    monkeypatch.setattr(decision_module, "load_dotenv", lambda *a, **k: None)
+    monkeypatch.delenv("CLOUDFLARE_ACCOUNT_ID", raising=False)
+    monkeypatch.delenv("CLOUDFLARE_API_TOKEN", raising=False)
+    monkeypatch.setattr("bugsigdb_curation.cli._build_model", lambda mock, name: MockModel())
+    res = CliRunner().invoke(app, ["curate", "--pmid", "1", "--decision-model", "clef", "--out", str(tmp_path / "o.json")])
+    assert res.exit_code == 2 and "CLOUDFLARE_ACCOUNT_ID" in res.output
+    smoke = CliRunner().invoke(app, ["curate", "--smoke", "--decision-model", "clef", "--out", str(tmp_path / "s")])
+    assert smoke.exit_code == 2 and "CLOUDFLARE_ACCOUNT_ID" in smoke.output
+
+
+def test_smoke_mode_sidecars_archive_default_and_fallback_count(monkeypatch, tmp_path):
+    import contextlib
+
+    import bugsigdb_curation.cli as cli_module
+    from bugsigdb_curation.curator.pipeline import CurationResult
+
+    opened: dict = {}
+
+    @contextlib.asynccontextmanager
+    async def fake_open(name, archive=None, **_):
+        opened.update(name=name, archive=archive)
+        yield None
+
+    async def fake_curate_async(pmid, **kwargs):
+        ann = {"artifact_ranking_error": "boom"} if pmid == "A" else {"artifact_ranking": [{"p_da": 0.9}]}
+        return CurationResult(pmid=pmid, pmcid=None, has_pmc=False, record={"uid": pmid}, valid=True, problems=(), annotations=ann)
+
+    monkeypatch.setattr(cli_module, "open_decision_model", fake_open)
+    monkeypatch.setattr(cli_module, "curate_async", fake_curate_async)
+    monkeypatch.setattr(cli_module, "smoke_study_ids", lambda: ["A", "B"])
+    monkeypatch.setattr(cli_module, "require_credentials", lambda: None)
+    out = tmp_path / "smoke"
+    res = CliRunner().invoke(app, ["curate", "--smoke", "--decision-model", "clef-flash", "--out", str(out)])
+    assert res.exit_code == 0, res.output
+    assert opened == {"name": "clef-flash", "archive": out / "decision.jsonl"}
+    assert sorted(p.name for p in (out / "_annotations").iterdir()) == ["A.json", "B.json"]
+    assert "1 study(ies) fell back to the regex" in res.output
+    # eval score reads *.json files directly in the pred dir: only the two records, no sidecars/archives
+    assert sorted(p.name for p in out.glob("*.json")) == ["A.json", "B.json"]

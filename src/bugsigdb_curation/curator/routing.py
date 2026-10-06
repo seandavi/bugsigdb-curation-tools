@@ -91,7 +91,14 @@ async def rank_artifacts(bundle: EvidenceBundle, decision_model: DecisionModel) 
         answer = answers["is_da_artifact"]
         return replace(artifact, p_da=answer.p_yes)  # type: ignore[union-attr]
 
-    ranked = await asyncio.gather(*(one(a) for a in candidates))
+    # TaskGroup (not gather): the first failure cancels the sibling calls instead of letting them keep
+    # spending decision calls after the pipeline has already fallen back to the regex.
+    try:
+        async with asyncio.TaskGroup() as group:
+            tasks = [group.create_task(one(a)) for a in candidates]
+    except ExceptionGroup as group_error:
+        raise group_error.exceptions[0] from None
+    ranked = [task.result() for task in tasks]
     ordered = sorted(ranked, key=lambda a: -(a.p_da or 0.0))  # sorted() is stable: ties keep document order
     logger.bind(stage="S5a").info(
         "artifacts ranked", n=len(ordered), top=ordered[0].provenance, top_p_da=round(ordered[0].p_da or 0.0, 3)
