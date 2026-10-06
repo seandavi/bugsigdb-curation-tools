@@ -162,6 +162,10 @@ MAX_ZIP_MEMBERS = 500
 
 #: Where fetch-level skip reasons are filed in a `skipped` collector (there is no member name to attach them to).
 ZIP_SKIP_NAME = "(supplementary files zip)"
+#: ... and the one aggregate note for members left unread because of the member-count limit.
+ZIP_MEMBERS_SKIP_NAME = "(supplementary files zip members)"
+#: The `ZIP_SKIP_NAME` reason for a PMCID EuropePMC has no supplementary ZIP for: a normal outcome, not a failure.
+NO_SUPPLEMENTS_REASON = "no supplementary files (HTTP 404)"
 
 #: What reading one member can raise for a damaged, truncated, encrypted or unsupported-compression entry
 #: (`BadZipFile` covers a CRC mismatch).
@@ -230,7 +234,7 @@ def unpack_supplement_zip(
                     )
                 )
         if len(members) > max_members:
-            skip(ZIP_SKIP_NAME, f"{len(members) - max_members} further members not read (limit {max_members})")
+            skip(ZIP_MEMBERS_SKIP_NAME, f"{len(members) - max_members} further members not read (limit {max_members})")
     return files
 
 
@@ -305,7 +309,7 @@ async def fetch_supplement_zip(
         status = exc.response.status_code
         if status == 404:
             log.info("no supplementary files for pmcid", pmcid=pmcid)
-            return none("no supplementary files (HTTP 404)")
+            return none(NO_SUPPLEMENTS_REASON)
         log.warning("supplementary files fetch failed", pmcid=pmcid, status_code=status)
         return none(f"fetch failed: HTTP {status}")
     except httpx.HTTPError as exc:

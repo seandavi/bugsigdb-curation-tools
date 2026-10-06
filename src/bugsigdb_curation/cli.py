@@ -12,6 +12,7 @@ import asyncio
 import json
 import sys
 import uuid
+from collections import Counter
 from enum import Enum
 from pathlib import Path
 
@@ -75,7 +76,13 @@ from bugsigdb_curation.pmc_map import (
     write_mapping_csv,
 )
 from bugsigdb_curation.split import split_full_dump
-from bugsigdb_curation.supplements import SupplementFile, fetch_supplements, supplement_to_text
+from bugsigdb_curation.supplements import (
+    NO_SUPPLEMENTS_REASON,
+    ZIP_SKIP_NAME,
+    SupplementFile,
+    fetch_supplements,
+    supplement_to_text,
+)
 from bugsigdb_curation.taxonomy.cli import taxonomy_app
 from bugsigdb_curation.validate import (
     InstanceResult,
@@ -818,6 +825,8 @@ async def _run_curate_smoke(
     n_regex_fallbacks = 0
     n_ontology_failures = 0
     n_supplement_failures = 0
+    n_supplement_extract_failures = 0
+    supplement_fetch_failures: Counter[str] = Counter()
     # One shared client for the whole batch (reused connection pool/keep-
     # alive) instead of curate_async creating and tearing down a fresh
     # client per study -- fewer connections churned, less NCBI/PMC
@@ -873,6 +882,11 @@ async def _run_curate_smoke(
                 n_ontology_failures += 1
             if "supplement_screen_error" in result.annotations:
                 n_supplement_failures += 1
+            if "supplement_extract_error" in result.annotations:
+                n_supplement_extract_failures += 1
+            for skip in result.annotations.get("supplement_skipped", ()):
+                if skip["file"] == ZIP_SKIP_NAME and skip["reason"] != NO_SUPPLEMENTS_REASON:
+                    supplement_fetch_failures[skip["reason"]] += 1
             if result.annotations:
                 # In a subdirectory so `eval score --pred <dir>` (which reads *.json here) never sees it.
                 (out_dir / "_annotations").mkdir(exist_ok=True)
@@ -899,6 +913,8 @@ async def _run_curate_smoke(
         n_decision_fallbacks=n_regex_fallbacks,
         n_body_site_term_failures=n_ontology_failures,
         n_supplement_screen_failures=n_supplement_failures,
+        n_supplement_extract_failures=n_supplement_extract_failures,
+        n_supplement_fetch_failures=sum(supplement_fetch_failures.values()),
     )
     if n_regex_fallbacks:
         console.print(
@@ -914,6 +930,17 @@ async def _run_curate_smoke(
         console.print(
             f"[yellow]{n_supplement_failures} study(ies) have no supplement experiments because the supplement "
             "screening call failed (see supplement_screen_error in _annotations/).[/yellow]"
+        )
+    if n_supplement_extract_failures:
+        console.print(
+            f"[yellow]{n_supplement_extract_failures} study(ies) lost some supplement units because extraction or "
+            "name resolution failed (see supplement_extract_error in _annotations/).[/yellow]"
+        )
+    if supplement_fetch_failures:
+        reasons = ", ".join(f"{n}x {reason}" for reason, n in supplement_fetch_failures.most_common())
+        console.print(
+            f"[yellow]{sum(supplement_fetch_failures.values())} study(ies) lost their supplements at the fetch: "
+            f"{escape(reasons)} (see supplement_skipped in _annotations/).[/yellow]"
         )
     console.print(
         f"[green]Curated {len(ids)} studies -> {out_dir}[/green] ({n_valid} valid, {n_errors} error(s))"

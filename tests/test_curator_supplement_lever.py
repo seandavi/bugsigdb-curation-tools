@@ -1382,6 +1382,31 @@ def test_cli_smoke_threads_supplements_and_counts_screen_failures(monkeypatch, t
     assert smoke_off.exit_code == 0 and [kw["supplements"] for kw in seen[3:]] == [False, False, False]
 
 
+def test_cli_smoke_summary_also_counts_extraction_errors_and_fetch_failures(monkeypatch, tmp_path):
+    zip_skip = "(supplementary files zip)"
+    annotations = {
+        "A": {"supplement_extract_error": [{"unit": "S1.xlsx::DA", "error": "ModelCallError('rate limit')"}]},
+        "B": {"supplement_skipped": [{"file": zip_skip, "reason": "download timed out after 240 s"}]},
+        "C": {"supplement_skipped": [{"file": zip_skip, "reason": "download timed out after 240 s"}]},
+        "D": {"supplement_skipped": [{"file": zip_skip, "reason": "no supplementary files (HTTP 404)"}]},  # normal
+        "E": {"supplement_skipped": [{"file": "fig.png", "reason": "image file not read"}]},  # not a fetch failure
+        "F": {"supplement_skipped": [{"file": zip_skip, "reason": "fetch failed: HTTP 503"}]},
+    }
+    _stub_curate(monkeypatch, lambda pmid: annotations[pmid])
+    monkeypatch.setattr(cli_module, "smoke_study_ids", lambda: list(annotations))
+    caches = ["--taxonomy-cache", str(tmp_path / "tax.json"), "--ols-cache", str(tmp_path / "ols.json")]
+    result, output = _invoke(
+        "curate", "--smoke", "--decision-model", "clef", "--supplements", "--out", str(tmp_path / "s"), *caches
+    )
+    assert result.exit_code == 0, output
+    assert "1 study(ies) lost some supplement units because extraction or name resolution failed" in output
+    assert "see supplement_extract_error" in output
+    assert "3 study(ies) lost their supplements at the fetch" in output
+    assert "2x download timed out after 240 s" in output and "1x fetch failed: HTTP 503" in output
+    assert "no supplementary files" not in output  # a plain 404 is not a failure
+    assert "screening call failed" not in output
+
+
 def test_cli_help_mentions_supplements():
     _, output = _invoke("curate", "--help")
     assert "--supplements" in output and "--no-supplements" in output and "supplementary files" in output

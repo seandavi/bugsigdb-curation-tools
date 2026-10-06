@@ -239,8 +239,8 @@ def test_unpack_reads_at_most_max_members_and_records_the_rest():
     skipped: list[tuple[str, str]] = []
     files = unpack_supplement_zip(zip_bytes, max_members=5, skipped=skipped)
     assert [f.filename for f in files] == [f"f{i}.csv" for i in range(5)]
-    ((_, reason),) = skipped
-    assert "2 further" in reason and "5" in reason
+    ((name, reason),) = skipped
+    assert name == "(supplementary files zip members)" and "2 further" in reason and "5" in reason
 
 
 def test_unpack_default_budgets_are_200mb_and_500_members():
