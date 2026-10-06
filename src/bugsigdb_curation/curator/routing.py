@@ -64,14 +64,15 @@ DA_ARTIFACT_QUESTION = Noul(
 )
 
 
-def _unwrap(group_error: ExceptionGroup) -> BaseException:
+def unwrap_fan_out_failure(
+    group_error: ExceptionGroup, expected: tuple[type[BaseException], ...] = DECISION_CALL_ERRORS
+) -> BaseException:
     """The exception to re-raise from a failed TaskGroup fan-out.
 
-    The first member when every member is an expected decision-call failure (the pipeline absorbs
-    those); otherwise the first member that is *not* -- a sibling's bug must never be masked by another
-    sibling's routine failure.
+    The first member when every member is an `expected` failure (the pipeline absorbs those); otherwise the
+    first member that is *not* -- a sibling's bug must never be masked by another sibling's routine failure.
     """
-    unexpected = [e for e in group_error.exceptions if not isinstance(e, DECISION_CALL_ERRORS)]
+    unexpected = [e for e in group_error.exceptions if not isinstance(e, expected)]
     return (unexpected or group_error.exceptions)[0]
 
 
@@ -125,7 +126,7 @@ async def rank_artifacts(bundle: EvidenceBundle, decision_model: DecisionModel) 
         async with asyncio.TaskGroup() as group:
             tasks = [group.create_task(one(a)) for a in candidates]
     except ExceptionGroup as group_error:
-        raise _unwrap(group_error) from None
+        raise unwrap_fan_out_failure(group_error) from None
     ranked = [task.result() for task in tasks]
     ordered = sorted(ranked, key=lambda a: -(a.p_da or 0.0))  # sorted() is stable: ties keep document order
     logger.bind(stage="S5a").info(
@@ -204,5 +205,5 @@ async def map_body_sites(
         async with asyncio.TaskGroup() as group:
             tasks = [group.create_task(one(label)) for label in distinct]
     except ExceptionGroup as group_error:
-        raise _unwrap(group_error) from None
+        raise unwrap_fan_out_failure(group_error) from None
     return [task.result() for task in tasks]

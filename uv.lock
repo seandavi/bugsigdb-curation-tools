@@ -305,6 +305,7 @@ dependencies = [
     { name = "litellm" },
     { name = "loguru" },
     { name = "openpyxl" },
+    { name = "pymupdf" },
     { name = "python-docx" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
@@ -314,7 +315,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "pymupdf" },
     { name = "pytest" },
     { name = "pytest-httpx" },
 ]
@@ -328,6 +328,7 @@ requires-dist = [
     { name = "litellm", specifier = ">=1.92.0" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "openpyxl", specifier = ">=3.1.5" },
+    { name = "pymupdf", specifier = ">=1.28.2" },
     { name = "python-docx", specifier = ">=1.2.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6.0.3" },
@@ -337,7 +338,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "pymupdf", specifier = ">=1.28.2" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-httpx", specifier = ">=0.36.2" },
 ]

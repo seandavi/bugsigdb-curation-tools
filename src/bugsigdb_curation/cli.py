@@ -12,6 +12,7 @@ import asyncio
 import json
 import sys
 import uuid
+from collections import Counter
 from enum import Enum
 from pathlib import Path
 
@@ -76,7 +77,13 @@ from bugsigdb_curation.pmc_map import (
 )
 from bugsigdb_curation.review.cli import review_app
 from bugsigdb_curation.split import split_full_dump
-from bugsigdb_curation.supplements import SupplementFile, fetch_supplements, supplement_to_text
+from bugsigdb_curation.supplements import (
+    NO_SUPPLEMENTS_REASON,
+    ZIP_SKIP_NAME,
+    SupplementFile,
+    fetch_supplements,
+    supplement_to_text,
+)
 from bugsigdb_curation.taxonomy.cli import taxonomy_app
 from bugsigdb_curation.validate import (
     InstanceResult,
@@ -633,6 +640,15 @@ def curate_command(
         "--decision-archive",
         help="JSONL file recording every decision-model call (default: next to --out, if given).",
     ),
+    supplements: bool = typer.Option(
+        False,
+        "--supplements/--no-supplements",
+        help=(
+            "Also read the paper's supplementary files: the decision model screens each sheet/page, the ones "
+            "with differential-abundance results are extracted and their experiments appended after the "
+            "main-text ones. Needs --decision-model."
+        ),
+    ),
     log_format: LogFormat | None = _LOG_FORMAT_OPTION,
     log_level: str | None = _LOG_LEVEL_OPTION,
 ) -> None:
@@ -659,6 +675,12 @@ def curate_command(
     if mock and decision_name is not None:
         error_console.print("[yellow]--decision-model ignored with --mock (no offline decision backend).[/yellow]")
         decision_name = None
+    if supplements and decision_name is None:
+        error_console.print(
+            "[red]Error:[/red] --supplements needs a decision model: pass --decision-model clef|clef-flash "
+            "(it is not available with --mock)."
+        )
+        raise typer.Exit(code=2)
     if decision_name is not None:
         try:
             require_credentials()
@@ -689,6 +711,7 @@ def curate_command(
                 decision_name=decision_name,
                 decision_archive=decision_archive or out / "decision.jsonl",
                 ols_cache=ols_cache,
+                supplements=supplements,
             )
         )
         return
@@ -713,6 +736,7 @@ def curate_command(
             decision_archive=decision_archive
             or (out.with_suffix(".decision.jsonl") if out is not None else None),
             ols_cache=ols_cache,
+            supplements=supplements,
         )
     )
 
@@ -735,6 +759,7 @@ async def _run_curate_one(
     decision_name: str | None = None,
     decision_archive: Path | None = None,
     ols_cache: Path = CURATE_DEFAULT_OLS_CACHE,
+    supplements: bool = False,
 ) -> None:
     try:
         async with open_decision_model(decision_name, archive=decision_archive) as decision_model:
@@ -750,6 +775,7 @@ async def _run_curate_one(
                 run_id=run_id,
                 decision_model=decision_model,
                 ols_cache_path=ols_cache,
+                supplements=supplements,
             )
     except Exception as exc:  # noqa: BLE001 -- surface any stage failure as a clean CLI error, not a traceback
         error_console.print(f"[red]Error curating PMID {pmid}:[/red] {escape(str(exc))}")
@@ -789,6 +815,7 @@ async def _run_curate_smoke(
     decision_name: str | None = None,
     decision_archive: Path | None = None,
     ols_cache: Path = CURATE_DEFAULT_OLS_CACHE,
+    supplements: bool = False,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     ids = smoke_study_ids()
@@ -798,6 +825,9 @@ async def _run_curate_smoke(
     n_errors = 0
     n_regex_fallbacks = 0
     n_ontology_failures = 0
+    n_supplement_failures = 0
+    n_supplement_extract_failures = 0
+    supplement_fetch_failures: Counter[str] = Counter()
     # One shared client for the whole batch (reused connection pool/keep-
     # alive) instead of curate_async creating and tearing down a fresh
     # client per study -- fewer connections churned, less NCBI/PMC
@@ -835,6 +865,7 @@ async def _run_curate_smoke(
                     run_id=run_id,
                     decision_model=decision_model,
                     ols=ols,
+                    supplements=supplements,
                 )
             except Exception as exc:  # noqa: BLE001 -- one bad study must not abort the whole batch
                 n_errors += 1
@@ -850,6 +881,13 @@ async def _run_curate_smoke(
                 n_regex_fallbacks += 1
             if "body_site_terms_error" in result.annotations:
                 n_ontology_failures += 1
+            if "supplement_screen_error" in result.annotations:
+                n_supplement_failures += 1
+            if "supplement_extract_error" in result.annotations:
+                n_supplement_extract_failures += 1
+            for skip in result.annotations.get("supplement_skipped", ()):
+                if skip["file"] == ZIP_SKIP_NAME and skip["reason"] != NO_SUPPLEMENTS_REASON:
+                    supplement_fetch_failures[skip["reason"]] += 1
             if result.annotations:
                 # In a subdirectory so `eval score --pred <dir>` (which reads *.json here) never sees it.
                 (out_dir / "_annotations").mkdir(exist_ok=True)
@@ -875,6 +913,9 @@ async def _run_curate_smoke(
         n_errors=n_errors,
         n_decision_fallbacks=n_regex_fallbacks,
         n_body_site_term_failures=n_ontology_failures,
+        n_supplement_screen_failures=n_supplement_failures,
+        n_supplement_extract_failures=n_supplement_extract_failures,
+        n_supplement_fetch_failures=sum(supplement_fetch_failures.values()),
     )
     if n_regex_fallbacks:
         console.print(
@@ -885,6 +926,22 @@ async def _run_curate_smoke(
         console.print(
             f"[yellow]{n_ontology_failures} study(ies) have no body-site ontology terms for some experiment because "
             "the OLS/decision call failed (see body_site_terms_error in _annotations/).[/yellow]"
+        )
+    if n_supplement_failures:
+        console.print(
+            f"[yellow]{n_supplement_failures} study(ies) have no supplement experiments because the supplement "
+            "screening call failed (see supplement_screen_error in _annotations/).[/yellow]"
+        )
+    if n_supplement_extract_failures:
+        console.print(
+            f"[yellow]{n_supplement_extract_failures} study(ies) lost some supplement units because extraction or "
+            "name resolution failed (see supplement_extract_error in _annotations/).[/yellow]"
+        )
+    if supplement_fetch_failures:
+        reasons = ", ".join(f"{n}x {reason}" for reason, n in supplement_fetch_failures.most_common())
+        console.print(
+            f"[yellow]{sum(supplement_fetch_failures.values())} study(ies) lost their supplements at the fetch: "
+            f"{escape(reasons)} (see supplement_skipped in _annotations/).[/yellow]"
         )
     console.print(
         f"[green]Curated {len(ids)} studies -> {out_dir}[/green] ({n_valid} valid, {n_errors} error(s))"

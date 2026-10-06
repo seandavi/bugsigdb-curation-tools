@@ -32,7 +32,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+import httpx
 import litellm
+import openai
 from dotenv import load_dotenv
 
 #: Google-first per L016: cheap, current, and multimodal (serves S5b's
@@ -52,6 +54,16 @@ _GOOGLE_KEY_ENV_NAMES = ("GOOGLE_API_KEY", "GEMINI_API_KEY", "GOOGLE_GENERATIVE_
 
 class ModelError(RuntimeError):
     """Raised when a `Model.complete` call cannot produce parseable JSON."""
+
+
+class ModelCallError(ModelError):
+    """The model call itself failed: a transport/provider error (rate limit, context window, timeout, connection,
+    budget) or a response without the expected ``choices[0].message.content`` shape. `__cause__` is the original."""
+
+
+#: What a `litellm.completion` call raises for a failed call: the provider/transport errors (litellm's exceptions
+#: subclass openai's), litellm's budget error, and a raw HTTP-client error. Anything else is a bug and surfaces.
+_COMPLETION_CALL_ERRORS = (openai.OpenAIError, litellm.exceptions.BudgetExceededError, httpx.HTTPError)
 
 
 def resolve_google_api_key() -> str | None:
@@ -231,9 +243,14 @@ class LiteLLMModel(Model):
         if self.api_key:
             kwargs["api_key"] = self.api_key
         fn = self._completion_fn or litellm.completion
-        response = fn(**kwargs)
-        choice = response["choices"][0]
-        content = choice["message"]["content"]
+        try:
+            response = fn(**kwargs)
+        except _COMPLETION_CALL_ERRORS as exc:
+            raise ModelCallError(f"Model {self.model!r} call failed: {exc!r}") from exc
+        try:
+            content = response["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise ModelCallError(f"Model {self.model!r} returned an unexpected response shape: {exc!r}") from exc
         return content or ""
 
 
