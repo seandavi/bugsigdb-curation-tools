@@ -1,0 +1,43 @@
+{
+  "artifact_ranking": [
+    {
+      "artifact": "Figure 2",
+      "kind": "figure",
+      "p_da": 0.91
+    },
+    {
+      "artifact": "Table 1",
+      "kind": "table",
+      "p_da": 0.42
+    }
+  ],
+  "body_site_terms": [
+    {
+      "experiment_index": 0,
+      "label": "Feces",
+      "term_id": "UBERON:0001988",
+      "term_label": "feces",
+      "confidence": 0.97,
+      "status": "mapped",
+      "candidates": []
+    },
+    {
+      "experiment_index": 1,
+      "label": "Cecum",
+      "term_id": "UBERON:0001153",
+      "term_label": "caecum",
+      "confidence": 0.97,
+      "status": "mapped",
+      "candidates": []
+    },
+    {
+      "experiment_index": 1,
+      "label": "Saliva",
+      "term_id": "UBERON:0001836",
+      "term_label": "saliva",
+      "confidence": 0.51,
+      "status": "low_confidence",
+      "candidates": []
+    }
+  ]
+}

@@ -974,6 +974,7 @@ def _curate(httpx_mock, tmp_path, *, tag, decision=None, model=None, supplements
                 resolver=NcbiTaxonomyResolver(cache=dict(SUPPLEMENT_TAXA_IDS), cache_path=None, db=None),
                 taxonomy_cache_path=tmp_path / f"tax-{tag}.json",
                 ols_cache_path=tmp_path / f"ols-{tag}.json",
+                html_cache_dir=tmp_path / f"html-{tag}",  # a fresh PMC-HTML cache per run, so each run requests it
             )
 
     return asyncio.run(run())

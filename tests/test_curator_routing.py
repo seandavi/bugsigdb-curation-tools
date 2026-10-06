@@ -275,6 +275,7 @@ def test_curate_async_falls_back_to_the_regex_choice_when_decisions_fail(httpx_m
             return await curate_async(
                 e2e.PMID, model=MockModel(), client=client, decision_model=decision,
                 taxonomy_cache_path=tmp_path / f"{tag}.json", ols_cache_path=tmp_path / f"{tag}-ols.json",
+                html_cache_dir=tmp_path / f"{tag}-html",
             )
 
     baseline = asyncio.run(run(None, "base"))

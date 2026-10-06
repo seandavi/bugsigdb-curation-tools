@@ -263,6 +263,7 @@ async def curate_async(
     ols_cache_path: Path | None = DEFAULT_OLS_CACHE_PATH,
     ols: OlsClient | None = None,
     supplements: bool = False,
+    html_cache_dir: Path | None = None,
 ) -> CurationResult:
     """S0-S9: turn a bare PMID into a validated nested prediction record.
 
@@ -352,7 +353,7 @@ async def curate_async(
 
             assert resolved.pmcid is not None  # has_pmc guarantees this
             with logger.contextualize(pmcid=resolved.pmcid):
-                bundle = await assemble_evidence(pmid, resolved.pmcid, client=client)
+                bundle = await assemble_evidence(pmid, resolved.pmcid, client=client, html_cache_dir=html_cache_dir)
 
                 annotations: dict[str, Any] = {}
                 study_fields = extract_study(bundle, resolved, model=model)
@@ -363,6 +364,20 @@ async def curate_async(
                         {"artifact": a.provenance, "kind": a.kind, "p_da": a.p_da} for a in ranked
                     ]
                 artifact = locate_artifact(bundle, ranked)
+                # Fetched once for the whole study (it was re-fetched per experiment before). A figure
+                # artifact with no image means S5b extracts from the legend alone -- often empty or wrong --
+                # so say so loudly in the log and in the annotations rather than failing silently.
+                image_bytes = None
+                if artifact is not None and artifact.kind == "figure" and artifact.figure is not None:
+                    try:
+                        image_bytes = await fetch_figure_image(artifact.figure, client=client)
+                    except httpx.HTTPError as exc:  # a CDN hiccup must not abort the study
+                        logger.bind(stage="S5b").warning("figure image download failed", error=repr(exc))
+                    if image_bytes is None:
+                        logger.bind(stage="S5b").warning(
+                            "figure image unavailable; extracting from the legend alone", artifact=artifact.provenance
+                        )
+                        annotations["figure_image_unavailable"] = artifact.provenance
 
                 experiments: list[tuple[ExperimentFields, list[ExtractedSignature], str | None]] = []
                 flags: list[str] = []
@@ -386,9 +401,6 @@ async def curate_async(
                     signatures: list[ExtractedSignature] = []
                     source: str | None = None
                     if artifact is not None:
-                        image_bytes = None
-                        if artifact.kind == "figure" and artifact.figure is not None:
-                            image_bytes = await fetch_figure_image(artifact.figure, client=client)
                         signatures, stage_flags = await _extract_experiment_signatures(
                             artifact,
                             design=design,
