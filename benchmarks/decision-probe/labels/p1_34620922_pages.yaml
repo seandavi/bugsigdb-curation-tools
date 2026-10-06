@@ -1,0 +1,172 @@
+# P1/P4 hand labels: PMC8497572 (PMID 34620922) supplementary PDF, per page.
+# STATUS: agent-drafted from the page text and the L031 decomposition (pp. 1-25 diversity /
+# ordination stats = no DA; DA = the LEfSe 'Genus | LDA' pages 27-47; S24 and S33 are the
+# multi-group one-vs-rest tables). Pages 26 and 37 are *counts* of DA genera, not per-taxon
+# results, so has_da_results=false. NEEDS HUMAN REVIEW before the numbers are quoted.
+# Multi-group pages: 27 (all gut regions within species) and 38-39 (all host species within region).
+# Pairwise tables (28-36, 40-47) carry several 2-group sub-tables per page, all labelled two_group.
+pmid: '34620922'
+file: 41598_2021_99379_MOESM1_ESM.pdf
+labeller: agent-draft
+pages:
+  1:
+    has_da_results: false
+    content_kind: methods_text
+  2:
+    has_da_results: false
+    content_kind: figure_or_image
+  3:
+    has_da_results: false
+    content_kind: figure_or_image
+  4:
+    has_da_results: false
+    content_kind: figure_or_image
+  5:
+    has_da_results: false
+    content_kind: figure_or_image
+  6:
+    has_da_results: false
+    content_kind: figure_or_image
+  7:
+    has_da_results: false
+    content_kind: sample_metadata
+  8:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  9:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  10:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  11:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  12:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  13:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  14:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  15:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  16:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  17:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  18:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  19:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  20:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  21:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  22:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  23:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  24:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  25:
+    has_da_results: false
+    content_kind: diversity_or_ordination_stats
+  26:
+    has_da_results: false
+    content_kind: other
+  27:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: multi_group_one_vs_rest
+  28:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  29:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  30:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  31:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  32:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  33:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  34:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  35:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  36:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  37:
+    has_da_results: false
+    content_kind: other
+  38:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: multi_group_one_vs_rest
+  39:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: multi_group_one_vs_rest
+  40:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  41:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  42:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  43:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  44:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  45:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  46:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group
+  47:
+    has_da_results: true
+    content_kind: da_taxa_table
+    arity: two_group

@@ -139,6 +139,7 @@ def binary_report(y: Sequence[int], p: Sequence[float], *, recall_target: float 
         "brier": brier(y, p),
         "at_0.5": prf_at(y, p, 0.5),
         f"at_recall_{recall_target}": threshold_for_recall(y, p, recall_target),
+        "at_recall_1.0": threshold_for_recall(y, p, 1.0),
     }
 
 

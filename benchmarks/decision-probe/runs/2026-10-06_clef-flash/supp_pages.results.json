@@ -1,0 +1,655 @@
+{
+ "units": [
+  {
+   "id": "p01",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "methods_text"
+   },
+   "p_da": 0.045,
+   "content_kind": "other",
+   "content_kind_conf": 0.3112,
+   "arity": "multi_group_one_vs_rest",
+   "arity_conf": 0.126,
+   "n_groups": 1.0794
+  },
+  {
+   "id": "p02",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.0385,
+   "content_kind": "figure_or_image",
+   "content_kind_conf": 0.5212,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.8021,
+   "n_groups": 1.579
+  },
+  {
+   "id": "p03",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.019,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.4656,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.1788,
+   "n_groups": 1.1909
+  },
+  {
+   "id": "p04",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.0235,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.4204,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.1969,
+   "n_groups": 1.8916
+  },
+  {
+   "id": "p05",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.0217,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.4727,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.2732,
+   "n_groups": 1.1153
+  },
+  {
+   "id": "p06",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "figure_or_image"
+   },
+   "p_da": 0.0199,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.4546,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.4865,
+   "n_groups": 1.0079
+  },
+  {
+   "id": "p07",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "sample_metadata"
+   },
+   "p_da": 0.0257,
+   "content_kind": "sample_metadata",
+   "content_kind_conf": 0.3281,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.7179,
+   "n_groups": 1.3489
+  },
+  {
+   "id": "p08",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.132,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.7919,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.0587,
+   "n_groups": 1.9908
+  },
+  {
+   "id": "p09",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.0869,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.8157,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.1165,
+   "n_groups": 1.9324
+  },
+  {
+   "id": "p10",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.0776,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.7796,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.2716,
+   "n_groups": 1.4588
+  },
+  {
+   "id": "p11",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.3909,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.4894,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.0367,
+   "n_groups": 1.8659
+  },
+  {
+   "id": "p12",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.2253,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.8194,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.1381,
+   "n_groups": 1.1174
+  },
+  {
+   "id": "p13",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.2298,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.7941,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.1944,
+   "n_groups": 1.0916
+  },
+  {
+   "id": "p14",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.155,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.779,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.0475,
+   "n_groups": 1.0514
+  },
+  {
+   "id": "p15",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.7199,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.3392,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.3105,
+   "n_groups": 1.0945
+  },
+  {
+   "id": "p16",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.0454,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.8732,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.2443,
+   "n_groups": 1.5959
+  },
+  {
+   "id": "p17",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.0415,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.9006,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.1755,
+   "n_groups": 0.9195
+  },
+  {
+   "id": "p18",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.0483,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.8961,
+   "arity": "not_a_comparison",
+   "arity_conf": 0.31,
+   "n_groups": 1.5785
+  },
+  {
+   "id": "p19",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.0305,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.8892,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.2801,
+   "n_groups": 1.7238
+  },
+  {
+   "id": "p20",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.0343,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.905,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.3804,
+   "n_groups": 1.2645
+  },
+  {
+   "id": "p21",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.0343,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.8829,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.3259,
+   "n_groups": 1.5633
+  },
+  {
+   "id": "p22",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.0459,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.8849,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.0303,
+   "n_groups": 1.6646
+  },
+  {
+   "id": "p23",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.0402,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.8223,
+   "arity": "two_group",
+   "arity_conf": 0.8311,
+   "n_groups": 0.0711
+  },
+  {
+   "id": "p24",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.0424,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.8392,
+   "arity": "two_group",
+   "arity_conf": 0.843,
+   "n_groups": 0.0605
+  },
+  {
+   "id": "p25",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "diversity_or_ordination_stats"
+   },
+   "p_da": 0.0359,
+   "content_kind": "diversity_or_ordination_stats",
+   "content_kind_conf": 0.8198,
+   "arity": "two_group",
+   "arity_conf": 0.84,
+   "n_groups": 0.0875
+  },
+  {
+   "id": "p26",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "other"
+   },
+   "p_da": 0.8099,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.4038,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.2025,
+   "n_groups": 1.8109
+  },
+  {
+   "id": "p27",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "multi_group_one_vs_rest",
+    "n_groups": 4
+   },
+   "p_da": 0.9255,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.869,
+   "arity": "multi_group_one_vs_rest",
+   "arity_conf": 0.2512,
+   "n_groups": 1.1335
+  },
+  {
+   "id": "p28",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9609,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8916,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.1995,
+   "n_groups": 1.1848
+  },
+  {
+   "id": "p29",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9564,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8875,
+   "arity": "two_group",
+   "arity_conf": 0.6293,
+   "n_groups": 0.1552
+  },
+  {
+   "id": "p30",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9574,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.887,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.4352,
+   "n_groups": 1.8262
+  },
+  {
+   "id": "p31",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9522,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8908,
+   "arity": "two_group",
+   "arity_conf": 0.3529,
+   "n_groups": 0.383
+  },
+  {
+   "id": "p32",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9529,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8763,
+   "arity": "two_group",
+   "arity_conf": 0.5746,
+   "n_groups": 0.1177
+  },
+  {
+   "id": "p33",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.945,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8866,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.1782,
+   "n_groups": 1.4083
+  },
+  {
+   "id": "p34",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9471,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8651,
+   "arity": "two_group",
+   "arity_conf": 0.3617,
+   "n_groups": 0.5233
+  },
+  {
+   "id": "p35",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9582,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8928,
+   "arity": "two_group",
+   "arity_conf": 0.4375,
+   "n_groups": 0.3026
+  },
+  {
+   "id": "p36",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9602,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8521,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.3703,
+   "n_groups": 1.2823
+  },
+  {
+   "id": "p37",
+   "label": {
+    "has_da_results": false,
+    "content_kind": "other"
+   },
+   "p_da": 0.0665,
+   "content_kind": "other",
+   "content_kind_conf": 0.4862,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.4007,
+   "n_groups": 1.0389
+  },
+  {
+   "id": "p38",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "multi_group_one_vs_rest",
+    "n_groups": 3
+   },
+   "p_da": 0.9378,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8776,
+   "arity": "multi_group_one_vs_rest",
+   "arity_conf": 0.6985,
+   "n_groups": 1.0461
+  },
+  {
+   "id": "p39",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "multi_group_one_vs_rest",
+    "n_groups": 3
+   },
+   "p_da": 0.9435,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8879,
+   "arity": "multi_group_one_vs_rest",
+   "arity_conf": 0.6959,
+   "n_groups": 1.0882
+  },
+  {
+   "id": "p40",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9667,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.9047,
+   "arity": "two_group",
+   "arity_conf": 0.1392,
+   "n_groups": 1.1451
+  },
+  {
+   "id": "p41",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9545,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.875,
+   "arity": "two_group",
+   "arity_conf": 0.7905,
+   "n_groups": 0.1497
+  },
+  {
+   "id": "p42",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9623,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8977,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.2113,
+   "n_groups": 1.2067
+  },
+  {
+   "id": "p43",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9501,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8694,
+   "arity": "two_group",
+   "arity_conf": 0.7301,
+   "n_groups": 0.1867
+  },
+  {
+   "id": "p44",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9644,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8957,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.2401,
+   "n_groups": 1.3009
+  },
+  {
+   "id": "p45",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9543,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.89,
+   "arity": "two_group",
+   "arity_conf": 0.7755,
+   "n_groups": 0.1647
+  },
+  {
+   "id": "p46",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.958,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8967,
+   "arity": "multi_group_all_pairwise",
+   "arity_conf": 0.1926,
+   "n_groups": 1.249
+  },
+  {
+   "id": "p47",
+   "label": {
+    "has_da_results": true,
+    "content_kind": "da_taxa_table",
+    "arity": "two_group",
+    "n_groups": 2
+   },
+   "p_da": 0.9517,
+   "content_kind": "da_taxa_table",
+   "content_kind_conf": 0.8765,
+   "arity": "two_group",
+   "arity_conf": 0.7647,
+   "n_groups": 0.1598
+  }
+ ]
+}

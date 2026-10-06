@@ -1,0 +1,95 @@
+{
+  "arity": {
+    "accuracy": 0.5,
+    "confusions": [
+      [
+        "two_group",
+        "multi_group_all_pairwise"
+      ]
+    ],
+    "coverage_at_confidence": [
+      {
+        "accuracy": 0.5,
+        "coverage": 1.0,
+        "n": 20,
+        "tau": 0.0
+      },
+      {
+        "accuracy": 0.6923076923076923,
+        "coverage": 0.65,
+        "n": 13,
+        "tau": 0.5
+      },
+      {
+        "accuracy": 1.0,
+        "coverage": 0.4,
+        "n": 8,
+        "tau": 0.7
+      },
+      {
+        "accuracy": NaN,
+        "coverage": 0.0,
+        "n": 0,
+        "tau": 0.9
+      }
+    ],
+    "multi_group_recall": 1.0,
+    "n": 20,
+    "one_vs_rest_detection": {
+      "false_positive": 0,
+      "gold_positive": 3,
+      "true_positive": 3
+    },
+    "two_group_recall": 0.4117647058823529
+  },
+  "content_kind": {
+    "accuracy": 0.9361702127659575,
+    "confusions": [
+      [
+        "figure_or_image",
+        "diversity_or_ordination_stats"
+      ]
+    ],
+    "da_vs_rest_agreement": 1.0,
+    "n": 47
+  },
+  "cost": {
+    "calls": 47,
+    "input_tokens": 91004,
+    "mean_latency_ms": 603.4
+  },
+  "has_da_results": {
+    "at_0.5": {
+      "n_routed": 24,
+      "precision": 0.8333333333333334,
+      "recall": 1.0,
+      "tau": 0.5
+    },
+    "at_recall_0.95": {
+      "n_routed": 19,
+      "precision": 1.0,
+      "recall": 0.95,
+      "tau": 0.9808
+    },
+    "at_recall_1.0": {
+      "n_routed": 20,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tau": 0.9788
+    },
+    "auprc": 1.0,
+    "auroc": 1.0,
+    "brier": 0.05097645851063828,
+    "n": 47,
+    "n_pos": 20
+  },
+  "n_groups": {
+    "mean_abs_level_error": 0.5656900000000001,
+    "n": 20,
+    "within_half_level": 0.5
+  },
+  "routed_at_recall_0.95": {
+    "routed": 19,
+    "total": 47
+  }
+}
