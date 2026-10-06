@@ -5,26 +5,42 @@ from __future__ import annotations
 
 import asyncio
 import io
+import json
 import random
+import zipfile
 
 import docx
 import httpx
 import openpyxl
 import pymupdf
 import pytest
+import test_curator_pipeline_e2e as e2e
 
+from bugsigdb_curation.curator.experiment import ExperimentFields
+from bugsigdb_curation.curator.model import MockModel, ModelError
+from bugsigdb_curation.curator.ner import NamedTaxon
+from bugsigdb_curation.curator.pipeline import curate_async
+from bugsigdb_curation.curator.signature import ExtractedSignature, ExtractedTaxon
 from bugsigdb_curation.curator.supplement_lever import (
     MAX_IMAGE_BYTES,
     ONE_VS_REST,
     SCREEN_QUESTIONS,
     SCREEN_THRESHOLD,
     ScreenedUnit,
+    SupplementComparison,
     SupplementScreenError,
     SupplementUnit,
+    build_extract_messages,
+    drop_duplicate_experiments,
+    expand_one_vs_rest,
+    extract_comparisons,
+    resolve_comparison,
     screen_state,
     screen_units,
+    supplement_experiments,
     supplement_units,
 )
+from bugsigdb_curation.curator.taxonomy import NcbiTaxonomyResolver
 from bugsigdb_curation.decision import (
     Choice,
     ChoiceAnswer,
@@ -33,7 +49,7 @@ from bugsigdb_curation.decision import (
     Noul,
     NoulAnswer,
 )
-from bugsigdb_curation.supplements import SupplementFile
+from bugsigdb_curation.supplements import EUROPEPMC_SUPPLEMENTARY_FILES_URL, SupplementFile
 
 # --- fixtures: tiny in-memory supplement files --------------------------------------------------------
 
@@ -304,3 +320,429 @@ def test_screen_of_no_units_makes_no_calls():
     mock = MockDecisionModel()
     assert asyncio.run(screen_units([], mock)) == []
     assert mock.calls == []
+
+
+# --- extraction prompts and parsing -------------------------------------------------------------------
+
+
+def _prompt(messages) -> str:
+    return messages[0]["content"][0]["text"]
+
+
+def test_two_group_prompt_carries_the_group_convention_and_the_unit_text():
+    unit = _unit("a", "taxon\tlda\nBacteroides\t4.1")
+    text = _prompt(build_extract_messages(unit, study_title="A gut study", one_vs_rest=False))
+    assert "REFERENCE group" in text and "CASE group" in text and "INCREASED means more abundant in Group 1" in text
+    assert '"comparisons"' in text and "group_0_name" in text and "do NOT propose" in text
+    assert "A gut study" in text and "a.xlsx :: S" in text and "Bacteroides\t4.1" in text
+    assert "ENRICHED" not in text
+
+
+def test_one_vs_rest_prompt_asks_for_each_groups_enriched_taxa():
+    text = _prompt(build_extract_messages(_unit("a"), study_title="", one_vs_rest=True))
+    assert "ENRICHED in that group versus all other groups" in text and '"groups"' in text
+    assert "comparisons" not in text
+
+
+def test_image_units_send_the_page_image_alongside_the_text():
+    jpeg = b"\xff\xd8\xff-fake"
+    unit = _unit("p", "caption words", kind="pdf_image", label="page 3", image=jpeg, page=3)
+    (message,) = build_extract_messages(unit, study_title="", one_vs_rest=False)
+    kinds = [block["type"] for block in message["content"]]
+    assert kinds == ["text", "image_url"]
+    assert message["content"][1]["image_url"]["url"].startswith("data:image/jpeg;base64,")
+    assert "caption words" in message["content"][0]["text"] and "attached image" in message["content"][0]["text"]
+    assert [b["type"] for b in build_extract_messages(_unit("t"), study_title="", one_vs_rest=False)[0]["content"]] == ["text"]
+
+
+def test_extract_comparisons_parses_groups_sites_taxa_and_calls_the_supplement_extract_stage():
+    model = MockModel(
+        {
+            "supplement_extract": {
+                "comparisons": [
+                    {
+                        "group_0_name": " Healthy ",
+                        "group_1_name": "Crohn",
+                        "body_site": "Feces",
+                        "condition": ["Crohn disease"],
+                        "taxa": [
+                            {"name": "Bacteroides", "direction": "Decreased"},
+                            {"name": "Escherichia coli", "direction": "increased"},
+                            {"name": "Bogus", "direction": "up"},
+                            {"direction": "increased"},
+                            "junk",
+                        ],
+                    },
+                    {"group_0_name": "a", "group_1_name": "b", "taxa": []},
+                    "junk",
+                ]
+            }
+        }
+    )
+    (comparison,) = extract_comparisons(_unit("a"), model=model)
+    assert model.calls[0]["stage"] == "supplement_extract"
+    assert comparison == SupplementComparison(
+        "Healthy", "Crohn", ("Feces",), ("Crohn disease",),
+        (NamedTaxon("Bacteroides", "decreased"), NamedTaxon("Escherichia coli", "increased")),
+    )
+
+
+@pytest.mark.parametrize("response", [{}, {"comparisons": None}, {"comparisons": "none"}, {"groups": [{"name": "x", "taxa": ["t"]}]}])
+def test_a_two_group_extraction_ignores_missing_or_oddly_shaped_answers(response):
+    assert extract_comparisons(_unit("a"), model=MockModel({"supplement_extract": response})) == []
+
+
+def test_unparseable_generative_response_is_a_model_error():
+    def boom(messages):
+        raise ModelError("malformed JSON")
+
+    with pytest.raises(ModelError):
+        extract_comparisons(_unit("a"), model=MockModel({"supplement_extract": boom}))
+
+
+# --- A4: one-vs-rest expansion -------------------------------------------------------------------------
+
+
+def test_expand_one_vs_rest_makes_one_experiment_per_group_with_enriched_taxa_increased():
+    comparisons = expand_one_vs_rest([("Cluster A", ["T1", "T2"]), ("Cluster B", ["T3"]), ("Cluster C", [])])
+    assert [(c.group_0_name, c.group_1_name) for c in comparisons] == [
+        ("all other groups (not Cluster A)", "Cluster A"),
+        ("all other groups (not Cluster B)", "Cluster B"),
+    ]
+    assert [t.name for t in comparisons[0].taxa] == ["T1", "T2"]
+    assert all(t.direction == "increased" for c in comparisons for t in c.taxa)
+
+
+def test_one_vs_rest_extraction_expands_in_code_and_only_when_asked():
+    model = MockModel(
+        {
+            "supplement_extract": {
+                "groups": [{"name": "G1", "taxa": [{"name": "A"}, "B"]}, {"name": "G2", "taxa": [{"name": "C"}]}, {"taxa": []}]
+            }
+        }
+    )
+    comparisons = extract_comparisons(_unit("a"), model=model, one_vs_rest=True)
+    assert [c.group_1_name for c in comparisons] == ["G1", "G2"]
+    assert [t.name for t in comparisons[0].taxa] == ["A", "B"]
+    assert extract_comparisons(_unit("a"), model=model, one_vs_rest=False) == []  # never expanded unless the screen said so
+
+
+# --- resolution and dedupe ---------------------------------------------------------------------------
+
+
+def _resolver(**cache: int | None) -> NcbiTaxonomyResolver:
+    return NcbiTaxonomyResolver(cache={k.replace("_", " "): v for k, v in cache.items()}, cache_path=None, db=None)
+
+
+def _fields(**kw) -> ExperimentFields:
+    base = {
+        "host_species": "Homo sapiens", "body_site": ("Feces",), "condition": ("CRC",), "group_0_name": "Control",
+        "group_1_name": "Case", "sequencing_type": "16S", "statistical_test": ("LEfSe",), "mht_correction": False,
+    }
+    return ExperimentFields(**{**base, **kw})
+
+
+def test_resolve_comparison_resolves_names_and_inherits_only_host_sequencing_and_test_defaults():
+    comparison = SupplementComparison(
+        "Healthy", "Crohn", ("Ileum",), (), (NamedTaxon("Bacteroides fragilis", "increased"), NamedTaxon("Unknownia", "decreased"))
+    )
+    unit = _unit("S1", kind="sheet", label="DA")
+    fields, signatures, source = asyncio.run(
+        resolve_comparison(
+            comparison, unit, defaults=_fields(), model=MockModel(),
+            resolver=_resolver(bacteroides_fragilis=817, unknownia=None), client=None,  # type: ignore[arg-type]
+        )
+    )
+    assert source == "S1.xlsx :: DA"
+    assert (fields.group_0_name, fields.group_1_name, fields.body_site, fields.condition) == ("Healthy", "Crohn", ("Ileum",), ())
+    assert (fields.host_species, fields.sequencing_type, fields.statistical_test, fields.mht_correction) == (
+        "Homo sapiens", "16S", ("LEfSe",), False,
+    )
+    by_direction = {sig.direction: [(t.taxon_name, t.ncbi_id) for t in sig.taxa] for sig in signatures}
+    assert by_direction == {"increased": [("Bacteroides fragilis", 817)], "decreased": [("Unknownia", None)]}
+    bare = asyncio.run(
+        resolve_comparison(
+            comparison, unit, defaults=None, model=MockModel(),
+            resolver=_resolver(bacteroides_fragilis=817, unknownia=None), client=None,  # type: ignore[arg-type]
+        )
+    )[0]
+    assert (bare.host_species, bare.sequencing_type, bare.statistical_test, bare.mht_correction) == (None, None, (), None)
+
+
+def _record(direction: str, *taxa: tuple[str, int | None], source: str = "S1.xlsx :: DA"):
+    sig = ExtractedSignature(direction, tuple(ExtractedTaxon(n, direction, i) for n, i in taxa))  # type: ignore[arg-type]
+    return _fields(), [sig], source
+
+
+def test_dedupe_drops_supplement_experiments_overlapping_a_main_signature_of_the_same_direction():
+    main = [_record("increased", ("Escherichia coli", 562), ("Klebsiella", 570), source="Table 2")]
+    dup = _record("increased", ("E. coli", 562), ("Klebsiella", 570))  # same ids under a synonym
+    below_threshold = _record("increased", ("Escherichia coli", 562), ("Other", 1), ("Else", 2), ("More", 3))  # 1 of 5 shared: 0.2
+    jaccard_half = _record("increased", ("Escherichia coli", 562))  # 1/2 = 0.5, inclusive
+    other_direction = _record("decreased", ("Escherichia coli", 562), ("Klebsiella", 570))
+    disjoint = _record("increased", ("Bacteroides", 816))
+    kept, dropped = drop_duplicate_experiments([dup, below_threshold, jaccard_half, other_direction, disjoint], main)
+    assert kept == [below_threshold, other_direction, disjoint]
+    assert [d["jaccard"] for d in dropped] == [1.0, 0.5]
+    assert dropped[0] == {
+        "source": "S1.xlsx :: DA", "group_0_name": "Control", "group_1_name": "Case", "direction": "increased",
+        "main_experiment_index": 0, "jaccard": 1.0,
+    }
+    json.dumps(dropped)
+
+
+def test_dedupe_compares_unresolved_taxa_by_normalized_name_and_ignores_empty_sets():
+    main = [_record("increased", ("Escherichia  coli", None))]
+    kept, dropped = drop_duplicate_experiments([_record("increased", ("escherichia coli", None))], main)
+    assert kept == [] and len(dropped) == 1
+    assert drop_duplicate_experiments([_record("increased")], [_record("increased")])[0] != []  # empty vs empty: not a match
+
+
+# --- the lever end to end (offline) ---------------------------------------------------------------------
+
+DA_TAXA = [
+    {  # new experiment: kept
+        "group_0_name": "Control", "group_1_name": "Crohn", "body_site": ["Feces"], "condition": ["Crohn disease"],
+        "taxa": [{"name": "Bacteroides fragilis", "direction": "increased"}, {"name": "Prevotella copri", "direction": "decreased"}],
+    },
+    {  # {Escherichia coli, Klebsiella pneumoniae} vs the main text's increased {Escherichia coli}: Jaccard 0.5 -> dropped
+        "group_0_name": "Control", "group_1_name": "Treated",
+        "taxa": [{"name": "Escherichia coli", "direction": "increased"}, {"name": "Klebsiella pneumoniae", "direction": "increased"}],
+    },
+    {  # 1/3 overlap: kept
+        "group_0_name": "Control", "group_1_name": "Other",
+        "taxa": [
+            {"name": "Escherichia coli", "direction": "increased"},
+            {"name": "Klebsiella pneumoniae", "direction": "increased"},
+            {"name": "Proteus mirabilis", "direction": "increased"},
+        ],
+    },
+]
+OVR_GROUPS = [
+    {"name": "Cluster1", "taxa": [{"name": "Roseburia hominis"}, {"name": "Blautia obeum"}]},
+    {"name": "Cluster2", "taxa": [{"name": "Akkermansia muciniphila"}]},
+    {"name": "Cluster3", "taxa": [{"name": "Dorea longicatena"}]},
+]
+SUPPLEMENT_TAXA_IDS = {
+    "bacteroides fragilis": 817, "prevotella copri": 165179, "klebsiella pneumoniae": 573, "proteus mirabilis": 584,
+    "roseburia hominis": 301301, "blautia obeum": 40520, "akkermansia muciniphila": 239935, "dorea longicatena": 88431,
+}
+PAGE_TEXT = "Differentially abundant taxa between ileal and colonic samples, LEfSe. " * 5
+
+
+def _supplement_zip() -> bytes:
+    xlsx = _xlsx(
+        {
+            "DA": [["taxon", "lda", "group"], ["Bacteroides fragilis", 4.2, "Crohn"]],
+            "Meta": [["sample", "age"], ["s1", 5]],
+            "OVR": [["cluster", "taxon"], ["Cluster1", "Roseburia hominis"]],
+        }
+    )
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("S1.xlsx", xlsx)
+        zf.writestr("S2.pdf", _pdf([PAGE_TEXT, None]))
+        zf.writestr("tiny.csv", "a,b\n1,2\n")
+        zf.writestr("fig.png", b"png")
+        zf.writestr("movie.mp4", b"video")
+    return buf.getvalue()
+
+
+def _screen_answers(state, questions):
+    key = (state["file"], state.get("sheet") or state.get("page"))
+    p, arity = {
+        ("S1.xlsx", "DA"): (0.9, "two_group"),
+        ("S1.xlsx", "Meta"): (0.1, "not_a_comparison"),
+        ("S1.xlsx", "OVR"): (0.8, ONE_VS_REST),
+        ("S2.pdf", 1): (0.7, "two_group"),
+        ("S2.pdf", 2): (0.2, "not_a_comparison"),
+        ("tiny.csv", None): (0.3, "not_a_comparison"),
+    }[key]
+    return _answers(p, arity=arity)
+
+
+def _extract_answers(messages):
+    text = _prompt(messages)
+    if "S1.xlsx :: OVR" in text:
+        assert "ENRICHED" in text
+        return {"groups": OVR_GROUPS}
+    assert "ENRICHED" not in text
+    if "S1.xlsx :: DA" in text:
+        return {"comparisons": DA_TAXA}
+    assert "S2.pdf :: page 1" in text  # nothing else is ever extracted
+    return {
+        "comparisons": [
+            {"group_0_name": "Colon", "group_1_name": "Ileum", "taxa": [{"name": "Prevotella copri", "direction": "decreased"}]}
+        ]
+    }
+
+
+def _mock_zip(httpx_mock, **kw):
+    httpx_mock.add_response(
+        url=EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid=e2e.PMCID),
+        headers={"Content-Type": "application/zip"},
+        **({"content": _supplement_zip()} | kw),
+    )
+
+
+def _curate(httpx_mock, tmp_path, *, tag, decision=None, model=None, supplements=False, zip_mock=True, **zip_kw):
+    e2e._mock_idconv(httpx_mock)
+    e2e._mock_fulltext(httpx_mock)
+    e2e._mock_taxonomy(httpx_mock)
+    if decision is not None:
+        _mock_ols(httpx_mock)
+    if supplements and zip_mock:
+        _mock_zip(httpx_mock, **zip_kw)
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await curate_async(
+                e2e.PMID,
+                model=model or MockModel({"supplement_extract": _extract_answers}),
+                client=client,
+                decision_model=decision,
+                supplements=supplements,
+                resolver=NcbiTaxonomyResolver(cache=dict(SUPPLEMENT_TAXA_IDS), cache_path=None, db=None),
+                taxonomy_cache_path=tmp_path / f"tax-{tag}.json",
+                ols_cache_path=tmp_path / f"ols-{tag}.json",
+            )
+
+    return asyncio.run(run())
+
+
+def _mock_ols(httpx_mock) -> None:
+    httpx_mock.add_response(
+        url=httpx.URL("https://www.ebi.ac.uk/ols4/api/search").copy_merge_params(
+            {"q": "Feces", "ontology": "uberon", "rows": "10", "type": "class", "queryFields": "label,synonym,short_form,obo_id"}
+        ),
+        json={"response": {"docs": [{"obo_id": "UBERON:0001988", "label": "feces"}]}},
+    )
+
+
+def _decision(**stages) -> MockDecisionModel:
+    return MockDecisionModel(
+        {
+            "s5a_locate": {"is_da_artifact": NoulAnswer(0.5)},
+            "s4_ontology": {"term": ChoiceAnswer("UBERON:0001988", {"UBERON:0001988": 0.9, "none_of_these": 0.1}, 0.9)},
+            "s1b_screen": _screen_answers,
+            **stages,
+        }
+    )
+
+
+def test_e2e_routes_extracts_expands_and_dedupes(httpx_mock, tmp_path):
+    baseline = _curate(httpx_mock, tmp_path, tag="base")
+    decision = _decision()
+    model = MockModel({"supplement_extract": _extract_answers})
+    result = _curate(httpx_mock, tmp_path, tag="supp", decision=decision, model=model, supplements=True)
+
+    assert result.valid, result.problems
+    main_experiments = baseline.record["experiments"]
+    experiments = result.record["experiments"]
+    assert experiments[: len(main_experiments)] == main_experiments  # main text first and untouched
+    supplement = experiments[len(main_experiments) :]
+
+    # routed vs unrouted: screening saw every readable unit once; only the routed ones were extracted
+    screen = {u["id"]: u for u in result.annotations["supplement_screen"]}
+    assert {k: u["routed"] for k, u in screen.items()} == {
+        "S1.xlsx::DA": True, "S1.xlsx::Meta": False, "S1.xlsx::OVR": True,
+        "S2.pdf::page 1": True, "S2.pdf::page 2": False, "tiny.csv": False,
+    }
+    assert screen["S1.xlsx::OVR"]["arity"] == ONE_VS_REST and screen["S1.xlsx::DA"]["content_kind"] == "da_taxa_table"
+    assert sum(1 for c in decision.calls if c["stage"] == "s1b_screen") == 6
+    assert [c["images"] != [] for c in decision.calls if c["stage"] == "s1b_screen" and c["state"].get("page") == 2] == [True]
+    assert sum(1 for c in model.calls if c["stage"] == "supplement_extract") == 3
+
+    # DA unit: 3 comparisons, one dropped as a duplicate of the main text (Jaccard 0.5); OVR unit: 3 groups -> 3
+    # experiments; PDF page 1: 1 experiment
+    assert [e["group_1_name"] for e in supplement] == ["Crohn", "Other", "Cluster1", "Cluster2", "Cluster3", "Ileum"]
+    assert [e["signatures"][0]["source"] for e in supplement] == [
+        "S1.xlsx :: DA", "S1.xlsx :: DA", "S1.xlsx :: OVR", "S1.xlsx :: OVR", "S1.xlsx :: OVR", "S2.pdf :: page 1",
+    ]
+    ovr = supplement[2:5]
+    assert [e["group_0_name"] for e in ovr] == [f"all other groups (not Cluster{i})" for i in (1, 2, 3)]
+    assert all([s["abundance_in_group_1"] for s in e["signatures"]] == ["increased"] for e in ovr)
+    assert [t["ncbi_id"] for t in ovr[0]["signatures"][0]["taxa"]] == [301301, 40520]  # ids from the authority path
+    assert supplement[0]["host_species"] == "Homo sapiens" and supplement[0]["sequencing_type"] == "16S"  # S4 exp 0 defaults
+    assert supplement[0]["body_site"] == ["Feces"] and "body_site" not in supplement[-1]  # only if the supplement states it
+
+    (dropped,) = result.annotations["supplement_dropped_duplicates"]
+    assert dropped["group_1_name"] == "Treated" and dropped["jaccard"] == 0.5 and dropped["main_experiment_index"] == 0
+    skipped = {s["file"]: s["reason"] for s in result.annotations["supplement_skipped"]}
+    assert set(skipped) == {"fig.png", "movie.mp4"}
+    assert not {"supplement_screen_error", "supplement_extract_error"} & set(result.annotations)
+    json.dumps(result.annotations)
+
+
+def test_with_the_flag_off_the_record_is_byte_identical_and_nothing_is_fetched(httpx_mock, tmp_path):
+    baseline = _curate(httpx_mock, tmp_path, tag="base")
+    off = _curate(httpx_mock, tmp_path, tag="off", decision=_decision(), supplements=False)
+    assert json.dumps(off.record, sort_keys=True) == json.dumps(baseline.record, sort_keys=True)
+    assert not any(k.startswith("supplement") for k in off.annotations)
+    assert all("supplementaryFiles" not in str(r.url) for r in httpx_mock.get_requests())
+
+
+def test_supplements_without_a_decision_model_is_rejected():
+    with pytest.raises(ValueError, match="decision_model"):
+        asyncio.run(curate_async(e2e.PMID, model=MockModel(), supplements=True))
+
+
+def test_no_supplementary_files_is_recorded_and_the_record_is_the_main_text_one(httpx_mock, tmp_path):
+    baseline = _curate(httpx_mock, tmp_path, tag="base")
+    result = _curate(httpx_mock, tmp_path, tag="none", decision=_decision(), supplements=True, status_code=404, content=b"")
+    assert result.record == baseline.record and result.valid
+    assert [s["file"] for s in result.annotations["supplement_skipped"]] == ["(supplementary files zip)"]
+    assert "supplement_screen" not in result.annotations
+
+
+def test_a_screen_failure_is_recorded_and_the_study_still_succeeds(httpx_mock, tmp_path):
+    baseline = _curate(httpx_mock, tmp_path, tag="base")
+
+    def down(state, questions):
+        raise DecisionModelError("401")
+
+    result = _curate(httpx_mock, tmp_path, tag="down", decision=_decision(s1b_screen=down), supplements=True)
+    assert result.valid and result.record == baseline.record
+    (failure,) = result.annotations["supplement_screen_error"]
+    assert failure["unit"].startswith(("S1.xlsx::", "S2.pdf::", "tiny.csv")) and "401" in failure["error"]
+    assert "supplement_screen" not in result.annotations
+    json.dumps(result.annotations)
+
+
+def test_a_failed_extraction_skips_only_that_unit(httpx_mock, tmp_path):
+    def flaky(messages):
+        if "S1.xlsx :: DA" in _prompt(messages):
+            raise ModelError("malformed JSON")
+        return _extract_answers(messages)
+
+    result = _curate(
+        httpx_mock, tmp_path, tag="flaky", decision=_decision(), model=MockModel({"supplement_extract": flaky}), supplements=True
+    )
+    assert result.valid
+    (failure,) = result.annotations["supplement_extract_error"]
+    assert failure["unit"] == "S1.xlsx::DA" and "malformed JSON" in failure["error"]
+    groups = [e.get("group_1_name") for e in result.record["experiments"][1:]]
+    assert groups == ["Cluster1", "Cluster2", "Cluster3", "Ileum"]  # the other routed units still landed
+
+
+def test_a_bug_in_extraction_is_not_swallowed(httpx_mock, tmp_path):
+    def buggy(messages):
+        raise KeyError("bug")
+
+    with pytest.raises(KeyError):
+        _curate(httpx_mock, tmp_path, tag="bug", decision=_decision(), model=MockModel({"supplement_extract": buggy}), supplements=True)
+
+
+def test_a_corrupt_zip_is_recorded_not_raised(httpx_mock):
+    _mock_zip(httpx_mock, content=b"PK\x03\x04 definitely not a zip")
+    annotations: dict = {}
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await supplement_experiments(
+                e2e.PMCID, client=client, decision_model=_decision(), model=MockModel(), resolver=_resolver(),
+                study_title="", main_experiments=[], annotations=annotations,
+            )
+
+    assert asyncio.run(run()) == []
+    assert "corrupt zip" in annotations["supplement_skipped"][0]["reason"]

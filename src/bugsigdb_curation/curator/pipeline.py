@@ -63,6 +63,7 @@ from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL, resolve
 from bugsigdb_curation.curator.routing import DECISION_CALL_ERRORS, map_body_sites, rank_artifacts
 from bugsigdb_curation.curator.segment import segment_experiments
 from bugsigdb_curation.curator.signature import ExtractedSignature, extract_signatures
+from bugsigdb_curation.curator.supplement_lever import supplement_experiments
 from bugsigdb_curation.curator.taxonomy import DEFAULT_CACHE_PATH, NcbiTaxonomyResolver
 from bugsigdb_curation.curator.verify import verify_signatures
 from bugsigdb_curation.decision import DecisionModel
@@ -261,6 +262,7 @@ async def curate_async(
     decision_model: DecisionModel | None = None,
     ols_cache_path: Path | None = DEFAULT_OLS_CACHE_PATH,
     ols: OlsClient | None = None,
+    supplements: bool = False,
 ) -> CurationResult:
     """S0-S9: turn a bare PMID into a validated nested prediction record.
 
@@ -272,6 +274,12 @@ async def curate_async(
     `OlsClient` across studies and then owns saving its cache). Every judgment is best-effort -- a failed decision
     call is logged and the stage falls back to its no-decision-model
     behaviour -- and with `decision_model=None` the pipeline is unchanged.
+
+    `supplements=True` (needs `decision_model`, else `ValueError`) also reads the paper's supplementary files
+    (`curator.supplement_lever`): the decision model screens each sheet/page, the units that pass are extracted
+    and their experiments appended after the main-text ones (`signatures[].source` names the file and
+    sheet/page); the screen, skipped files, errors and dropped duplicates are recorded in `annotations`.
+    With `supplements=False` (the default) none of that runs and the record is unchanged.
 
     `design` selects one of the three §6b designs (default `fused-lean`,
     today's original walking skeleton, unchanged) -- see the module
@@ -302,6 +310,8 @@ async def curate_async(
     built below always carry a genuine `Design` member.
     """
     design = Design(design)
+    if supplements and decision_model is None:
+        raise ValueError("supplements=True needs a decision_model (the supplement lever screens units with it)")
     owns_client = client is None
     if client is None:
         client = httpx.AsyncClient(timeout=30.0)
@@ -395,6 +405,19 @@ async def curate_async(
 
                 if body_site_terms:
                     annotations["body_site_terms"] = body_site_terms
+
+                if supplements:
+                    assert decision_model is not None  # checked at entry
+                    experiments += await supplement_experiments(
+                        resolved.pmcid,
+                        client=client,
+                        decision_model=decision_model,
+                        model=model,
+                        resolver=resolver,
+                        study_title=study_fields.title or bundle.metadata.title or "",
+                        main_experiments=list(experiments),
+                        annotations=annotations,
+                    )
 
                 record = assemble_record(resolved, study_fields, experiments)
                 problems = validate_instance(record, "Study", default_schema_path())

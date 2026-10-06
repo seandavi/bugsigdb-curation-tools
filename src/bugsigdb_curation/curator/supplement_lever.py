@@ -28,15 +28,24 @@ import asyncio
 import csv
 import io
 import re
+import zipfile
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
+import httpx
 from loguru import logger
 
+from bugsigdb_curation.curator.experiment import ExperimentFields
+from bugsigdb_curation.curator.model import Model, ModelError, build_image_content, build_text_content
+from bugsigdb_curation.curator.ner import NamedTaxon
+from bugsigdb_curation.curator.reconcile import reconcile_names
 from bugsigdb_curation.curator.routing import DECISION_CALL_ERRORS, unwrap_fan_out_failure
+from bugsigdb_curation.curator.signature import ExtractedSignature
+from bugsigdb_curation.curator.taxonomy import NcbiTaxonomyResolver
 from bugsigdb_curation.decision import Choice, ChoiceAnswer, DecisionModel, Noul, NoulAnswer
-from bugsigdb_curation.supplements import SupplementFile, supplement_to_text
+from bugsigdb_curation.supplements import SupplementFile, fetch_supplements, supplement_to_text
+from bugsigdb_curation.taxonomy.normalize import normalize_taxon_name
 
 SCREEN_STAGE = "s1b_screen"
 EXTRACT_STAGE = "supplement_extract"
@@ -72,6 +81,12 @@ MAX_IMAGE_BYTES = 200_000
 #: (dpi, JPEG quality) attempts in order: the probe's 100 dpi at decreasing quality, then a lower resolution for
 #: a pathological (photographic / noisy) page that still does not fit.
 _RENDER_ATTEMPTS = ((100, 80), (100, 65), (100, 50), (100, 35), (72, 35), (50, 35))
+
+#: What a lever step can raise for a failed call or a bad generative response, beyond a bug in our code.
+_EXPECTED_ERRORS = (*DECISION_CALL_ERRORS, ModelError)
+#: Jaccard overlap (of resolved taxon sets, same direction) at or above which a supplement experiment is
+#: considered already reported by the main text.
+DUPLICATE_JACCARD = 0.5
 
 UnitKind = Literal["sheet", "delimited", "docx", "pdf_text", "pdf_image"]
 
@@ -322,3 +337,371 @@ async def screen_units(units: Sequence[SupplementUnit], decision_model: Decision
         raise failure from failure.__cause__  # keep the original decision error on the named failure
     return [task.result() for task in tasks]
 
+
+
+# --- extraction (generative) ---------------------------------------------------------------------------
+
+#: BugSigDB's group convention, in `curator.artifact_text.group_orientation_text`'s wording: it holds for ~95% of
+#: curated experiments where one group is recognisably the control (and flipping it flips directions wholesale, L031).
+_GROUP_CONVENTION = (
+    "BugSigDB's group convention: Group 0 is the REFERENCE group (control / baseline / unexposed / the comparator) "
+    "and Group 1 the CASE group (exposed / treated / the group of interest), and every result reports taxa INCREASED "
+    "or DECREASED in Group 1 relative to Group 0 -- INCREASED means more abundant in Group 1 than in Group 0, "
+    "DECREASED means less abundant in Group 1 than in Group 0. Apply this even when the source lists the cases first "
+    "(e.g. 'ATB vs HC' -> group_0 = HC, group_1 = ATB). In a figure or page image, use the legend and headers to "
+    "decide which colour or side belongs to which group -- never assume the left/top/first-listed group is Group 1."
+)
+
+_TWO_GROUP_PROMPT = (
+    "You are extracting differential-abundance results from the supplementary material of a microbiome research "
+    "paper{title}, for BugSigDB curation.\n\n"
+    "{source}\n\n"
+    "List EVERY two-group differential-abundance comparison reported in it: per-taxon results such as LEfSe/LDA, "
+    "fold change, or p/q-values. Ignore anything that is not a per-taxon differential-abundance result (sample "
+    "metadata, diversity statistics, abundance matrices with no test result). For each comparison give:\n"
+    "- group_0_name and group_1_name: short names for the two compared groups. {convention}\n"
+    "- body_site: the anatomical site(s) sampled if stated (list of free-text strings), else []\n"
+    "- condition: the disease/condition label(s) if stated (list of free-text strings), else []\n"
+    "- taxa: every taxon reported as significantly different, with its name exactly as written (do NOT propose "
+    "NCBI Taxonomy ids -- they are resolved separately) and its direction, \"increased\" or \"decreased\" in "
+    "Group 1 relative to Group 0.\n\n"
+    'Return ONLY a JSON object: {{"comparisons": [{{"group_0_name": "...", "group_1_name": "...", '
+    '"body_site": [...], "condition": [...], "taxa": [{{"name": "...", "direction": "increased"|"decreased"}}, '
+    "...]}}, ...]}}\n\n"
+    "{content}"
+)
+
+_ONE_VS_REST_PROMPT = (
+    "You are extracting differential-abundance results from the supplementary material of a microbiome research "
+    "paper{title}, for BugSigDB curation.\n\n"
+    "{source}\n\n"
+    "This content compares three or more groups at once, listing for each group the taxa enriched in it against all "
+    "the other groups. For EVERY group, list the taxa ENRICHED in that group versus all other groups, with each "
+    "taxon name exactly as written (do NOT propose NCBI Taxonomy ids -- they are resolved separately) and the "
+    "group's name as written. Do not list taxa that are depleted in a group, and ignore anything that is not a "
+    "per-taxon differential-abundance result.\n\n"
+    'Return ONLY a JSON object: {{"groups": [{{"name": "<group name>", "taxa": [{{"name": "<taxon name>"}}, ...]}}, '
+    "...]}}\n\n"
+    "{content}"
+)
+
+
+@dataclass(frozen=True, slots=True)
+class SupplementComparison:
+    """One comparison extracted from a unit, names only (ids come from the taxonomy authority afterwards)."""
+
+    group_0_name: str | None
+    group_1_name: str | None
+    body_site: tuple[str, ...]
+    condition: tuple[str, ...]
+    taxa: tuple[NamedTaxon, ...]
+
+
+def build_extract_messages(unit: SupplementUnit, *, study_title: str, one_vs_rest: bool) -> list[dict]:
+    """The extraction prompt for one unit: its text, or its page image plus whatever text the page has."""
+    if unit.image is not None:
+        source = f"The attached image is a page of the supplementary file ({unit.provenance})."
+        content = f"Text extracted from the page (may be empty):\n{unit.text}" if unit.text else ""
+    else:
+        source = f"The content below is from the supplementary file ({unit.provenance})."
+        content = f"Content:\n{unit.text}"
+    template = _ONE_VS_REST_PROMPT if one_vs_rest else _TWO_GROUP_PROMPT
+    prompt = template.format(
+        title=f' ("{study_title}")' if study_title else "",
+        source=source,
+        convention=_GROUP_CONVENTION,
+        content=content,
+    )
+    blocks = [build_text_content(prompt)]
+    if unit.image is not None:
+        blocks.append(build_image_content(unit.image))
+    return [{"role": "user", "content": blocks}]
+
+
+def _strings(value: Any) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    items = [value] if isinstance(value, str) else value if isinstance(value, list) else []
+    return tuple(str(v).strip() for v in items if v is not None and str(v).strip())
+
+
+def _optional_name(value: Any) -> str | None:
+    return str(value).strip() or None if value is not None else None
+
+
+def _two_group_comparisons(response: dict[str, Any]) -> list[SupplementComparison]:
+    comparisons = []
+    raw = response.get("comparisons")
+    for item in raw if isinstance(raw, list) else []:
+        if not isinstance(item, dict):
+            continue
+        taxa = []
+        raw_taxa = item.get("taxa")
+        for t in raw_taxa if isinstance(raw_taxa, list) else []:
+            if not isinstance(t, dict) or not t.get("name"):
+                continue
+            direction = str(t.get("direction", "")).strip().lower()
+            if direction in ("increased", "decreased"):
+                taxa.append(NamedTaxon(name=str(t["name"]).strip(), direction=direction))  # type: ignore[arg-type]
+        if taxa:
+            comparisons.append(
+                SupplementComparison(
+                    group_0_name=_optional_name(item.get("group_0_name")),
+                    group_1_name=_optional_name(item.get("group_1_name")),
+                    body_site=_strings(item.get("body_site")),
+                    condition=_strings(item.get("condition")),
+                    taxa=tuple(taxa),
+                )
+            )
+    return comparisons
+
+
+def expand_one_vs_rest(groups: Sequence[tuple[str, Sequence[str]]]) -> list[SupplementComparison]:
+    """A4, deterministic: one experiment per group, ``all other groups (not X)`` (group 0) vs ``X`` (group 1), with
+    the group's enriched taxa as a single ``increased`` signature. A group with no taxa yields nothing."""
+    return [
+        SupplementComparison(
+            group_0_name=f"all other groups (not {name})",
+            group_1_name=name,
+            body_site=(),
+            condition=(),
+            taxa=tuple(NamedTaxon(name=t, direction="increased") for t in taxa),
+        )
+        for name, taxa in groups
+        if taxa
+    ]
+
+
+def _one_vs_rest_comparisons(response: dict[str, Any]) -> list[SupplementComparison]:
+    groups: list[tuple[str, list[str]]] = []
+    raw = response.get("groups")
+    for item in raw if isinstance(raw, list) else []:
+        if not isinstance(item, dict) or not item.get("name"):
+            continue
+        raw_taxa = item.get("taxa")
+        names = [
+            str(t.get("name") if isinstance(t, dict) else t).strip()
+            for t in (raw_taxa if isinstance(raw_taxa, list) else [])
+            if (t.get("name") if isinstance(t, dict) else t)
+        ]
+        groups.append((str(item["name"]).strip(), names))
+    return expand_one_vs_rest(groups)
+
+
+def extract_comparisons(
+    unit: SupplementUnit, *, model: Model, study_title: str = "", one_vs_rest: bool = False
+) -> list[SupplementComparison]:
+    """One generative call (stage ``supplement_extract``) for a routed unit.
+
+    Two-group prompt by default; `one_vs_rest=True` (only for a unit the screen labelled
+    :data:`ONE_VS_REST`) asks for each group's enriched taxa and expands them in code
+    (:func:`expand_one_vs_rest`). Raises :class:`~bugsigdb_curation.curator.model.ModelError` for an
+    unparseable response; a parseable but oddly-shaped one yields what could be read.
+    """
+    response = model.complete(
+        stage=EXTRACT_STAGE, messages=build_extract_messages(unit, study_title=study_title, one_vs_rest=one_vs_rest)
+    )
+    return _one_vs_rest_comparisons(response) if one_vs_rest else _two_group_comparisons(response)
+
+
+# --- resolution, merge, dedupe -------------------------------------------------------------------------
+
+ExperimentRecord = tuple[ExperimentFields, list[ExtractedSignature], str | None]
+
+
+def _source_context(fields: ExperimentFields, provenance: str) -> str:
+    parts = [
+        f"{label}: {', '.join(value) if isinstance(value, tuple) else value}"
+        for label, value in (("body_site", fields.body_site), ("condition", fields.condition), ("host_species", fields.host_species))
+        if value
+    ]
+    return "; ".join([*parts, f"source: {provenance}"])
+
+
+async def resolve_comparison(
+    comparison: SupplementComparison,
+    unit: SupplementUnit,
+    *,
+    defaults: ExperimentFields | None,
+    model: Model,
+    resolver: NcbiTaxonomyResolver,
+    client: httpx.AsyncClient,
+) -> ExperimentRecord:
+    """S6 on one comparison's names via `reconcile_names`, as an experiment record sourced from the unit.
+
+    Host / sequencing / test fields the supplement does not state come from `defaults` (the main text's S4
+    experiment 0); body_site / condition only if the supplement stated them.
+    """
+    fields = ExperimentFields(
+        host_species=defaults.host_species if defaults else None,
+        body_site=comparison.body_site,
+        condition=comparison.condition,
+        group_0_name=comparison.group_0_name,
+        group_1_name=comparison.group_1_name,
+        sequencing_type=defaults.sequencing_type if defaults else None,
+        statistical_test=defaults.statistical_test if defaults else (),
+        mht_correction=defaults.mht_correction if defaults else None,
+    )
+    signatures = await reconcile_names(
+        list(comparison.taxa),
+        model=model,
+        resolver=resolver,
+        client=client,
+        source_context=_source_context(fields, unit.provenance),
+    )
+    return fields, signatures, unit.provenance
+
+
+def _taxon_keys(signature: ExtractedSignature) -> frozenset[str]:
+    """A signature's taxa as comparable keys: the NCBI id when resolved (so synonyms agree), else the normalized name."""
+    return frozenset(
+        f"ncbi:{t.ncbi_id}" if t.ncbi_id is not None else normalize_taxon_name(t.taxon_name) for t in signature.taxa
+    )
+
+
+def _jaccard(a: frozenset[str], b: frozenset[str]) -> float:
+    return len(a & b) / len(a | b) if a | b else 0.0
+
+
+def drop_duplicate_experiments(
+    supplement: Sequence[ExperimentRecord], main: Sequence[ExperimentRecord]
+) -> tuple[list[ExperimentRecord], list[dict[str, Any]]]:
+    """Drop supplement experiments the main text already reports.
+
+    An experiment is a duplicate when one of its signatures overlaps a main-text signature *of the same direction*
+    with Jaccard >= :data:`DUPLICATE_JACCARD` over resolved taxa. Returns ``(kept, dropped)``; each `dropped`
+    entry names the source, groups, direction, matched main experiment index and the overlap.
+    """
+    main_sets = [
+        (index, sig.direction, _taxon_keys(sig)) for index, (_, sigs, _) in enumerate(main) for sig in sigs
+    ]
+    kept: list[ExperimentRecord] = []
+    dropped: list[dict[str, Any]] = []
+    for record in supplement:
+        fields, signatures, source = record
+        match = next(
+            (
+                (index, sig.direction, jaccard)
+                for sig in signatures
+                for index, direction, keys in main_sets
+                if direction == sig.direction and (jaccard := _jaccard(_taxon_keys(sig), keys)) >= DUPLICATE_JACCARD
+            ),
+            None,
+        )
+        if match is None:
+            kept.append(record)
+            continue
+        dropped.append(
+            {
+                "source": source,
+                "group_0_name": fields.group_0_name,
+                "group_1_name": fields.group_1_name,
+                "direction": match[1],
+                "main_experiment_index": match[0],
+                "jaccard": round(match[2], 3),
+            }
+        )
+    return kept, dropped
+
+
+# --- the lever ---------------------------------------------------------------------------------------
+
+
+async def supplement_experiments(
+    pmcid: str,
+    *,
+    client: httpx.AsyncClient,
+    decision_model: DecisionModel,
+    model: Model,
+    resolver: NcbiTaxonomyResolver,
+    study_title: str,
+    main_experiments: Sequence[ExperimentRecord],
+    annotations: dict[str, Any],
+) -> list[ExperimentRecord]:
+    """The whole lever: fetch -> units -> screen -> extract routed units -> resolve -> dedupe.
+
+    Returns the supplement-derived experiments to append after the main-text ones. Best-effort: the expected
+    failures (network, decision, bad generative response) are logged and recorded in `annotations`
+    (``supplement_screen_error`` / ``supplement_extract_error`` as lists of ``{unit, error}``) and never abort the
+    study; a bug in our code still propagates. Also records ``supplement_screen`` (per unit ``{id, p_da,
+    content_kind, arity, routed}``), ``supplement_skipped`` (``{file, reason}``) and
+    ``supplement_dropped_duplicates``.
+    """
+    log = logger.bind(stage="S1b")
+    skipped: list[tuple[str, str]] = []
+    try:
+        files = await fetch_supplements(pmcid, client=client, skipped=skipped)
+    except zipfile.BadZipFile as exc:
+        log.warning("supplement zip is corrupt; skipping", error=repr(exc))
+        files = []
+        skipped.append(("(supplementary files zip)", f"corrupt zip: {exc}"))
+    if not files and not skipped:
+        skipped.append(("(supplementary files zip)", "none fetched (none exist, too large, or the fetch failed; see log)"))
+    units = supplement_units(files, skipped=skipped)
+    if skipped:
+        annotations["supplement_skipped"] = [{"file": name, "reason": reason} for name, reason in skipped]
+    if not units:
+        return []
+
+    try:
+        screened = await screen_units(units, decision_model)
+    except SupplementScreenError as exc:
+        log.warning("supplement screening failed; skipping the supplements", unit=exc.unit_id, error=repr(exc.__cause__))
+        annotations["supplement_screen_error"] = [{"unit": exc.unit_id, "error": repr(exc.__cause__)}]
+        return []
+    annotations["supplement_screen"] = [s.annotation() for s in screened]
+    routed = [s for s in screened if s.routed]
+    n_one_vs_rest = sum(s.arity == ONE_VS_REST for s in routed)
+    log.info("supplements screened", n_units=len(units), n_routed=len(routed), n_one_vs_rest=n_one_vs_rest)
+
+    errors: list[dict[str, str]] = []
+    sem = asyncio.Semaphore(_EXTRACT_CONCURRENCY)
+
+    async def extract(s: ScreenedUnit) -> list[SupplementComparison]:
+        async with sem:
+            try:
+                # `Model.complete` is sync; threads keep the loop (and the other units) moving.
+                return await asyncio.to_thread(
+                    extract_comparisons,
+                    s.unit,
+                    model=model,
+                    study_title=study_title,
+                    one_vs_rest=s.arity == ONE_VS_REST,
+                )
+            except _EXPECTED_ERRORS as exc:
+                log.warning("supplement extraction failed; skipping the unit", unit=s.unit.id, error=repr(exc))
+                errors.append({"unit": s.unit.id, "error": repr(exc)})
+                return []
+
+    try:
+        async with asyncio.TaskGroup() as group:
+            tasks = [group.create_task(extract(s)) for s in routed]
+    except ExceptionGroup as group_error:
+        raise unwrap_fan_out_failure(group_error, ()) from None
+
+    defaults = main_experiments[0][0] if main_experiments else None
+    extracted: list[ExperimentRecord] = []
+    for s, task in zip(routed, tasks):
+        try:
+            extracted += [
+                await resolve_comparison(
+                    c, s.unit, defaults=defaults, model=model, resolver=resolver, client=client
+                )
+                for c in task.result()
+            ]
+        except _EXPECTED_ERRORS as exc:
+            log.warning("supplement name resolution failed; skipping the unit", unit=s.unit.id, error=repr(exc))
+            errors.append({"unit": s.unit.id, "error": repr(exc)})
+    if errors:
+        annotations["supplement_extract_error"] = errors
+
+    kept, dropped = drop_duplicate_experiments(extracted, main_experiments)
+    if dropped:
+        annotations["supplement_dropped_duplicates"] = dropped
+    log.info(
+        "supplement experiments merged",
+        n_extracted=len(extracted),
+        n_dropped_duplicates=len(dropped),
+        n_kept=len(kept),
+    )
+    return kept
