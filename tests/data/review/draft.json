@@ -1,0 +1,88 @@
+{
+  "uid": "99000001",
+  "pmid": 99000001,
+  "citation_mode": "Auto",
+  "doi": "10.1000/review.fixture.1",
+  "title": "Gut microbiome shifts in a synthetic cohort of fixture patients",
+  "authors": [
+    "Doe J",
+    "Roe R",
+    "Poe P"
+  ],
+  "journal": "Journal of Fixtures",
+  "year": 2024,
+  "study_design": [
+    "case-control"
+  ],
+  "experiments": [
+    {
+      "host_species": "Homo sapiens",
+      "body_site": [
+        "Feces"
+      ],
+      "condition": [
+        "Fixture disease"
+      ],
+      "group_0_name": "Healthy controls",
+      "group_1_name": "Fixture patients",
+      "sequencing_type": "16S",
+      "statistical_test": [
+        "LEfSe"
+      ],
+      "mht_correction": "Benjamini-Hochberg",
+      "signatures": [
+        {
+          "source": "Figure 2",
+          "abundance_in_group_1": "increased",
+          "taxa": [
+            {
+              "taxon_name": "Bacteroides fragilis",
+              "ncbi_id": 817
+            },
+            {
+              "taxon_name": "Candidatus Fixtureia unresolvedus"
+            }
+          ]
+        },
+        {
+          "source": "Figure 2",
+          "abundance_in_group_1": "decreased",
+          "taxa": [
+            {
+              "taxon_name": "Faecalibacterium prausnitzii",
+              "ncbi_id": 853
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "host_species": "Mus musculus",
+      "body_site": [
+        "Cecum",
+        "Saliva"
+      ],
+      "condition": [
+        "Fixture disease"
+      ],
+      "group_0_name": "Vehicle",
+      "group_1_name": "Treated",
+      "sequencing_type": "WMS",
+      "statistical_test": [
+        "Wilcoxon"
+      ],
+      "signatures": [
+        {
+          "source": "Table 1",
+          "abundance_in_group_1": "increased",
+          "taxa": [
+            {
+              "taxon_name": "Akkermansia muciniphila",
+              "ncbi_id": 239935
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

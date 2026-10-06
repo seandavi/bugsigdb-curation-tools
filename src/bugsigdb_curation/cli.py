@@ -74,6 +74,7 @@ from bugsigdb_curation.pmc_map import (
     read_study_pmids,
     write_mapping_csv,
 )
+from bugsigdb_curation.review.cli import review_app
 from bugsigdb_curation.split import split_full_dump
 from bugsigdb_curation.supplements import SupplementFile, fetch_supplements, supplement_to_text
 from bugsigdb_curation.taxonomy.cli import taxonomy_app
@@ -902,6 +903,9 @@ app.add_typer(eval_app, name="eval")
 # `eval score`'s own resolvers via `--taxonomy-db`/`--taxonomy-release`
 # below; see bugsigdb_curation.taxonomy's package docstring.
 app.add_typer(taxonomy_app, name="taxonomy")
+
+# `review packet|ingest|report` -- static HTML review packets for human reviewers of curator drafts.
+app.add_typer(review_app, name="review")
 
 DEFAULT_RELATIONAL_DIR = Path("data/exports/relational")
 DEFAULT_PMC_MAP_PATH = Path("data/eval/pmid_pmcid_map.csv")
