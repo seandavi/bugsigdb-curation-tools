@@ -173,15 +173,18 @@ async def _body_site_terms(
 ) -> list[dict[str, Any]]:
     """The S4 body-site -> UBERON mappings for one experiment as sidecar entries, or `[]` if the OLS
     search / decision call fails. Same best-effort contract as `_rank_or_none`: the failure is logged
-    and recorded as `body_site_terms_error`, never aborts the study, and only the expected
-    transport/decision errors are absorbed (a bug still surfaces)."""
+    and appended to `annotations["body_site_terms_error"]` (one `{"experiment_index", "error"}` entry
+    per failing experiment), never aborts the study, and only the expected transport/decision errors
+    are absorbed (a bug still surfaces)."""
     try:
         mappings = await map_body_sites(
             body_sites, context_title=study_title, decision_model=decision_model, ols=ols
         )
     except DECISION_CALL_ERRORS as exc:
         logger.bind(stage="S4").warning("body-site ontology mapping failed; skipping", error=repr(exc))
-        annotations["body_site_terms_error"] = repr(exc)
+        annotations.setdefault("body_site_terms_error", []).append(
+            {"experiment_index": experiment_index, "error": repr(exc)}
+        )
         return []
     return [{"experiment_index": experiment_index, **asdict(m)} for m in mappings]
 

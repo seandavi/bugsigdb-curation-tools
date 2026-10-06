@@ -231,13 +231,52 @@ def test_ols_outage_is_recorded_and_the_study_still_succeeds(httpx_mock, tmp_pat
     result = _curate(httpx_mock, tmp_path, _decision(), tag="out", ols_status=503)
     assert result.valid and result.record == baseline.record
     assert "body_site_terms" not in result.annotations
-    assert "503" in result.annotations["body_site_terms_error"]
+    (failure,) = result.annotations["body_site_terms_error"]
+    assert failure["experiment_index"] == 0 and "503" in failure["error"]
 
 
 def test_decision_failure_on_s4_ontology_is_recorded_too(httpx_mock, tmp_path):
     decision = MockDecisionModel({"s5a_locate": _s5a_answer})
     result = _curate(httpx_mock, tmp_path, decision, tag="nostage")  # no s4_ontology canned answers -> DecisionModelError
-    assert result.valid and "s4_ontology" in result.annotations["body_site_terms_error"]
+    assert result.valid and "s4_ontology" in result.annotations["body_site_terms_error"][0]["error"]
+
+
+def test_every_failing_experiment_is_recorded_with_its_index(httpx_mock):
+    class Down:
+        async def decide(self, **_):
+            raise DecisionModelError("down")
+
+    _mock_ols(httpx_mock, "Feces", [FECES])
+    annotations: dict = {}
+    ols = _ols()
+    for index in (0, 2):
+        assert asyncio.run(_body_site_terms(index, ("Feces",), "T", Down(), ols, annotations)) == []  # type: ignore[arg-type]
+    assert [(e["experiment_index"], "down" in e["error"]) for e in annotations["body_site_terms_error"]] == [
+        (0, True),
+        (2, True),
+    ]
+    json.dumps(annotations)
+
+
+def test_a_transport_error_from_ols_is_recorded_not_raised(httpx_mock):
+    httpx_mock.add_exception(httpx.ConnectError("no route"), url=_ols_url("Feces"))
+    annotations: dict = {}
+    assert asyncio.run(_body_site_terms(0, ("Feces",), "T", MockDecisionModel(), _ols(), annotations)) == []  # type: ignore[arg-type]
+    assert "ConnectError" in annotations["body_site_terms_error"][0]["error"]
+
+
+def test_an_unexpected_ols_shape_is_recorded_not_raised(httpx_mock):
+    httpx_mock.add_response(url=_ols_url("Feces"), json={"unexpected": True})
+    annotations: dict = {}
+    assert asyncio.run(_body_site_terms(0, ("Feces",), "T", MockDecisionModel(), _ols(), annotations)) == []  # type: ignore[arg-type]
+    assert "unexpected OLS response shape" in annotations["body_site_terms_error"][0]["error"]
+
+
+def test_a_corrupt_ols_cache_file_does_not_abort_the_study(httpx_mock, tmp_path):
+    (tmp_path / "ols-corrupt.json").write_text("{truncated", encoding="utf-8")
+    result = _curate(httpx_mock, tmp_path, _decision(), tag="corrupt")
+    assert result.valid and result.annotations["body_site_terms"][0]["status"] == "mapped"
+    assert json.loads((tmp_path / "ols-corrupt.json").read_text()).keys() == {"uberon|Feces|10"}  # healed on save
 
 
 def test_a_rogue_choice_is_recorded_and_the_record_is_unchanged(httpx_mock, tmp_path):
@@ -303,7 +342,7 @@ def test_smoke_counts_studies_with_body_site_term_failures(monkeypatch, tmp_path
 
     async def fake_curate_async(pmid, **kwargs):
         seen_ols.append(kwargs["ols"])
-        ann = {"body_site_terms_error": "boom"} if pmid == "A" else {"body_site_terms": []}
+        ann = {"body_site_terms_error": [{"experiment_index": 0, "error": "boom"}]} if pmid == "A" else {"body_site_terms": []}
         return CurationResult(pmid=pmid, pmcid=None, has_pmc=False, record={"uid": pmid}, valid=True, problems=(), annotations=ann)
 
     monkeypatch.setattr(cli_module, "open_decision_model", fake_open)
