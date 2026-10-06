@@ -18,7 +18,14 @@ Fetches EuropePMC ``fullTextXML`` for a PMCID and parses it into a normalized
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import asyncio
+import os
+import random
+import tempfile
+import time
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
+from pathlib import Path
 
 import httpx
 from loguru import logger
@@ -38,6 +45,126 @@ from bugsigdb_curation.retrieval import (
     parse_fulltext_sections,
     parse_fulltext_tables,
 )
+
+# --- PMC article-HTML fetch: challenge-aware, throttled, cached ---------------------------------------
+#
+# PMC's article HTML is the only source of figure *image* URLs, and PMC intermittently answers a
+# plain-looking client with a ~20 KB reCAPTCHA page (HTTP 200!) after a handful of quick requests.
+# That page has no blob URLs, so every figure silently came back image-less and S5b fell back to
+# legend-only extraction (empty or wrong signatures) -- a large, invisible source of run-to-run
+# variance in a batch. So: detect the challenge, back off and retry, space requests out, and cache
+# good pages on disk so each article is fetched once across runs.
+
+PMC_HTML_MIN_INTERVAL = 3.0
+PMC_HTML_ATTEMPTS = 4
+#: Waits before retry 1, 2, 3 after a challenge (seconds; +-20% jitter applied).
+PMC_HTML_BACKOFF = (5.0, 12.0, 25.0)
+_CHALLENGE_MARKERS = ("recaptcha", "captcha", "challenge-platform")
+
+
+def default_html_cache_dir() -> Path:
+    """`data/curator/pmc_html` (override with `BUGSIGDB_PMC_HTML_CACHE`; resolved at call time)."""
+    return Path(os.environ.get("BUGSIGDB_PMC_HTML_CACHE", "data/curator/pmc_html"))
+
+
+def is_pmc_challenge(html_text: str) -> bool:
+    """True for a bot-challenge page: no figure blob URLs *and* a captcha/challenge marker.
+
+    A real article page that merely has no figures has no marker, so it is not retried.
+    """
+    if extract_blob_urls(html_text):
+        return False
+    lowered = html_text.lower()
+    return any(marker in lowered for marker in _CHALLENGE_MARKERS)
+
+
+@dataclass(slots=True)
+class PmcRequestLimiter:
+    """Minimum spacing between PMC HTML requests, shared by every fetch in the process."""
+
+    min_interval: float = PMC_HTML_MIN_INTERVAL
+    _lock: asyncio.Lock | None = field(default=None, repr=False)
+    _last: float = field(default=float("-inf"), repr=False)
+
+    async def acquire(
+        self, *, sleep: Callable[[float], Awaitable[None]] = asyncio.sleep, clock: Callable[[], float] = time.monotonic
+    ) -> None:
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        async with self._lock:
+            wait = self._last + self.min_interval - clock()
+            if wait > 0:
+                await sleep(wait)
+            self._last = clock()
+
+
+PMC_LIMITER = PmcRequestLimiter()
+
+
+async def fetch_pmc_html(
+    client: httpx.AsyncClient,
+    pmcid: str,
+    *,
+    cache_dir: Path | None = None,
+    limiter: PmcRequestLimiter | None = None,
+    attempts: int | None = None,
+    backoff: tuple[float, ...] | None = None,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    clock: Callable[[], float] = time.monotonic,
+) -> str | None:
+    """The article HTML for `pmcid`, or None if it could not be obtained (best-effort, never raises).
+
+    A cached good page is returned without any request. Otherwise requests go through `limiter`; a
+    challenge page (see :func:`is_pmc_challenge`) or a 429 is retried with backoff; any other HTTP or
+    transport error gives up immediately (matching the old best-effort contract). Only genuine pages
+    are cached. Exhausting the retries is logged at WARNING -- the caller's figures then have no images.
+    """
+    log = logger.bind(stage="S1", pmcid=pmcid)
+    # Resolved at call time (not def time) so tests can shrink them via the module constants.
+    attempts = PMC_HTML_ATTEMPTS if attempts is None else attempts
+    backoff = PMC_HTML_BACKOFF if backoff is None else backoff
+    cache_file = cache_dir / f"{pmcid}.html" if cache_dir is not None else None
+    if cache_file is not None and cache_file.exists():
+        cached = cache_file.read_text(encoding="utf-8")
+        if cached and not is_pmc_challenge(cached):
+            return cached
+    limiter = limiter or PMC_LIMITER
+    for attempt in range(1, attempts + 1):
+        await limiter.acquire(sleep=sleep, clock=clock)
+        try:
+            html_text = await fetch_article_html(client, pmcid)
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code != 429:
+                log.warning("PMC article HTML fetch failed", status=exc.response.status_code)
+                return None
+            reason = "HTTP 429"
+        except httpx.HTTPError as exc:
+            log.warning("PMC article HTML fetch failed", error=repr(exc))
+            return None
+        else:
+            if not is_pmc_challenge(html_text):
+                if cache_file is not None:
+                    _write_text_atomic(cache_file, html_text)
+                return html_text
+            reason = "challenge page"
+        if attempt < attempts:
+            wait = backoff[min(attempt - 1, len(backoff) - 1)] * random.uniform(0.8, 1.2)
+            log.info("PMC article HTML throttled; retrying", reason=reason, attempt=attempt, wait_s=round(wait, 1))
+            await sleep(wait)
+    log.warning("PMC article HTML unavailable after retries; figures will have no images", attempts=attempts)
+    return None
+
+
+def _write_text_atomic(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,7 +304,9 @@ def build_bundle(pmid: str, pmcid: str, xml_text: str | None, html_text: str | N
     )
 
 
-async def assemble_evidence(pmid: str, pmcid: str, *, client: httpx.AsyncClient) -> EvidenceBundle:
+async def assemble_evidence(
+    pmid: str, pmcid: str, *, client: httpx.AsyncClient, html_cache_dir: Path | None = None
+) -> EvidenceBundle:
     """S1: fetch EuropePMC fullTextXML + PMC article HTML for `pmcid` and build a bundle.
 
     The fullTextXML fetch is best-effort against a **404 specifically**:
@@ -189,8 +318,9 @@ async def assemble_evidence(pmid: str, pmcid: str, *, client: httpx.AsyncClient)
     whole study. Any other HTTP error status (a genuine unexpected failure,
     not "not found") still propagates.
 
-    The article HTML fetch is separately best-effort: if it fails (e.g. a
-    transient PMC Cloudflare hiccup), figures still come back with
+    The article HTML fetch is separately best-effort (`fetch_pmc_html`: throttled, retried through
+    PMC's intermittent captcha page, cached under `html_cache_dir` -- default
+    `default_html_cache_dir()`): if it still fails, figures come back with
     `blob_url=None` rather than aborting the whole bundle -- text and
     tables are unaffected either way, and a figure without a resolved blob
     URL simply can't be fetched by S5b's vision path later (it degrades
@@ -208,10 +338,9 @@ async def assemble_evidence(pmid: str, pmcid: str, *, client: httpx.AsyncClient)
     if xml_text is not None:
         # No point fetching the article HTML (used only to resolve figure
         # blob URLs) when there's no full text to have parsed figures from.
-        try:
-            html_text = await fetch_article_html(client, pmcid)
-        except httpx.HTTPError:
-            html_text = None
+        html_text = await fetch_pmc_html(
+            client, pmcid, cache_dir=html_cache_dir if html_cache_dir is not None else default_html_cache_dir()
+        )
     bundle = build_bundle(pmid, pmcid, xml_text, html_text)
     logger.bind(stage="S1").info(
         "evidence assembled",

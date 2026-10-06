@@ -35,6 +35,8 @@ from bugsigdb_curation.curator.design import DEFAULT_DESIGN as CURATE_DEFAULT_DE
 from bugsigdb_curation.curator.design import Design
 from bugsigdb_curation.curator.model import DEFAULT_MODEL as CURATE_DEFAULT_MODEL
 from bugsigdb_curation.curator.model import LiteLLMModel, Model, MockModel
+from bugsigdb_curation.curator.ols import DEFAULT_CACHE_PATH as CURATE_DEFAULT_OLS_CACHE
+from bugsigdb_curation.curator.ols import OlsClient
 from bugsigdb_curation.curator.pipeline import CurationResult, curate_async
 from bugsigdb_curation.curator.pipeline import DEFAULT_CONFIG as CURATE_DEFAULT_CONFIG
 from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL as CURATE_DEFAULT_EMAIL
@@ -612,12 +614,18 @@ def curate_command(
         "--taxonomy-release",
         help="Release label for locating the default cached taxonomy DB (ignored once --taxonomy-db/BUGSIGDB_TAXONOMY_DB apply).",
     ),
+    ols_cache: Path = typer.Option(
+        CURATE_DEFAULT_OLS_CACHE,
+        "--ols-cache",
+        help="EBI OLS4 term-search cache for the body-site -> UBERON mapping (only used with --decision-model).",
+    ),
     decision_backend: DecisionBackend = typer.Option(
         DecisionBackend.none,
         "--decision-model",
         help=(
-            "Route the cheap judgments (today: S5a artifact ranking) through a Cloudflare decision "
-            "model. Needs CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN in .env; ignored with --mock."
+            "Route the cheap judgments (S5a artifact ranking; S4 body_site -> UBERON term, recorded as a "
+            "sidecar annotation) through a Cloudflare decision model. Needs CLOUDFLARE_ACCOUNT_ID / "
+            "CLOUDFLARE_API_TOKEN in .env; ignored with --mock."
         ),
     ),
     decision_archive: Path | None = typer.Option(
@@ -680,6 +688,7 @@ def curate_command(
                 run_id,
                 decision_name=decision_name,
                 decision_archive=decision_archive or out / "decision.jsonl",
+                ols_cache=ols_cache,
             )
         )
         return
@@ -703,6 +712,7 @@ def curate_command(
             decision_name=decision_name,
             decision_archive=decision_archive
             or (out.with_suffix(".decision.jsonl") if out is not None else None),
+            ols_cache=ols_cache,
         )
     )
 
@@ -724,6 +734,7 @@ async def _run_curate_one(
     *,
     decision_name: str | None = None,
     decision_archive: Path | None = None,
+    ols_cache: Path = CURATE_DEFAULT_OLS_CACHE,
 ) -> None:
     try:
         async with open_decision_model(decision_name, archive=decision_archive) as decision_model:
@@ -738,6 +749,7 @@ async def _run_curate_one(
                 taxonomy_db_release=taxonomy_release,
                 run_id=run_id,
                 decision_model=decision_model,
+                ols_cache_path=ols_cache,
             )
     except Exception as exc:  # noqa: BLE001 -- surface any stage failure as a clean CLI error, not a traceback
         error_console.print(f"[red]Error curating PMID {pmid}:[/red] {escape(str(exc))}")
@@ -776,6 +788,7 @@ async def _run_curate_smoke(
     *,
     decision_name: str | None = None,
     decision_archive: Path | None = None,
+    ols_cache: Path = CURATE_DEFAULT_OLS_CACHE,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     ids = smoke_study_ids()
@@ -784,6 +797,7 @@ async def _run_curate_smoke(
     n_valid = 0
     n_errors = 0
     n_regex_fallbacks = 0
+    n_ontology_failures = 0
     # One shared client for the whole batch (reused connection pool/keep-
     # alive) instead of curate_async creating and tearing down a fresh
     # client per study -- fewer connections churned, less NCBI/PMC
@@ -799,10 +813,14 @@ async def _run_curate_smoke(
     # loop otherwise still risks. save_cache() runs once after the loop
     # instead of once per study.
     resolver = NcbiTaxonomyResolver.load(cache_path=taxonomy_cache, db_path=taxonomy_db, db_release=taxonomy_release)
+    ols: OlsClient | None = None
     async with (
         httpx.AsyncClient(timeout=30.0) as client,
         open_decision_model(decision_name, archive=decision_archive) as decision_model,
     ):
+        # Likewise one OlsClient (shared rate limiter + warm cache) when the body-site mapping is on.
+        if decision_model is not None:
+            ols = OlsClient.load(client, cache_path=ols_cache)
         for study_id in ids:
             try:
                 result = await curate_async(
@@ -816,6 +834,7 @@ async def _run_curate_smoke(
                     resolver=resolver,
                     run_id=run_id,
                     decision_model=decision_model,
+                    ols=ols,
                 )
             except Exception as exc:  # noqa: BLE001 -- one bad study must not abort the whole batch
                 n_errors += 1
@@ -829,6 +848,8 @@ async def _run_curate_smoke(
             )
             if "artifact_ranking_error" in result.annotations:
                 n_regex_fallbacks += 1
+            if "body_site_terms_error" in result.annotations:
+                n_ontology_failures += 1
             if result.annotations:
                 # In a subdirectory so `eval score --pred <dir>` (which reads *.json here) never sees it.
                 (out_dir / "_annotations").mkdir(exist_ok=True)
@@ -843,6 +864,8 @@ async def _run_curate_smoke(
             if result.valid:
                 n_valid += 1
 
+    if ols is not None:
+        ols.save_cache()
     resolver.save_cache()
     resolver.close()  # this loop owns the shared resolver's TaxonomyDB handle; close it once, here.
     logger.bind(stage="cli", run_id=run_id).info(
@@ -851,11 +874,17 @@ async def _run_curate_smoke(
         n_valid=n_valid,
         n_errors=n_errors,
         n_decision_fallbacks=n_regex_fallbacks,
+        n_body_site_term_failures=n_ontology_failures,
     )
     if n_regex_fallbacks:
         console.print(
             f"[yellow]{n_regex_fallbacks} study(ies) fell back to the regex locate because the decision-model call "
             "failed (see artifact_ranking_error in _annotations/).[/yellow]"
+        )
+    if n_ontology_failures:
+        console.print(
+            f"[yellow]{n_ontology_failures} study(ies) have no body-site ontology terms for some experiment because "
+            "the OLS/decision call failed (see body_site_terms_error in _annotations/).[/yellow]"
         )
     console.print(
         f"[green]Curated {len(ids)} studies -> {out_dir}[/green] ({n_valid} valid, {n_errors} error(s))"

@@ -22,7 +22,7 @@ from typing import Literal
 
 from loguru import logger
 
-from bugsigdb_curation.curator.artifact_text import artifact_kind_and_text
+from bugsigdb_curation.curator.artifact_text import artifact_kind_and_text, group_orientation_text
 from bugsigdb_curation.curator.locate import LocatedArtifact
 from bugsigdb_curation.curator.model import Model, build_image_content, build_text_content
 
@@ -47,6 +47,7 @@ class NamedTaxon:
 _PROMPT_TEMPLATE = (
     "You are extracting a differential-abundance microbial signature from a microbiome "
     "research paper's {artifact_kind}, for BugSigDB curation.\n\n"
+    "{orientation}"
     "For every taxon reported as significantly different between the two compared groups, "
     "report ONLY its name (genus/species, as written) and whether it is INCREASED or "
     "DECREASED in Group 1 relative to Group 0. Do NOT propose an NCBI Taxonomy id here -- "
@@ -58,10 +59,18 @@ _PROMPT_TEMPLATE = (
 )
 
 
-def build_ner_messages(artifact: LocatedArtifact, *, image_bytes: bytes | None = None) -> list[dict]:
-    """Build S5b-NER's names-only prompt: table text, or figure legend + image."""
+def build_ner_messages(
+    artifact: LocatedArtifact,
+    *,
+    image_bytes: bytes | None = None,
+    groups: tuple[str | None, str | None] | None = None,
+) -> list[dict]:
+    """Build S5b-NER's names-only prompt: table text, or figure legend + image (+ the group names)."""
     artifact_kind, artifact_content = artifact_kind_and_text(artifact)
-    text = _PROMPT_TEMPLATE.format(artifact_kind=artifact_kind, artifact_content=artifact_content)
+    orientation = group_orientation_text(*groups) if groups else ""
+    text = _PROMPT_TEMPLATE.format(
+        artifact_kind=artifact_kind, artifact_content=artifact_content, orientation=orientation
+    )
     content: list[dict] = [build_text_content(text)]
     if image_bytes is not None:
         content.append(build_image_content(image_bytes))
@@ -74,6 +83,7 @@ def extract_names(
     model: Model,
     image_bytes: bytes | None = None,
     stage: str = DEFAULT_NER_STAGE,
+    groups: tuple[str | None, str | None] | None = None,
 ) -> list[NamedTaxon]:
     """S5b-NER: one model call, names + direction only (no id).
 
@@ -81,7 +91,7 @@ def extract_names(
     panel` overrides it (`"review_signature"`) to reuse this exact prompt
     shape for the independent reviewer's fresh-context re-derivation.
     """
-    messages = build_ner_messages(artifact, image_bytes=image_bytes)
+    messages = build_ner_messages(artifact, image_bytes=image_bytes, groups=groups)
     response = model.complete(stage=stage, messages=messages)
     raw_taxa = response.get("taxa", []) or []
 
