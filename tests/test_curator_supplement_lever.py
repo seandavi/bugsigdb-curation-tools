@@ -1316,12 +1316,13 @@ def test_a_fetch_failure_reason_reaches_the_skipped_annotation(httpx_mock):
 # --- CLI ----------------------------------------------------------------------------------------------
 
 #: Rich wraps/styles console output per terminal; pin a wide, colourless one and normalise what is left.
-_PLAIN_TERMINAL = {"COLUMNS": "250", "NO_COLOR": "1", "TERM": "dumb"}
+_PLAIN_TERMINAL = {"COLUMNS": "250", "TERMINAL_WIDTH": "250", "NO_COLOR": "1", "TERM": "dumb"}  # typer/rich read TERMINAL_WIDTH
 
 
 def _invoke(*args: str):
     result = CliRunner().invoke(app, list(args), env=_PLAIN_TERMINAL)
-    return result, " ".join(re.sub(r"\x1b\[[0-9;]*m", "", result.output).split())
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output).replace("│", " ")  # rich's help-box borders
+    return result, " ".join(plain.split())
 
 
 def _stub_curate(monkeypatch, annotations_for=lambda pmid: {}):
