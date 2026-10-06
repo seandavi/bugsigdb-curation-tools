@@ -370,6 +370,13 @@ class _PacketBuilder:
             )
         return "".join(parts)
 
+    def noscript(self) -> str:
+        return (
+            '<noscript><p class="notice js-warning"><strong>This review page needs JavaScript.</strong> '
+            "Without it you cannot record verdicts or export them. Open this file in a web browser with "
+            "JavaScript enabled (not in a mail or file previewer).</p></noscript>"
+        )
+
     def topbar(self) -> str:
         return (
             '<div class="topbar">'
@@ -379,7 +386,10 @@ class _PacketBuilder:
             '<button type="button" data-action="export-json">Export verdicts (JSON)</button>'
             '<button type="button" class="secondary" data-action="export-csv">Export CSV</button>'
             '<button type="button" class="danger" data-action="reset">Reset</button></div>'
-            '<span id="save-status" role="status">Progress is saved in this browser as you go.</span>'
+            '<span id="reviewer-line"><span id="reviewer-text"></span> '
+            '<button type="button" class="link" id="change-reviewer" data-action="change-reviewer" hidden>'
+            "change</button></span>"
+            '<span id="save-status" role="status">This page needs JavaScript — open the file in a web browser.</span>'
             '<div id="export-error" role="alert"></div></div>'
         )
 
@@ -677,7 +687,7 @@ class _PacketBuilder:
             '<html lang="en"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
             f"<title>{_e(title)}</title><style>\n{css}</style></head><body>\n"
-            f"{self.banner()}\n{self.topbar()}\n<main>\n{study}\n{''.join(body_sections)}\n{self.overall_section()}\n</main>\n"
+            f"{self.banner()}\n{self.noscript()}\n{self.topbar()}\n<main>\n{study}\n{''.join(body_sections)}\n{self.overall_section()}\n</main>\n"
             f"<footer>Packet {_e(self.meta.packet_id)} · draft sha256 {_e(self.meta.draft_sha256)}</footer>\n"
             f'<script type="application/json" id="packet-data">{_json_for_script(payload)}</script>\n'
             f'<script type="application/json" id="packet-images">{_json_for_script(self.embedded)}</script>\n'
@@ -698,7 +708,11 @@ def _meta_dict(meta: PacketMeta) -> dict[str, Any]:
 
 def _json_for_script(value: Any) -> str:
     """JSON safe to place inside a <script> element (no `</script>` or `<!--` can be formed)."""
-    return json.dumps(value, ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    try:
+        text = json.dumps(value, ensure_ascii=False, allow_nan=False)
+    except ValueError as exc:
+        raise ValueError(f"the draft holds NaN or Infinity, which is not valid JSON: {exc}") from exc
+    return text.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
 def build_packet(

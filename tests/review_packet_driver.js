@@ -60,7 +60,9 @@ function fakeElement(tag, attrs) {
   };
 }
 
-function makeWorld(storageData, storageMode) {
+function makeWorld(storageData, opts) {
+  const storageMode = (opts && opts.storage) || "normal";
+  const brokenData = !!(opts && opts.brokenData);
   const byKey = {};
   const controls = [];
   const buttons = [];
@@ -90,7 +92,7 @@ function makeWorld(storageData, storageMode) {
     ids[m[2]] = fakeElement(m[1], {});
     ids[m[2]].classList._owner = ids[m[2]];
   }
-  ids["packet-data"] = { textContent: jsonBlock("packet-data") };
+  ids["packet-data"] = { textContent: brokenData ? "{not json" : jsonBlock("packet-data") };
   ids["packet-images"] = { textContent: jsonBlock("packet-images") };
 
   const downloads = [];
@@ -302,6 +304,54 @@ const scenarios = {
       verdicts: [w.byKey["exp.0.sig.0.taxon.0.verdict"].value, w.byKey["exp.0.sig.0.taxon.1.verdict"].value],
       other_signature: w.byKey["exp.0.sig.1.taxon.0.verdict"].value,
     };
+  },
+
+  /** Storage that is missing, denied, or full must not stop the reviewer from exporting. */
+  storage_failure(options) {
+    const w = makeWorld({}, { storage: options.storage });
+    nameYourself(w);
+    setControl(w, "exp.0.sig.0.taxon.0.verdict", "correct");
+    setControl(w, "study.verdict", "ok");
+    click(w, "export-json");
+    click(w, "export-csv");
+    return {
+      downloads: w.downloads.map((d) => ({ filename: d.filename, type: d.type, chars: d.text.length })),
+      json: JSON.parse(w.downloads[0].text),
+      status: w.ids["save-status"].textContent,
+      progress: w.ids["progress-text"].textContent,
+    };
+  },
+
+  /** The status line after init (the static text promises nothing), and what a failing init shows. */
+  status(options) {
+    const w = makeWorld({}, { brokenData: !!options.brokenData });
+    return { status: w.ids["save-status"].textContent, className: w.ids["save-status"].className || "" };
+  },
+
+  /** The remembered reviewer is shown, can be changed, and is never overwritten with an empty name. */
+  reviewer_identity() {
+    const remembered = JSON.stringify({ name: "Ada Remembered", email: "ada@example.org", role: "curator" });
+    const data = { "bugsigdb-review:reviewer": remembered };
+    const w = makeWorld(data);
+    const t = {};
+    t.lineOnLoad = w.ids["reviewer-text"].textContent;
+    t.nameOnLoad = w.byKey["reviewer.name"].value;
+    setControl(w, "reviewer.name", "");
+    t.lineWhenBlank = w.ids["reviewer-text"].textContent;
+    t.rememberedAfterBlank = data["bugsigdb-review:reviewer"];
+    // Reset, then edit something else: the empty name must not replace the remembered identity.
+    setControl(w, "reviewer.name", "Ada Remembered");
+    click(w, "reset");
+    setControl(w, "study.note", "after reset");
+    t.rememberedAfterReset = data["bugsigdb-review:reviewer"];
+    t.nameAfterReset = w.byKey["reviewer.name"].value;
+    // "change" forgets the remembered identity and empties the fields
+    setControl(w, "reviewer.name", "Ada Remembered");
+    click(w, "change-reviewer");
+    t.nameAfterChange = w.byKey["reviewer.name"].value;
+    t.rememberedAfterChange = data["bugsigdb-review:reviewer"] || null;
+    t.nameFocused = !!w.byKey["reviewer.name"].focused;
+    return t;
   },
 };
 

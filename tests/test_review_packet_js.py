@@ -180,3 +180,37 @@ def test_mark_taxa_button_is_labelled_remaining():
     record = load_draft()
     page = build_packet(record, load_annotations(), sample_evidence("cc by"), sample_meta(record))
     assert "Mark remaining taxa correct" in page and "Mark all taxa correct" not in page
+
+
+@pytest.mark.parametrize("storage", ["null", "denied", "setItem-throws"])
+def test_export_still_works_when_browser_storage_is_unavailable(tmp_path, storage):
+    transcript = run_scenario(tmp_path, "storage_failure", options={"storage": storage})
+    assert [d["filename"] for d in transcript["downloads"]] == [
+        f"verdicts_{PMID}_ada-b-reviewer.json",
+        f"verdicts_{PMID}_ada-b-reviewer.csv",
+    ]
+    assert validate_verdicts(transcript["json"]) == []
+    assert transcript["json"]["study"]["verdict"] == "ok"
+    assert "Not auto-saved" in transcript["status"]
+    assert transcript["progress"].endswith("items reviewed")
+
+
+def test_status_line_after_init_describes_what_is_really_happening(tmp_path):
+    transcript = run_scenario(tmp_path, "status")
+    assert transcript["status"] == "Progress is saved in this browser as you go."
+
+
+def test_failing_init_is_visible_in_the_status_area(tmp_path):
+    transcript = run_scenario(tmp_path, "status", options={"brokenData": True})
+    assert "could not start" in transcript["status"]
+    assert transcript["className"] == "failed"
+
+
+def test_reviewer_identity_is_shown_and_never_overwritten_with_an_empty_name(tmp_path):
+    t = run_scenario(tmp_path, "reviewer_identity")
+    assert t["lineOnLoad"] == "Reviewing as Ada Remembered — not you?"
+    assert t["nameOnLoad"] == "Ada Remembered"
+    assert "Enter your name" in t["lineWhenBlank"]
+    assert json.loads(t["rememberedAfterBlank"])["name"] == "Ada Remembered"
+    assert json.loads(t["rememberedAfterReset"])["name"] == "Ada Remembered"
+    assert t["nameAfterChange"] == "" and t["rememberedAfterChange"] is None and t["nameFocused"] is True

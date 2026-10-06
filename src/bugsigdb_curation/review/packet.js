@@ -282,6 +282,9 @@
     var progressBar = doc.getElementById("progress-bar");
     var saveStatus = doc.getElementById("save-status");
     var exportError = doc.getElementById("export-error");
+    var reviewerText = doc.getElementById("reviewer-text");
+    var changeReviewer = doc.getElementById("change-reviewer");
+    saveStatus.textContent = "Progress is saved in this browser as you go.";
 
     function syncControls() {
       controls.forEach(function (el) {
@@ -292,6 +295,11 @@
     }
 
     function refresh() {
+      var name = getValue(state, "reviewer.name").trim();
+      reviewerText.textContent = name
+        ? "Reviewing as " + name + " — not you?"
+        : "Enter your name (Overall section) before exporting.";
+      changeReviewer.hidden = !name;
       var p = progress(state, record);
       progressText.textContent = p.done + " of " + p.total + " items reviewed";
       progressBar.max = p.total;
@@ -305,15 +313,18 @@
       }
       try {
         env.storage.setItem(storageKey, JSON.stringify(state));
-        var name = getValue(state, "reviewer.name");
-        env.storage.setItem(
-          reviewerKey,
-          JSON.stringify({
-            name: name,
-            email: getValue(state, "reviewer.email"),
-            role: getValue(state, "reviewer.role"),
-          }),
-        );
+        var name = getValue(state, "reviewer.name").trim();
+        // Never remember an empty name: it would wipe the identity remembered for the next packet.
+        if (name) {
+          env.storage.setItem(
+            reviewerKey,
+            JSON.stringify({
+              name: name,
+              email: getValue(state, "reviewer.email"),
+              role: getValue(state, "reviewer.role"),
+            }),
+          );
+        }
         saveStatus.textContent = "Progress saved in this browser.";
       } catch (_err) {
         storageOk = false;
@@ -400,6 +411,24 @@
           syncControls();
           persist();
           refresh();
+        } else if (action === "change-reviewer") {
+          ["name", "email", "role"].forEach(function (field) {
+            setValue(state, "reviewer." + field, "");
+          });
+          if (env.storage) {
+            try {
+              env.storage.removeItem(reviewerKey);
+            } catch (_err) {
+              /* nothing remembered to remove */
+            }
+          }
+          syncControls();
+          persist();
+          refresh();
+          var nameInput = controls.filter(function (el) {
+            return el.getAttribute("data-key") === "reviewer.name";
+          })[0];
+          if (nameInput && nameInput.focus) nameInput.focus();
         } else if (action === "reset") {
           if (env.confirm("Discard all of your verdicts for this packet and start over?")) {
             state = newState(env.now());
@@ -453,20 +482,30 @@
     } catch (_err) {
       storage = null;
     }
-    init({
-      document: document,
-      storage: storage,
-      Blob: Blob,
-      URL: URL,
-      confirm: function (message) {
-        return window.confirm(message);
-      },
-      now: function () {
-        return new Date().toISOString();
-      },
-      setTimeout: function (fn, ms) {
-        return window.setTimeout(fn, ms);
-      },
-    });
+    try {
+      init({
+        document: document,
+        storage: storage,
+        Blob: Blob,
+        URL: URL,
+        confirm: function (message) {
+          return window.confirm(message);
+        },
+        now: function () {
+          return new Date().toISOString();
+        },
+        setTimeout: function (fn, ms) {
+          return window.setTimeout(fn, ms);
+        },
+      });
+    } catch (err) {
+      var status = document.getElementById("save-status");
+      if (status) {
+        status.textContent =
+          "This page could not start (" + (err && err.message ? err.message : err) + "). Nothing is saved or " +
+          "exportable here: try another web browser.";
+        status.className = "failed";
+      }
+    }
   }
 })(typeof globalThis !== "undefined" ? globalThis : this);

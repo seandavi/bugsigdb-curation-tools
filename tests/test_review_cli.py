@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 
+import pytest
 from review_support import DATA_DIR, PMID, load_draft, make_verdict, sample_evidence
 from typer.testing import CliRunner
 
@@ -13,6 +15,20 @@ from bugsigdb_curation.review.packet import save_evidence
 from bugsigdb_curation.review.verdicts import canonical_sha256
 
 runner = CliRunner()
+
+_ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+@pytest.fixture(autouse=True)
+def _plain_terminal(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COLUMNS", "200")
+    monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.setenv("TERM", "dumb")
+
+
+def _plain(output: str) -> str:
+    """CLI output as one line without ANSI codes, so assertions do not depend on terminal width or colour."""
+    return " ".join(_ANSI.sub("", output).split())
 
 
 def _pred(tmp_path, *, with_sidecar: bool = True):
@@ -121,7 +137,7 @@ def test_ingest_then_report_round_trip(tmp_path):
         app, ["review", "ingest", str(good), str(stale), "--dest", str(reviews), "--manifests", str(packets)]
     )
     assert result.exit_code == 1  # one refused
-    assert "refused" in result.output and "1 ingested, 1 not ingested" in result.output
+    assert "refused" in _plain(result.output) and "1 ingested, 1 not ingested" in _plain(result.output)
     assert [p.name for p in (reviews / PMID).iterdir()] == ["ada_20261006T123000Z.json"]
 
     result = runner.invoke(
@@ -142,3 +158,12 @@ def test_ingest_then_report_round_trip(tmp_path):
 def test_report_missing_dir_errors(tmp_path):
     result = runner.invoke(app, ["review", "report", "--reviews", str(tmp_path / "none")])
     assert result.exit_code == 1
+
+
+def test_packet_with_nan_in_the_draft_fails_cleanly(tmp_path):
+    pred = tmp_path / "nan.json"
+    pred.write_text(json.dumps(load_draft()).replace('"year": 2024', '"year": NaN'), encoding="utf-8")
+    result = runner.invoke(app, ["review", "packet", "--pred", str(pred), "--out", str(tmp_path / "o"), "--offline"])
+    assert result.exit_code == 1
+    assert "holds NaN or Infinity" in _plain(result.output)
+    assert not (tmp_path / "o").exists()

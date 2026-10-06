@@ -119,17 +119,22 @@ def packet_command(
     if evidence is None:
         console.print("[yellow]Built without evidence[/yellow]: reviewers will see links to the paper only.")
 
-    meta = make_meta(
-        record,
-        model_label=model_label,
-        design_label=design_label,
-        pmcid=(evidence.pmcid if evidence and evidence.pmcid else None) or pmcid,
-        builder_commit=builder_git_commit(),
-    )
+    try:
+        meta = make_meta(
+            record,
+            model_label=model_label,
+            design_label=design_label,
+            pmcid=(evidence.pmcid if evidence and evidence.pmcid else None) or pmcid,
+            builder_commit=builder_git_commit(),
+        )
+        page = build_packet(record, notes, evidence, meta)
+    except ValueError as exc:
+        error_console.print(f"[red]Error:[/red] cannot build a packet from {pred}: {escape(str(exc))}")
+        raise typer.Exit(code=1) from None
     out.mkdir(parents=True, exist_ok=True)
     html_path = out / f"{meta.pmid}.html"
     manifest_path = out / f"{meta.pmid}.manifest.json"
-    html_path.write_text(build_packet(record, notes, evidence, meta), encoding="utf-8")
+    html_path.write_text(page, encoding="utf-8")
     manifest_path.write_text(
         json.dumps(build_manifest(record, notes, evidence, meta), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )

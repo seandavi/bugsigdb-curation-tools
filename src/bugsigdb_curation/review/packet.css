@@ -61,6 +61,8 @@ h4 { font-size: 1rem; }
 .topbar progress { width: 9rem; max-width: 40vw; height: 0.8rem; }
 .topbar .actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 #save-status { font-size: 0.8rem; color: var(--muted); flex-basis: 100%; }
+#save-status.failed { color: #a31515; font-weight: 600; }
+#reviewer-line { font-size: 0.85rem; color: var(--muted); align-self: center; }
 #export-error { color: #a31515; font-size: 0.9rem; flex-basis: 100%; }
 #export-error:empty { display: none; }
 
@@ -77,6 +79,8 @@ button {
 button.secondary { background: #fff; color: var(--accent); }
 button.danger { background: #fff; color: #a31515; border-color: #a31515; }
 button.small { font-size: 0.8rem; padding: 0.15rem 0.5rem; }
+button.link { background: none; border: 0; color: var(--accent); padding: 0; text-decoration: underline; font-size: inherit; }
+[hidden] { display: none !important; }
 
 main { max-width: 1500px; margin: 0 auto; padding: 1rem; }
 .card {

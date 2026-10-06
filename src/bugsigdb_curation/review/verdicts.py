@@ -39,8 +39,14 @@ TAXON_VERDICTS = ("correct", "wrong_taxon", "not_in_source", "unsure")
 
 
 def canonical_sha256(record: Any) -> str:
-    """SHA-256 of the canonical JSON of `record` (sorted keys, compact separators, non-ASCII kept)."""
-    canonical = json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    """SHA-256 of the canonical JSON of `record` (sorted keys, compact separators, non-ASCII kept).
+
+    Raises ValueError for NaN/Infinity: they are not JSON, so a draft holding one cannot be reviewed.
+    """
+    try:
+        canonical = json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+    except ValueError as exc:
+        raise ValueError(f"the draft holds NaN or Infinity, which is not valid JSON: {exc}") from exc
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 

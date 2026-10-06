@@ -495,3 +495,21 @@ def test_fetch_survives_image_download_failure(httpx_mock: HTTPXMock):
     httpx_mock.add_response(url=BLOB, status_code=503)
     evidence = _fetch()
     assert evidence.images == {} and evidence.license == "cc by"
+
+
+def test_static_markup_makes_no_false_promises_without_javascript():
+    page = _build()
+    assert "<noscript>" in page and "needs JavaScript" in page.split("</noscript>")[0]
+    static_status = re.search(r'<span id="save-status"[^>]*>(.*?)</span>', page).group(1)
+    assert static_status == "This page needs JavaScript — open the file in a web browser."
+    assert "saved in this browser" not in page.split("<script")[0]
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf")])
+def test_non_finite_numbers_in_a_draft_fail_at_build_time(bad):
+    record = load_draft()
+    record["experiments"][0]["signatures"][0]["taxa"][0]["p_value"] = bad
+    with pytest.raises(ValueError, match="NaN or Infinity"):
+        canonical_sha256(record)
+    with pytest.raises(ValueError, match="NaN or Infinity"):
+        build_packet(record, {}, None, sample_meta())
