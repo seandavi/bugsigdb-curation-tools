@@ -75,13 +75,33 @@ def build_text_content(text: str) -> dict[str, Any]:
     return {"type": "text", "text": text}
 
 
-def build_image_content(image_bytes: bytes, *, mime_type: str = "image/jpeg") -> dict[str, Any]:
+def sniff_image_mime(image_bytes: bytes, default: str = "image/jpeg") -> str:
+    """MIME type from magic bytes (PNG / JPEG / WebP / GIF), else `default`.
+
+    Figure bytes come straight off PMC's CDN in whatever format it serves (now often WebP), so the
+    data-URL type must follow the bytes, not an assumption.
+    """
+    if image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if image_bytes.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+        return "image/webp"
+    if image_bytes[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    return default
+
+
+def build_image_content(image_bytes: bytes, *, mime_type: str | None = None) -> dict[str, Any]:
     """One image content block (base64 data URL) for a multimodal chat message.
+
+    `mime_type` defaults to a sniff of `image_bytes` (see :func:`sniff_image_mime`).
 
     This is the shape litellm/OpenAI-style multimodal messages expect, and
     Gemini (the default backend) accepts it directly -- see
     https://docs.litellm.ai/docs/completion/vision.
     """
+    mime_type = mime_type or sniff_image_mime(image_bytes)
     encoded = base64.b64encode(image_bytes).decode("ascii")
     return {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded}"}}
 

@@ -48,8 +48,10 @@ BROWSER_USER_AGENT = (
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 )
 
+# PMC serves recent articles' figures as `.webp` (older ones as jpg/png/gif); a regex that only knew the
+# latter silently left every post-2025 figure without a blob URL -> no image evidence.
 _BLOB_URL_RE = re.compile(
-    r"https://cdn\.ncbi\.nlm\.nih\.gov/pmc/blobs/[^\"'\s]+\.(?:jpg|jpeg|png|gif)",
+    r"https://cdn\.ncbi\.nlm\.nih\.gov/pmc/blobs/[^\"'\s]+\.(?:jpg|jpeg|png|gif|webp)",
     re.IGNORECASE,
 )
 _XLINK_HREF = "{http://www.w3.org/1999/xlink}href"

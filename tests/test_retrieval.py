@@ -153,3 +153,20 @@ def test_parse_article_metadata_returns_all_none_when_no_article_meta():
     assert meta.year is None
     assert meta.authors == ()
     assert meta.doi is None
+
+
+# --- PMC serves recent figures as .webp -------------------------------------------------------
+
+
+def test_extract_blob_urls_includes_webp_and_matching_survives_the_extension_change():
+    from bugsigdb_curation.retrieval import extract_blob_urls, match_filename_to_blob
+
+    html = (
+        '<img src="https://cdn.ncbi.nlm.nih.gov/pmc/blobs/a00c/13516197/8c3c6a513ba9/pathogens-15-00805-g004.webp">'
+        '<a href="https://cdn.ncbi.nlm.nih.gov/pmc/blobs/a00c/1/2/old-g001.jpg">'
+    )
+    urls = extract_blob_urls(html)
+    assert len(urls) == 2 and urls[0].endswith("g004.webp")
+    # fullTextXML may name the graphic .jpg while PMC serves .webp (and vice versa): stem fallback bridges it
+    assert match_filename_to_blob("pathogens-15-00805-g004.jpg", urls) == urls[0]
+    assert match_filename_to_blob("pathogens-15-00805-g004.webp", urls) == urls[0]
