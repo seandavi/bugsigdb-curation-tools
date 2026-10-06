@@ -28,12 +28,18 @@ from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Literal
 
+import httpx
 from loguru import logger
 
 from bugsigdb_curation.curator.evidence import EvidenceBundle
 from bugsigdb_curation.curator.locate import LocatedArtifact
 from bugsigdb_curation.curator.ols import OlsClient, describe
-from bugsigdb_curation.decision import Choice, ChoiceAnswer, DecisionModel, Noul
+from bugsigdb_curation.decision import Choice, ChoiceAnswer, DecisionModel, DecisionModelError, Noul
+
+#: What a failed decision call can raise: the seam's own error (every Clef HTTP/schema failure), transport
+#: errors from the HTTP client, and ValueError from request validation or an unexpected OLS response shape.
+#: Anything else is a bug and must surface rather than silently turn into the no-decision-model behaviour.
+DECISION_CALL_ERRORS = (DecisionModelError, httpx.HTTPError, ValueError)
 
 #: Concurrent decision calls per fan-out (bundles hold at most ~15 artifacts).
 _CONCURRENCY = 6
@@ -56,6 +62,17 @@ DA_ARTIFACT_QUESTION = Noul(
         "false": "no per-taxon differential-abundance result (e.g. diversity, composition, metadata)",
     },
 )
+
+
+def _unwrap(group_error: ExceptionGroup) -> BaseException:
+    """The exception to re-raise from a failed TaskGroup fan-out.
+
+    The first member when every member is an expected decision-call failure (the pipeline absorbs
+    those); otherwise the first member that is *not* -- a sibling's bug must never be masked by another
+    sibling's routine failure.
+    """
+    unexpected = [e for e in group_error.exceptions if not isinstance(e, DECISION_CALL_ERRORS)]
+    return (unexpected or group_error.exceptions)[0]
 
 
 def _artifact_state(artifact: LocatedArtifact, *, title: str | None) -> dict[str, Any]:
@@ -108,7 +125,7 @@ async def rank_artifacts(bundle: EvidenceBundle, decision_model: DecisionModel) 
         async with asyncio.TaskGroup() as group:
             tasks = [group.create_task(one(a)) for a in candidates]
     except ExceptionGroup as group_error:
-        raise group_error.exceptions[0] from None
+        raise _unwrap(group_error) from None
     ranked = [task.result() for task in tasks]
     ordered = sorted(ranked, key=lambda a: -(a.p_da or 0.0))  # sorted() is stable: ties keep document order
     logger.bind(stage="S5a").info(
@@ -160,6 +177,8 @@ async def _map_body_site(label: str, context_title: str, decision_model: Decisio
     assert isinstance(answer, ChoiceAnswer)
     if answer.choice == NONE_OF_THESE:
         return OntologyMapping(label, None, None, answer.confidence, "unmapped", candidates)
+    if answer.choice not in candidates:
+        raise DecisionModelError(f"s4_ontology: choice {answer.choice!r} not among offered options")
     term_label = next(d.get("label") for d in docs if d["obo_id"] == answer.choice)
     status = "mapped" if answer.confidence >= ONTOLOGY_CONFIDENCE_THRESHOLD else "low_confidence"
     return OntologyMapping(label, answer.choice, term_label, answer.confidence, status, candidates)
@@ -185,5 +204,5 @@ async def map_body_sites(
         async with asyncio.TaskGroup() as group:
             tasks = [group.create_task(one(label)) for label in distinct]
     except ExceptionGroup as group_error:
-        raise group_error.exceptions[0] from None
+        raise _unwrap(group_error) from None
     return [task.result() for task in tasks]

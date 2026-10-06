@@ -60,12 +60,12 @@ from bugsigdb_curation.curator.ols import OlsClient
 from bugsigdb_curation.curator.panel import review_signatures
 from bugsigdb_curation.curator.reconcile import reconcile_names
 from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL, resolve
-from bugsigdb_curation.curator.routing import map_body_sites, rank_artifacts
+from bugsigdb_curation.curator.routing import DECISION_CALL_ERRORS, map_body_sites, rank_artifacts
 from bugsigdb_curation.curator.segment import segment_experiments
 from bugsigdb_curation.curator.signature import ExtractedSignature, extract_signatures
 from bugsigdb_curation.curator.taxonomy import DEFAULT_CACHE_PATH, NcbiTaxonomyResolver
 from bugsigdb_curation.curator.verify import verify_signatures
-from bugsigdb_curation.decision import DecisionModel, DecisionModelError
+from bugsigdb_curation.decision import DecisionModel
 from bugsigdb_curation.validate import Problem, default_schema_path, validate_instance
 
 #: The one source-config wired up for the walking skeleton (plan §6, decided
@@ -145,12 +145,6 @@ def _build_source_context(experiment_fields: ExperimentFields, artifact: Located
     return "; ".join(parts)
 
 
-#: What a failed decision call can raise: the seam's own error (every Clef HTTP/schema failure), transport
-#: errors from the HTTP client, and ValueError from request validation. Anything else is a bug and must
-#: surface rather than silently turn into the regex locate.
-_DECISION_CALL_ERRORS = (DecisionModelError, httpx.HTTPError, ValueError)
-
-
 async def _rank_or_none(
     bundle: EvidenceBundle, decision_model: DecisionModel | None, annotations: dict[str, Any] | None = None
 ) -> list[LocatedArtifact] | None:
@@ -162,7 +156,7 @@ async def _rank_or_none(
         return None
     try:
         return await rank_artifacts(bundle, decision_model)
-    except _DECISION_CALL_ERRORS as exc:
+    except DECISION_CALL_ERRORS as exc:
         logger.bind(stage="S5a").warning("decision-model ranking failed; using regex locate", error=repr(exc))
         if annotations is not None:
             annotations["artifact_ranking_error"] = repr(exc)
@@ -185,7 +179,7 @@ async def _body_site_terms(
         mappings = await map_body_sites(
             body_sites, context_title=study_title, decision_model=decision_model, ols=ols
         )
-    except _DECISION_CALL_ERRORS as exc:
+    except DECISION_CALL_ERRORS as exc:
         logger.bind(stage="S4").warning("body-site ontology mapping failed; skipping", error=repr(exc))
         annotations["body_site_terms_error"] = repr(exc)
         return []

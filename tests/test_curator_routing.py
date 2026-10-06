@@ -248,6 +248,18 @@ def test_first_failure_cancels_the_sibling_calls():
     assert sorted(cancelled) == ["Table 2.", "Table 3."]
 
 
+def test_two_failing_siblings_surface_the_bug_not_the_expected_error():
+    class Mixed:
+        async def decide(self, *, state, **_):
+            if state["artifact"] == "Table 1.":
+                raise DecisionModelError("boom")
+            return {}  # KeyError in rank_artifacts: a bug that must not be masked by the sibling's error
+
+    bundle = _bundle([_table("1", "x"), _table("2", "y")])
+    with pytest.raises(KeyError):
+        asyncio.run(rank_artifacts(bundle, Mixed()))  # type: ignore[arg-type]
+
+
 def test_curate_async_falls_back_to_the_regex_choice_when_decisions_fail(httpx_mock, tmp_path):
     class Down:
         async def decide(self, **_):

@@ -132,6 +132,31 @@ def test_no_labels_means_no_calls():
     assert _map([], MockDecisionModel(), _ols()) == []
 
 
+def test_a_choice_outside_the_offered_options_is_a_decision_error(httpx_mock):
+    _mock_ols(httpx_mock, "Feces", [FECES, GUT])
+
+    class Rogue:
+        async def decide(self, **_):
+            return {"term": ChoiceAnswer("UBERON:9999999", {"UBERON:9999999": 1.0}, 1.0)}
+
+    with pytest.raises(DecisionModelError, match="not among offered options"):
+        _map(["Feces"], Rogue(), _ols())  # type: ignore[arg-type]
+
+
+def test_two_failing_siblings_surface_the_bug_not_the_expected_error(httpx_mock):
+    _mock_ols(httpx_mock, "Feces", [FECES])
+    _mock_ols(httpx_mock, "Skin of body", [SKIN])
+
+    class Mixed:
+        async def decide(self, *, state, **_):
+            if state["label"] == "Feces":
+                raise DecisionModelError("down")
+            return {}  # missing the 'term' answer -> KeyError: a bug, must not be masked
+
+    with pytest.raises(KeyError):
+        _map(["Feces", "Skin of body"], Mixed(), _ols())  # type: ignore[arg-type]
+
+
 def test_decision_failure_propagates(httpx_mock):
     _mock_ols(httpx_mock, "Feces", [FECES])
 
@@ -213,6 +238,21 @@ def test_decision_failure_on_s4_ontology_is_recorded_too(httpx_mock, tmp_path):
     decision = MockDecisionModel({"s5a_locate": _s5a_answer})
     result = _curate(httpx_mock, tmp_path, decision, tag="nostage")  # no s4_ontology canned answers -> DecisionModelError
     assert result.valid and "s4_ontology" in result.annotations["body_site_terms_error"]
+
+
+def test_a_rogue_choice_is_recorded_and_the_record_is_unchanged(httpx_mock, tmp_path):
+    baseline = _curate(httpx_mock, tmp_path, None, tag="base")
+
+    class Rogue:
+        async def decide(self, *, stage, **_):
+            if stage == "s5a_locate":
+                return {"is_da_artifact": NoulAnswer(0.5)}
+            return {"term": ChoiceAnswer("UBERON:9999999", {"UBERON:9999999": 1.0}, 1.0)}
+
+    result = _curate(httpx_mock, tmp_path, Rogue(), tag="rogue")
+    assert result.valid and result.record == baseline.record
+    assert "body_site_terms" not in result.annotations
+    assert "not among offered options" in str(result.annotations["body_site_terms_error"])
 
 
 def test_programming_errors_are_not_swallowed(httpx_mock):
