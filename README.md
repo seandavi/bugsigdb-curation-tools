@@ -153,7 +153,8 @@ paper, clicks *Export*, and sends back one JSON file.
 uv run bugsigdb review packet --pred preds/21850056.json --out packets/ \
     --model-label gemini-3-pro --design-label split-verify
 #    picks up preds/21850056.annotations.json automatically; --offline skips fetching evidence,
-#    --evidence-dir DIR caches it, --pmcid overrides the PMID->PMCID lookup
+#    --evidence-dir DIR caches it (complete fetches only; --refresh-evidence refetches),
+#    --pmcid overrides the PMID->PMCID lookup
 # 2. file returned verdicts (validated against schema/review_verdict.schema.json)
 uv run bugsigdb review ingest ~/Downloads/verdicts_21850056_*.json --manifests packets/   # -> data/reviews/<pmid>/
 # 3. aggregate
@@ -161,9 +162,10 @@ uv run bugsigdb review report --reviews data/reviews --out report.md
 ```
 
 Figure images are embedded only when the article's EuropePMC licence is CC BY or
-CC0 (and each image is under ~1.5 MB); otherwise the packet shows the legend and a
-link. `ingest` refuses verdicts whose `draft_sha256` differs from the manifest
-unless `--force`. Verdicts contain reviewer names/emails: `data/` is git-ignored.
+CC0 (each image under ~1.5 MB, all images together under ~6 MB); otherwise the packet
+shows the legend and a link. `ingest` refuses verdicts whose `draft_sha256` differs
+from the manifest, and refuses to overwrite a different file already filed for the
+same reviewer and second, unless `--force`; re-ingesting an identical file is a no-op. Verdicts contain reviewer names/emails: `data/` is git-ignored.
 
 ## License
 
