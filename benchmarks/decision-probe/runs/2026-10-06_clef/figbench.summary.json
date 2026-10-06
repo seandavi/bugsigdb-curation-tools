@@ -1,0 +1,351 @@
+{
+  "cost": {
+    "calls": 95,
+    "input_tokens": 122528,
+    "mean_latency_ms": 843.0
+  },
+  "direction": {
+    "binary": {
+      "at_0.5": {
+        "n_routed": 108,
+        "precision": 0.6666666666666666,
+        "recall": 0.6206896551724138,
+        "tau": 0.5
+      },
+      "at_recall_0.95": {
+        "n_routed": 221,
+        "precision": 0.502262443438914,
+        "recall": 0.9568965517241379,
+        "tau": 0.2599
+      },
+      "auprc": 0.7986579103914171,
+      "auroc": 0.7690238527352865,
+      "brier": 0.1911730419678715,
+      "n": 249,
+      "n_pos": 116
+    },
+    "by_figure_type": {
+      "box_or_violin": {
+        "accuracy": 0.6363636363636364,
+        "n": 22
+      },
+      "cladogram": {
+        "accuracy": 0.5480769230769231,
+        "n": 104
+      },
+      "heatmap": {
+        "accuracy": 0.7068965517241379,
+        "n": 58
+      },
+      "lefse_lda_bar": {
+        "accuracy": 0.9512195121951219,
+        "n": 41
+      },
+      "other": {
+        "accuracy": 0.5384615384615384,
+        "n": 13
+      },
+      "stacked_bar_composition": {
+        "accuracy": 1.0,
+        "n": 11
+      }
+    },
+    "coverage_at_confidence": [
+      {
+        "accuracy": 0.678714859437751,
+        "coverage": 1.0,
+        "n": 249,
+        "tau": 0.0
+      },
+      {
+        "accuracy": 0.9310344827586207,
+        "coverage": 0.23293172690763053,
+        "n": 58,
+        "tau": 0.5
+      },
+      {
+        "accuracy": 1.0,
+        "coverage": 0.08835341365461848,
+        "n": 22,
+        "tau": 0.8
+      },
+      {
+        "accuracy": 1.0,
+        "coverage": 0.028112449799196786,
+        "n": 7,
+        "tau": 0.9
+      },
+      {
+        "accuracy": 1.0,
+        "coverage": 0.004016064257028112,
+        "n": 1,
+        "tau": 0.95
+      }
+    ],
+    "per_figure": [
+      {
+        "n": 5,
+        "pmid": "30854760",
+        "taxon_accuracy": 1.0,
+        "type": "stacked_bar_composition"
+      },
+      {
+        "n": 6,
+        "pmid": "32552447",
+        "taxon_accuracy": 1.0,
+        "type": "stacked_bar_composition"
+      },
+      {
+        "n": 5,
+        "pmid": "31215600",
+        "taxon_accuracy": 0.6,
+        "type": "box_or_violin"
+      },
+      {
+        "n": 9,
+        "pmid": "33167991",
+        "taxon_accuracy": 0.8888888888888888,
+        "type": "box_or_violin"
+      },
+      {
+        "n": 8,
+        "pmid": "34090383",
+        "taxon_accuracy": 0.375,
+        "type": "box_or_violin"
+      },
+      {
+        "n": 12,
+        "pmid": "24192039",
+        "taxon_accuracy": 0.8333333333333334,
+        "type": "lefse_lda_bar"
+      },
+      {
+        "n": 15,
+        "pmid": "32753953",
+        "taxon_accuracy": 1.0,
+        "type": "lefse_lda_bar"
+      },
+      {
+        "n": 14,
+        "pmid": "38387693",
+        "taxon_accuracy": 1.0,
+        "type": "lefse_lda_bar"
+      },
+      {
+        "n": 38,
+        "pmid": "29459704",
+        "taxon_accuracy": 0.39473684210526316,
+        "type": "cladogram"
+      },
+      {
+        "n": 32,
+        "pmid": "33804656",
+        "taxon_accuracy": 0.46875,
+        "type": "cladogram"
+      },
+      {
+        "n": 34,
+        "pmid": "41670382",
+        "taxon_accuracy": 0.7941176470588235,
+        "type": "cladogram"
+      },
+      {
+        "n": 11,
+        "pmid": "35233023",
+        "taxon_accuracy": 0.6363636363636364,
+        "type": "heatmap"
+      },
+      {
+        "n": 20,
+        "pmid": "35387878",
+        "taxon_accuracy": 0.6,
+        "type": "heatmap"
+      },
+      {
+        "n": 27,
+        "pmid": "40943094",
+        "taxon_accuracy": 0.8148148148148148,
+        "type": "heatmap"
+      },
+      {
+        "n": 13,
+        "pmid": "30675188",
+        "taxon_accuracy": 0.5384615384615384,
+        "type": "other"
+      }
+    ],
+    "signature_majority_correct": 0.65,
+    "taxon_accuracy": 0.678714859437751
+  },
+  "figure_type": {
+    "accuracy": 0.5333333333333333,
+    "confusions": [
+      [
+        "stacked_bar_composition",
+        "box_or_violin"
+      ],
+      [
+        "box_or_violin",
+        "stacked_bar_composition"
+      ],
+      [
+        "lefse_lda_bar",
+        "stacked_bar_composition"
+      ],
+      [
+        "cladogram",
+        "lefse_lda_bar"
+      ],
+      [
+        "cladogram",
+        "lefse_lda_bar"
+      ],
+      [
+        "heatmap",
+        "other"
+      ],
+      [
+        "other",
+        "lefse_lda_bar"
+      ]
+    ],
+    "coverage_at_confidence": [
+      {
+        "accuracy": 1.0,
+        "coverage": 0.4666666666666667,
+        "n": 7,
+        "tau": 0.5
+      },
+      {
+        "accuracy": 1.0,
+        "coverage": 0.3333333333333333,
+        "n": 5,
+        "tau": 0.7
+      },
+      {
+        "accuracy": 1.0,
+        "coverage": 0.13333333333333333,
+        "n": 2,
+        "tau": 0.9
+      }
+    ],
+    "n": 15
+  },
+  "orientation_answers": [
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "30854760"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "32552447"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "31215600"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "33167991"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "34090383"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_0",
+        "positive_or_enriched_means_group_0"
+      ],
+      "pmid": "24192039"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "32753953"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_0",
+        "positive_or_enriched_means_group_0"
+      ],
+      "pmid": "38387693"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_0",
+        "positive_or_enriched_means_group_0"
+      ],
+      "pmid": "29459704"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1",
+        "unclear",
+        "unclear",
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_0",
+        "positive_or_enriched_means_group_0"
+      ],
+      "pmid": "33804656"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "41670382"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "35233023"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "35387878"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_1",
+        "positive_or_enriched_means_group_1"
+      ],
+      "pmid": "40943094"
+    },
+    {
+      "answers": [
+        "positive_or_enriched_means_group_0",
+        "positive_or_enriched_means_group_0",
+        "positive_or_enriched_means_group_0",
+        "unclear"
+      ],
+      "pmid": "30675188"
+    }
+  ]
+}

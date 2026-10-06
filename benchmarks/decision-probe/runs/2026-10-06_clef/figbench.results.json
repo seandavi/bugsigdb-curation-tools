@@ -1,0 +1,2003 @@
+{
+ "items": [
+  {
+   "pmid": "30854760",
+   "figure_type_gold": "stacked_bar_composition",
+   "taxa": [
+    {
+     "taxon": "Streptococcus pseudopneumoniae",
+     "signature_id": "bsdb:30854760/1/1",
+     "gold_increased": true,
+     "p_yes": 0.9673
+    },
+    {
+     "taxon": "Prevotella disiens",
+     "signature_id": "bsdb:30854760/1/1",
+     "gold_increased": true,
+     "p_yes": 0.9496
+    },
+    {
+     "taxon": "Gardnerella vaginalis",
+     "signature_id": "bsdb:30854760/1/1",
+     "gold_increased": true,
+     "p_yes": 0.9707
+    },
+    {
+     "taxon": "Gardnerella",
+     "signature_id": "bsdb:30854760/1/1",
+     "gold_increased": true,
+     "p_yes": 0.8942
+    },
+    {
+     "taxon": "Lactobacillus crispatus",
+     "signature_id": "bsdb:30854760/1/2",
+     "gold_increased": false,
+     "p_yes": 0.0256
+    }
+   ],
+   "figure_type": {
+    "choice": "stacked_bar_composition",
+    "confidence": 0.1411,
+    "probabilities": {
+     "lefse_lda_bar": 0.1374,
+     "cladogram": 0.1556,
+     "heatmap": 0.0561,
+     "box_or_violin": 0.0148,
+     "volcano": 0.0079,
+     "stacked_bar_composition": 0.3714,
+     "network": 0.0177,
+     "other": 0.2273,
+     "not_a_figure": 0.0118
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.2541
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.2541
+    }
+   ]
+  },
+  {
+   "pmid": "32552447",
+   "figure_type_gold": "stacked_bar_composition",
+   "taxa": [
+    {
+     "taxon": "Mycobacterium tuberculosis",
+     "signature_id": "bsdb:32552447/1/1",
+     "gold_increased": true,
+     "p_yes": 0.976
+    },
+    {
+     "taxon": "Streptococcus",
+     "signature_id": "bsdb:32552447/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4679
+    },
+    {
+     "taxon": "Prevotella",
+     "signature_id": "bsdb:32552447/1/2",
+     "gold_increased": false,
+     "p_yes": 0.1215
+    },
+    {
+     "taxon": "Neisseria",
+     "signature_id": "bsdb:32552447/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2779
+    },
+    {
+     "taxon": "Selenomonas",
+     "signature_id": "bsdb:32552447/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3756
+    },
+    {
+     "taxon": "Bifidobacterium",
+     "signature_id": "bsdb:32552447/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3044
+    }
+   ],
+   "figure_type": {
+    "choice": "box_or_violin",
+    "confidence": 0.3394,
+    "probabilities": {
+     "lefse_lda_bar": 0.0418,
+     "cladogram": 0.0057,
+     "heatmap": 0.0144,
+     "box_or_violin": 0.5565,
+     "volcano": 0.0052,
+     "stacked_bar_composition": 0.3136,
+     "network": 0.0039,
+     "other": 0.0519,
+     "not_a_figure": 0.007
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.6247
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.6247
+    }
+   ]
+  },
+  {
+   "pmid": "31215600",
+   "figure_type_gold": "box_or_violin",
+   "taxa": [
+    {
+     "taxon": "Gemella sanguinis",
+     "signature_id": "bsdb:31215600/1/1",
+     "gold_increased": true,
+     "p_yes": 0.3753
+    },
+    {
+     "taxon": "Veillonella parvula",
+     "signature_id": "bsdb:31215600/1/1",
+     "gold_increased": true,
+     "p_yes": 0.156
+    },
+    {
+     "taxon": "Neisseria flavescens",
+     "signature_id": "bsdb:31215600/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7058
+    },
+    {
+     "taxon": "Streptococcus parasanguinis",
+     "signature_id": "bsdb:31215600/1/2",
+     "gold_increased": false,
+     "p_yes": 0.314
+    },
+    {
+     "taxon": "Prevotella histicola",
+     "signature_id": "bsdb:31215600/1/2",
+     "gold_increased": false,
+     "p_yes": 0.1607
+    }
+   ],
+   "figure_type": {
+    "choice": "box_or_violin",
+    "confidence": 0.9328,
+    "probabilities": {
+     "lefse_lda_bar": 0.0086,
+     "cladogram": 0.0021,
+     "heatmap": 0.0028,
+     "box_or_violin": 0.9696,
+     "volcano": 0.0018,
+     "stacked_bar_composition": 0.0038,
+     "network": 0.0014,
+     "other": 0.0084,
+     "not_a_figure": 0.0015
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.113
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.113
+    }
+   ]
+  },
+  {
+   "pmid": "33167991",
+   "figure_type_gold": "box_or_violin",
+   "taxa": [
+    {
+     "taxon": "Veillonella dispar",
+     "signature_id": "bsdb:33167991/1/1",
+     "gold_increased": true,
+     "p_yes": 0.9031
+    },
+    {
+     "taxon": "Hoylesella pleuritidis",
+     "signature_id": "bsdb:33167991/1/1",
+     "gold_increased": true,
+     "p_yes": 0.8554
+    },
+    {
+     "taxon": "Gemella cuniculi",
+     "signature_id": "bsdb:33167991/1/2",
+     "gold_increased": false,
+     "p_yes": 0.1762
+    },
+    {
+     "taxon": "Neisseria perflava",
+     "signature_id": "bsdb:33167991/1/2",
+     "gold_increased": false,
+     "p_yes": 0.5306
+    },
+    {
+     "taxon": "Haemophilus",
+     "signature_id": "bsdb:33167991/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2573
+    },
+    {
+     "taxon": "Neisseria subflava",
+     "signature_id": "bsdb:33167991/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4052
+    },
+    {
+     "taxon": "Gemella haemolysans",
+     "signature_id": "bsdb:33167991/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2091
+    },
+    {
+     "taxon": "Streptococcus oralis",
+     "signature_id": "bsdb:33167991/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2807
+    },
+    {
+     "taxon": "Streptococcus mitis",
+     "signature_id": "bsdb:33167991/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4906
+    }
+   ],
+   "figure_type": {
+    "choice": "box_or_violin",
+    "confidence": 0.9544,
+    "probabilities": {
+     "lefse_lda_bar": 0.0041,
+     "cladogram": 0.0025,
+     "heatmap": 0.0025,
+     "box_or_violin": 0.9795,
+     "volcano": 0.0019,
+     "stacked_bar_composition": 0.0023,
+     "network": 0.0015,
+     "other": 0.0042,
+     "not_a_figure": 0.0015
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.2637
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.2637
+    }
+   ]
+  },
+  {
+   "pmid": "34090383",
+   "figure_type_gold": "box_or_violin",
+   "taxa": [
+    {
+     "taxon": "Bacteroidota",
+     "signature_id": "bsdb:34090383/1/1",
+     "gold_increased": true,
+     "p_yes": 0.4036
+    },
+    {
+     "taxon": "Butyricimonas",
+     "signature_id": "bsdb:34090383/1/1",
+     "gold_increased": true,
+     "p_yes": 0.258
+    },
+    {
+     "taxon": "Dorea",
+     "signature_id": "bsdb:34090383/1/1",
+     "gold_increased": true,
+     "p_yes": 0.4624
+    },
+    {
+     "taxon": "Lachnobacterium",
+     "signature_id": "bsdb:34090383/1/1",
+     "gold_increased": true,
+     "p_yes": 0.4303
+    },
+    {
+     "taxon": "Sutterella",
+     "signature_id": "bsdb:34090383/1/1",
+     "gold_increased": true,
+     "p_yes": 0.4942
+    },
+    {
+     "taxon": "Bacillota",
+     "signature_id": "bsdb:34090383/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2849
+    },
+    {
+     "taxon": "Bulleidia",
+     "signature_id": "bsdb:34090383/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2588
+    },
+    {
+     "taxon": "Faecalibacterium",
+     "signature_id": "bsdb:34090383/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2676
+    }
+   ],
+   "figure_type": {
+    "choice": "stacked_bar_composition",
+    "confidence": 0.4105,
+    "probabilities": {
+     "lefse_lda_bar": 0.0129,
+     "cladogram": 0.0061,
+     "heatmap": 0.0098,
+     "box_or_violin": 0.1883,
+     "volcano": 0.005,
+     "stacked_bar_composition": 0.6541,
+     "network": 0.0051,
+     "other": 0.1108,
+     "not_a_figure": 0.0079
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.0242
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.0242
+    }
+   ]
+  },
+  {
+   "pmid": "24192039",
+   "figure_type_gold": "lefse_lda_bar",
+   "taxa": [
+    {
+     "taxon": "Catenibacterium",
+     "signature_id": "bsdb:24192039/1/1",
+     "gold_increased": true,
+     "p_yes": 0.2906
+    },
+    {
+     "taxon": "Prevotella",
+     "signature_id": "bsdb:24192039/1/1",
+     "gold_increased": true,
+     "p_yes": 0.9291
+    },
+    {
+     "taxon": "Prevotellaceae",
+     "signature_id": "bsdb:24192039/1/1",
+     "gold_increased": true,
+     "p_yes": 0.879
+    },
+    {
+     "taxon": "Veillonella",
+     "signature_id": "bsdb:24192039/1/1",
+     "gold_increased": true,
+     "p_yes": 0.4808
+    },
+    {
+     "taxon": "Veillonella sp.",
+     "signature_id": "bsdb:24192039/1/1",
+     "gold_increased": true,
+     "p_yes": 0.5059
+    },
+    {
+     "taxon": "Bacteroidaceae",
+     "signature_id": "bsdb:24192039/1/2",
+     "gold_increased": false,
+     "p_yes": 0.0453
+    },
+    {
+     "taxon": "Bacteroides",
+     "signature_id": "bsdb:24192039/1/2",
+     "gold_increased": false,
+     "p_yes": 0.0569
+    },
+    {
+     "taxon": "Blautia",
+     "signature_id": "bsdb:24192039/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2631
+    },
+    {
+     "taxon": "Clostridia",
+     "signature_id": "bsdb:24192039/1/2",
+     "gold_increased": false,
+     "p_yes": 0.333
+    },
+    {
+     "taxon": "Lachnospiraceae",
+     "signature_id": "bsdb:24192039/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4091
+    },
+    {
+     "taxon": "Phascolarctobacterium",
+     "signature_id": "bsdb:24192039/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3436
+    },
+    {
+     "taxon": "Lachnospiraceae",
+     "signature_id": "bsdb:24192039/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4154
+    }
+   ],
+   "figure_type": {
+    "choice": "lefse_lda_bar",
+    "confidence": 0.5384,
+    "probabilities": {
+     "lefse_lda_bar": 0.7486,
+     "cladogram": 0.0085,
+     "heatmap": 0.0108,
+     "box_or_violin": 0.0107,
+     "volcano": 0.0082,
+     "stacked_bar_composition": 0.0344,
+     "network": 0.005,
+     "other": 0.166,
+     "not_a_figure": 0.0078
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_0",
+     "confidence": 0.561
+    },
+    {
+     "choice": "positive_or_enriched_means_group_0",
+     "confidence": 0.561
+    }
+   ]
+  },
+  {
+   "pmid": "32753953",
+   "figure_type_gold": "lefse_lda_bar",
+   "taxa": [
+    {
+     "taxon": "Carnobacterium",
+     "signature_id": "bsdb:32753953/1/1",
+     "gold_increased": true,
+     "p_yes": 0.8349
+    },
+    {
+     "taxon": "Filifactor",
+     "signature_id": "bsdb:32753953/1/1",
+     "gold_increased": true,
+     "p_yes": 0.707
+    },
+    {
+     "taxon": "Fusobacterium",
+     "signature_id": "bsdb:32753953/1/1",
+     "gold_increased": true,
+     "p_yes": 0.9628
+    },
+    {
+     "taxon": "Parvimonas",
+     "signature_id": "bsdb:32753953/1/1",
+     "gold_increased": true,
+     "p_yes": 0.8722
+    },
+    {
+     "taxon": "Peptostreptococcus",
+     "signature_id": "bsdb:32753953/1/1",
+     "gold_increased": true,
+     "p_yes": 0.9319
+    },
+    {
+     "taxon": "Streptococcus",
+     "signature_id": "bsdb:32753953/1/1",
+     "gold_increased": true,
+     "p_yes": 0.8358
+    },
+    {
+     "taxon": "Tannerella",
+     "signature_id": "bsdb:32753953/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7051
+    },
+    {
+     "taxon": "Treponema",
+     "signature_id": "bsdb:32753953/1/1",
+     "gold_increased": true,
+     "p_yes": 0.9076
+    },
+    {
+     "taxon": "Arthrobacter",
+     "signature_id": "bsdb:32753953/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3174
+    },
+    {
+     "taxon": "Brevundimonas",
+     "signature_id": "bsdb:32753953/1/2",
+     "gold_increased": false,
+     "p_yes": 0.0878
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "signature_id": "bsdb:32753953/1/2",
+     "gold_increased": false,
+     "p_yes": 0.1877
+    },
+    {
+     "taxon": "Microbacterium",
+     "signature_id": "bsdb:32753953/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3753
+    },
+    {
+     "taxon": "Mucispirillum",
+     "signature_id": "bsdb:32753953/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3156
+    },
+    {
+     "taxon": "Paenibacillus",
+     "signature_id": "bsdb:32753953/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2812
+    },
+    {
+     "taxon": "Streptophyta",
+     "signature_id": "bsdb:32753953/1/2",
+     "gold_increased": false,
+     "p_yes": 0.435
+    }
+   ],
+   "figure_type": {
+    "choice": "lefse_lda_bar",
+    "confidence": 0.7121,
+    "probabilities": {
+     "lefse_lda_bar": 0.8587,
+     "cladogram": 0.0064,
+     "heatmap": 0.006,
+     "box_or_violin": 0.0711,
+     "volcano": 0.005,
+     "stacked_bar_composition": 0.0067,
+     "network": 0.0029,
+     "other": 0.0395,
+     "not_a_figure": 0.0037
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.5927
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.5927
+    }
+   ]
+  },
+  {
+   "pmid": "38387693",
+   "figure_type_gold": "lefse_lda_bar",
+   "taxa": [
+    {
+     "taxon": "Coprobacillus",
+     "signature_id": "bsdb:38387693/1/1",
+     "gold_increased": true,
+     "p_yes": 0.9005
+    },
+    {
+     "taxon": "Pseudobutyrivibrio",
+     "signature_id": "bsdb:38387693/1/1",
+     "gold_increased": true,
+     "p_yes": 0.8689
+    },
+    {
+     "taxon": "Cetobacterium",
+     "signature_id": "bsdb:38387693/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7557
+    },
+    {
+     "taxon": "Clostridiaceae",
+     "signature_id": "bsdb:38387693/1/1",
+     "gold_increased": true,
+     "p_yes": 0.635
+    },
+    {
+     "taxon": "Clostridium",
+     "signature_id": "bsdb:38387693/1/1",
+     "gold_increased": true,
+     "p_yes": 0.5853
+    },
+    {
+     "taxon": "Romboutsia",
+     "signature_id": "bsdb:38387693/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7467
+    },
+    {
+     "taxon": "Peptostreptococcaceae",
+     "signature_id": "bsdb:38387693/1/1",
+     "gold_increased": true,
+     "p_yes": 0.809
+    },
+    {
+     "taxon": "Lysobacteraceae",
+     "signature_id": "bsdb:38387693/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4243
+    },
+    {
+     "taxon": "Stenotrophomonas",
+     "signature_id": "bsdb:38387693/1/2",
+     "gold_increased": false,
+     "p_yes": 0.0751
+    },
+    {
+     "taxon": "Pasteurellaceae",
+     "signature_id": "bsdb:38387693/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2798
+    },
+    {
+     "taxon": "Pasteurellales",
+     "signature_id": "bsdb:38387693/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4112
+    },
+    {
+     "taxon": "Lysobacterales",
+     "signature_id": "bsdb:38387693/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3833
+    },
+    {
+     "taxon": "Haemophilus",
+     "signature_id": "bsdb:38387693/1/2",
+     "gold_increased": false,
+     "p_yes": 0.418
+    },
+    {
+     "taxon": "Tessaracoccus",
+     "signature_id": "bsdb:38387693/1/2",
+     "gold_increased": false,
+     "p_yes": 0.481
+    }
+   ],
+   "figure_type": {
+    "choice": "stacked_bar_composition",
+    "confidence": 0.1793,
+    "probabilities": {
+     "lefse_lda_bar": 0.1982,
+     "cladogram": 0.0793,
+     "heatmap": 0.0139,
+     "box_or_violin": 0.0145,
+     "volcano": 0.0084,
+     "stacked_bar_composition": 0.3742,
+     "network": 0.0097,
+     "other": 0.2902,
+     "not_a_figure": 0.0116
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_0",
+     "confidence": 0.1495
+    },
+    {
+     "choice": "positive_or_enriched_means_group_0",
+     "confidence": 0.1495
+    }
+   ]
+  },
+  {
+   "pmid": "29459704",
+   "figure_type_gold": "cladogram",
+   "taxa": [
+    {
+     "taxon": "Aeromonas veronii",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.5786
+    },
+    {
+     "taxon": "Alphaproteobacteria",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.5669
+    },
+    {
+     "taxon": "Bacillaceae",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7504
+    },
+    {
+     "taxon": "Bacillales",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7502
+    },
+    {
+     "taxon": "Bacilli",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7672
+    },
+    {
+     "taxon": "Bacillus",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7688
+    },
+    {
+     "taxon": "Bacillus amyloliquefaciens",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.6671
+    },
+    {
+     "taxon": "Bacillus licheniformis",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7974
+    },
+    {
+     "taxon": "Deinococcaceae",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.5707
+    },
+    {
+     "taxon": "Deinococcales",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.6137
+    },
+    {
+     "taxon": "Deinococci",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.5683
+    },
+    {
+     "taxon": "Deinococcus",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.6676
+    },
+    {
+     "taxon": "Deinococcota",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.6656
+    },
+    {
+     "taxon": "Eubacteriaceae",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.3353
+    },
+    {
+     "taxon": "Eubacterium",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.4704
+    },
+    {
+     "taxon": "Faecalibacterium",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.2276
+    },
+    {
+     "taxon": "Faecalibacterium prausnitzii",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.3279
+    },
+    {
+     "taxon": "Bacillota",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7036
+    },
+    {
+     "taxon": "Phocaeicola vulgatus",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.3982
+    },
+    {
+     "taxon": "Stenotrophomonas",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.662
+    },
+    {
+     "taxon": "Lysobacteraceae",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.494
+    },
+    {
+     "taxon": "Lysobacterales",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.4567
+    },
+    {
+     "taxon": "Agathobacter rectalis",
+     "signature_id": "bsdb:29459704/1/1",
+     "gold_increased": true,
+     "p_yes": 0.2999
+    },
+    {
+     "taxon": "Actinomycetes",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.6836
+    },
+    {
+     "taxon": "Actinomycetota",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.6442
+    },
+    {
+     "taxon": "Actinomycetales",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.6358
+    },
+    {
+     "taxon": "Propionibacteriaceae",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.5503
+    },
+    {
+     "taxon": "Gammaproteobacteria",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.5522
+    },
+    {
+     "taxon": "Cutibacterium acnes",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.6774
+    },
+    {
+     "taxon": "Propionibacterium",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.566
+    },
+    {
+     "taxon": "Pseudomonadales",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.5346
+    },
+    {
+     "taxon": "Pseudonocardiaceae",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.5447
+    },
+    {
+     "taxon": "Burkholderiales",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.6364
+    },
+    {
+     "taxon": "Betaproteobacteria",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.6441
+    },
+    {
+     "taxon": "Comamonas",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.6518
+    },
+    {
+     "taxon": "Comamonadaceae",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.6478
+    },
+    {
+     "taxon": "Comamonas testosteroni",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.7268
+    },
+    {
+     "taxon": "Pseudomonas",
+     "signature_id": "bsdb:29459704/1/2",
+     "gold_increased": false,
+     "p_yes": 0.6768
+    }
+   ],
+   "figure_type": {
+    "choice": "lefse_lda_bar",
+    "confidence": 0.3287,
+    "probabilities": {
+     "lefse_lda_bar": 0.5892,
+     "cladogram": 0.2041,
+     "heatmap": 0.0236,
+     "box_or_violin": 0.0195,
+     "volcano": 0.0122,
+     "stacked_bar_composition": 0.0145,
+     "network": 0.0107,
+     "other": 0.1137,
+     "not_a_figure": 0.0125
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_0",
+     "confidence": 0.7343
+    },
+    {
+     "choice": "positive_or_enriched_means_group_0",
+     "confidence": 0.7343
+    }
+   ]
+  },
+  {
+   "pmid": "33804656",
+   "figure_type_gold": "cladogram",
+   "taxa": [
+    {
+     "taxon": "Enterococcaceae",
+     "signature_id": "bsdb:33804656/1/1",
+     "gold_increased": true,
+     "p_yes": 0.4761
+    },
+    {
+     "taxon": "Lactobacillales",
+     "signature_id": "bsdb:33804656/1/1",
+     "gold_increased": true,
+     "p_yes": 0.4368
+    },
+    {
+     "taxon": "Enterococcus",
+     "signature_id": "bsdb:33804656/1/1",
+     "gold_increased": true,
+     "p_yes": 0.4126
+    },
+    {
+     "taxon": "Candidatus Stoquefichus",
+     "signature_id": "bsdb:33804656/1/2",
+     "gold_increased": false,
+     "p_yes": 0.5581
+    },
+    {
+     "taxon": "Eubacteriales Family XIII. Incertae Sedis bacterium",
+     "signature_id": "bsdb:33804656/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4297
+    },
+    {
+     "taxon": "Erysipelotrichaceae",
+     "signature_id": "bsdb:33804656/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3395
+    },
+    {
+     "taxon": "Erysipelotrichales",
+     "signature_id": "bsdb:33804656/1/2",
+     "gold_increased": false,
+     "p_yes": 0.5072
+    },
+    {
+     "taxon": "Faecalibaculum",
+     "signature_id": "bsdb:33804656/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3948
+    },
+    {
+     "taxon": "Peptostreptococcaceae",
+     "signature_id": "bsdb:33804656/1/2",
+     "gold_increased": false,
+     "p_yes": 0.6125
+    },
+    {
+     "taxon": "Romboutsia",
+     "signature_id": "bsdb:33804656/1/2",
+     "gold_increased": false,
+     "p_yes": 0.5672
+    },
+    {
+     "taxon": "Clostridiales bacterium",
+     "signature_id": "bsdb:33804656/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4355
+    },
+    {
+     "taxon": "Romboutsia",
+     "signature_id": "bsdb:33804656/2/1",
+     "gold_increased": true,
+     "p_yes": 0.2599
+    },
+    {
+     "taxon": "Peptostreptococcaceae",
+     "signature_id": "bsdb:33804656/2/1",
+     "gold_increased": true,
+     "p_yes": 0.2844
+    },
+    {
+     "taxon": "Dubosiella",
+     "signature_id": "bsdb:33804656/2/1",
+     "gold_increased": true,
+     "p_yes": 0.6621
+    },
+    {
+     "taxon": "Eubacteriales Family XIII. Incertae Sedis bacterium",
+     "signature_id": "bsdb:33804656/2/2",
+     "gold_increased": false,
+     "p_yes": 0.4226
+    },
+    {
+     "taxon": "Candidatus Stoquefichus",
+     "signature_id": "bsdb:33804656/2/2",
+     "gold_increased": false,
+     "p_yes": 0.3802
+    },
+    {
+     "taxon": "Bacteroidales",
+     "signature_id": "bsdb:33804656/3/1",
+     "gold_increased": true,
+     "p_yes": 0.4407
+    },
+    {
+     "taxon": "Romboutsia",
+     "signature_id": "bsdb:33804656/3/2",
+     "gold_increased": false,
+     "p_yes": 0.5432
+    },
+    {
+     "taxon": "Peptostreptococcaceae",
+     "signature_id": "bsdb:33804656/3/2",
+     "gold_increased": false,
+     "p_yes": 0.5722
+    },
+    {
+     "taxon": "Faecalibaculum",
+     "signature_id": "bsdb:33804656/3/2",
+     "gold_increased": false,
+     "p_yes": 0.4868
+    },
+    {
+     "taxon": "Erysipelotrichaceae",
+     "signature_id": "bsdb:33804656/3/2",
+     "gold_increased": false,
+     "p_yes": 0.4729
+    },
+    {
+     "taxon": "Erysipelotrichales",
+     "signature_id": "bsdb:33804656/3/2",
+     "gold_increased": false,
+     "p_yes": 0.5223
+    },
+    {
+     "taxon": "Bacteroidales",
+     "signature_id": "bsdb:33804656/4/1",
+     "gold_increased": false,
+     "p_yes": 0.3419
+    },
+    {
+     "taxon": "Faecalibaculum",
+     "signature_id": "bsdb:33804656/4/1",
+     "gold_increased": false,
+     "p_yes": 0.5635
+    },
+    {
+     "taxon": "Muribaculaceae",
+     "signature_id": "bsdb:33804656/4/1",
+     "gold_increased": false,
+     "p_yes": 0.453
+    },
+    {
+     "taxon": "Muribaculum",
+     "signature_id": "bsdb:33804656/4/1",
+     "gold_increased": false,
+     "p_yes": 0.5777
+    },
+    {
+     "taxon": "Peptostreptococcaceae",
+     "signature_id": "bsdb:33804656/4/1",
+     "gold_increased": false,
+     "p_yes": 0.4908
+    },
+    {
+     "taxon": "Romboutsia",
+     "signature_id": "bsdb:33804656/4/1",
+     "gold_increased": false,
+     "p_yes": 0.3508
+    },
+    {
+     "taxon": "Clostridiales bacterium",
+     "signature_id": "bsdb:33804656/4/1",
+     "gold_increased": false,
+     "p_yes": 0.3672
+    },
+    {
+     "taxon": "Dubosiella",
+     "signature_id": "bsdb:33804656/4/2",
+     "gold_increased": true,
+     "p_yes": 0.5702
+    },
+    {
+     "taxon": "Erysipelotrichaceae",
+     "signature_id": "bsdb:33804656/4/2",
+     "gold_increased": true,
+     "p_yes": 0.4671
+    },
+    {
+     "taxon": "Erysipelotrichales",
+     "signature_id": "bsdb:33804656/4/2",
+     "gold_increased": true,
+     "p_yes": 0.4822
+    }
+   ],
+   "figure_type": {
+    "choice": "cladogram",
+    "confidence": 0.8246,
+    "probabilities": {
+     "lefse_lda_bar": 0.0463,
+     "cladogram": 0.9175,
+     "heatmap": 0.0051,
+     "box_or_violin": 0.0058,
+     "volcano": 0.0033,
+     "stacked_bar_composition": 0.0033,
+     "network": 0.0035,
+     "other": 0.0101,
+     "not_a_figure": 0.0051
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.0852
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.0852
+    },
+    {
+     "choice": "unclear",
+     "confidence": 0.0357
+    },
+    {
+     "choice": "unclear",
+     "confidence": 0.0357
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.0993
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.0993
+    },
+    {
+     "choice": "positive_or_enriched_means_group_0",
+     "confidence": 0.0186
+    },
+    {
+     "choice": "positive_or_enriched_means_group_0",
+     "confidence": 0.0186
+    }
+   ]
+  },
+  {
+   "pmid": "41670382",
+   "figure_type_gold": "cladogram",
+   "taxa": [
+    {
+     "taxon": "Cyanobacteriota",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.2818
+    },
+    {
+     "taxon": "Clostridium",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.6533
+    },
+    {
+     "taxon": "Rhodococcus",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7186
+    },
+    {
+     "taxon": "Nocardiaceae",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.9102
+    },
+    {
+     "taxon": "Mycobacteriales",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.5776
+    },
+    {
+     "taxon": "Cyanophyceae",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.1833
+    },
+    {
+     "taxon": "Vagococcus",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.3099
+    },
+    {
+     "taxon": "Intestinibacillus",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7069
+    },
+    {
+     "taxon": "Peptoniphilus",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.3259
+    },
+    {
+     "taxon": "Hyphomicrobiales",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.3153
+    },
+    {
+     "taxon": "Kluyvera",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7424
+    },
+    {
+     "taxon": "Pantoea",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.722
+    },
+    {
+     "taxon": "Erwiniaceae",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.8865
+    },
+    {
+     "taxon": "Morganellaceae",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.795
+    },
+    {
+     "taxon": "Pasteurellaceae",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7194
+    },
+    {
+     "taxon": "Vibrio",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.6944
+    },
+    {
+     "taxon": "Vibrionaceae",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.5253
+    },
+    {
+     "taxon": "Pasteurellaceae",
+     "signature_id": "bsdb:41670382/1/1",
+     "gold_increased": true,
+     "p_yes": 0.6258
+    },
+    {
+     "taxon": "Bifidobacterium",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.1194
+    },
+    {
+     "taxon": "Bifidobacteriaceae",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3238
+    },
+    {
+     "taxon": "Bifidobacteriales",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.1773
+    },
+    {
+     "taxon": "Actinomycetota",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.5854
+    },
+    {
+     "taxon": "Olsenella",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3297
+    },
+    {
+     "taxon": "Atopobiaceae",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4449
+    },
+    {
+     "taxon": "Coriobacteriia",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.6149
+    },
+    {
+     "taxon": "Turicibacter",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3137
+    },
+    {
+     "taxon": "Erysipelotrichaceae",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2761
+    },
+    {
+     "taxon": "Lactobacillus",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3587
+    },
+    {
+     "taxon": "Lactobacillaceae",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.435
+    },
+    {
+     "taxon": "Lachnospira eligens",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4701
+    },
+    {
+     "taxon": "Eubacteriaceae",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3716
+    },
+    {
+     "taxon": "Allofournierella",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4071
+    },
+    {
+     "taxon": "Merdimmobilis",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4897
+    },
+    {
+     "taxon": "Negativicutes",
+     "signature_id": "bsdb:41670382/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4928
+    }
+   ],
+   "figure_type": {
+    "choice": "lefse_lda_bar",
+    "confidence": 0.3921,
+    "probabilities": {
+     "lefse_lda_bar": 0.6547,
+     "cladogram": 0.1142,
+     "heatmap": 0.0102,
+     "box_or_violin": 0.1131,
+     "volcano": 0.0085,
+     "stacked_bar_composition": 0.0128,
+     "network": 0.0074,
+     "other": 0.0688,
+     "not_a_figure": 0.0103
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.1939
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.1939
+    }
+   ]
+  },
+  {
+   "pmid": "35233023",
+   "figure_type_gold": "heatmap",
+   "taxa": [
+    {
+     "taxon": "Bifidobacteriaceae",
+     "signature_id": "bsdb:35233023/1/1",
+     "gold_increased": true,
+     "p_yes": 0.4657
+    },
+    {
+     "taxon": "Bifidobacterium",
+     "signature_id": "bsdb:35233023/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7437
+    },
+    {
+     "taxon": "Lactobacillus",
+     "signature_id": "bsdb:35233023/1/1",
+     "gold_increased": true,
+     "p_yes": 0.4067
+    },
+    {
+     "taxon": "Streptococcus",
+     "signature_id": "bsdb:35233023/1/1",
+     "gold_increased": true,
+     "p_yes": 0.4904
+    },
+    {
+     "taxon": "Subdoligranulum",
+     "signature_id": "bsdb:35233023/1/1",
+     "gold_increased": true,
+     "p_yes": 0.438
+    },
+    {
+     "taxon": "Dialister",
+     "signature_id": "bsdb:35233023/1/2",
+     "gold_increased": false,
+     "p_yes": 0.223
+    },
+    {
+     "taxon": "Faecalibacterium",
+     "signature_id": "bsdb:35233023/1/2",
+     "gold_increased": false,
+     "p_yes": 0.0711
+    },
+    {
+     "taxon": "Succinivibrio",
+     "signature_id": "bsdb:35233023/1/2",
+     "gold_increased": false,
+     "p_yes": 0.0771
+    },
+    {
+     "taxon": "Streptococcus",
+     "signature_id": "bsdb:35233023/2/1",
+     "gold_increased": true,
+     "p_yes": 0.9493
+    },
+    {
+     "taxon": "Lactobacillus",
+     "signature_id": "bsdb:35233023/2/1",
+     "gold_increased": true,
+     "p_yes": 0.9555
+    },
+    {
+     "taxon": "Faecalibacterium",
+     "signature_id": "bsdb:35233023/2/2",
+     "gold_increased": false,
+     "p_yes": 0.2288
+    }
+   ],
+   "figure_type": {
+    "choice": "heatmap",
+    "confidence": 0.6409,
+    "probabilities": {
+     "lefse_lda_bar": 0.0254,
+     "cladogram": 0.0088,
+     "heatmap": 0.8178,
+     "box_or_violin": 0.0186,
+     "volcano": 0.0087,
+     "stacked_bar_composition": 0.0052,
+     "network": 0.0048,
+     "other": 0.1036,
+     "not_a_figure": 0.0071
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.8912
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.8912
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.7914
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.7914
+    }
+   ]
+  },
+  {
+   "pmid": "35387878",
+   "figure_type_gold": "heatmap",
+   "taxa": [
+    {
+     "taxon": "Bacillus thuringiensis",
+     "signature_id": "bsdb:35387878/2/1",
+     "gold_increased": true,
+     "p_yes": 0.5363
+    },
+    {
+     "taxon": "Bacillus velezensis",
+     "signature_id": "bsdb:35387878/2/1",
+     "gold_increased": true,
+     "p_yes": 0.4703
+    },
+    {
+     "taxon": "Bifidobacterium choerinum",
+     "signature_id": "bsdb:35387878/2/1",
+     "gold_increased": true,
+     "p_yes": 0.4288
+    },
+    {
+     "taxon": "Eggerthella lenta",
+     "signature_id": "bsdb:35387878/2/1",
+     "gold_increased": true,
+     "p_yes": 0.9294
+    },
+    {
+     "taxon": "Escherichia coli",
+     "signature_id": "bsdb:35387878/2/1",
+     "gold_increased": true,
+     "p_yes": 0.5156
+    },
+    {
+     "taxon": "Gordonibacter massiliensis (ex Traore et al. 2017)",
+     "signature_id": "bsdb:35387878/2/1",
+     "gold_increased": true,
+     "p_yes": 0.4563
+    },
+    {
+     "taxon": "Gordonibacter pamelaeae",
+     "signature_id": "bsdb:35387878/2/1",
+     "gold_increased": true,
+     "p_yes": 0.479
+    },
+    {
+     "taxon": "Gordonibacter urolithinfaciens",
+     "signature_id": "bsdb:35387878/2/1",
+     "gold_increased": true,
+     "p_yes": 0.4787
+    },
+    {
+     "taxon": "Muribaculum gordoncarteri",
+     "signature_id": "bsdb:35387878/2/1",
+     "gold_increased": true,
+     "p_yes": 0.4438
+    },
+    {
+     "taxon": "Parolsenella massiliensis",
+     "signature_id": "bsdb:35387878/2/1",
+     "gold_increased": true,
+     "p_yes": 0.4665
+    },
+    {
+     "taxon": "Staphylococcus capitis",
+     "signature_id": "bsdb:35387878/2/1",
+     "gold_increased": true,
+     "p_yes": 0.5419
+    },
+    {
+     "taxon": "Bacteroides cellulosilyticus",
+     "signature_id": "bsdb:35387878/2/2",
+     "gold_increased": false,
+     "p_yes": 0.3994
+    },
+    {
+     "taxon": "Clostridiales bacterium CCNA10",
+     "signature_id": "bsdb:35387878/2/2",
+     "gold_increased": false,
+     "p_yes": 0.3661
+    },
+    {
+     "taxon": "Erysipelotrichaceae bacterium GAM147",
+     "signature_id": "bsdb:35387878/2/2",
+     "gold_increased": false,
+     "p_yes": 0.3488
+    },
+    {
+     "taxon": "Limosilactobacillus reuteri",
+     "signature_id": "bsdb:35387878/2/2",
+     "gold_increased": false,
+     "p_yes": 0.4459
+    },
+    {
+     "taxon": "Parabacteroides distasonis",
+     "signature_id": "bsdb:35387878/2/2",
+     "gold_increased": false,
+     "p_yes": 0.3759
+    },
+    {
+     "taxon": "Parabacteroides sp. CT06",
+     "signature_id": "bsdb:35387878/2/2",
+     "gold_increased": false,
+     "p_yes": 0.3594
+    },
+    {
+     "taxon": "Phocaeicola dorei",
+     "signature_id": "bsdb:35387878/2/2",
+     "gold_increased": false,
+     "p_yes": 0.3981
+    },
+    {
+     "taxon": "Phocaeicola vulgatus",
+     "signature_id": "bsdb:35387878/2/2",
+     "gold_increased": false,
+     "p_yes": 0.4364
+    },
+    {
+     "taxon": "Streptococcus suis",
+     "signature_id": "bsdb:35387878/2/2",
+     "gold_increased": false,
+     "p_yes": 0.5259
+    }
+   ],
+   "figure_type": {
+    "choice": "other",
+    "confidence": 0.2081,
+    "probabilities": {
+     "lefse_lda_bar": 0.0214,
+     "cladogram": 0.0131,
+     "heatmap": 0.2461,
+     "box_or_violin": 0.0627,
+     "volcano": 0.0144,
+     "stacked_bar_composition": 0.0161,
+     "network": 0.1523,
+     "other": 0.4549,
+     "not_a_figure": 0.019
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.8041
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.8041
+    }
+   ]
+  },
+  {
+   "pmid": "40943094",
+   "figure_type_gold": "heatmap",
+   "taxa": [
+    {
+     "taxon": "Anaerostipes",
+     "signature_id": "bsdb:40943094/1/1",
+     "gold_increased": true,
+     "p_yes": 0.6022
+    },
+    {
+     "taxon": "Bacteroides",
+     "signature_id": "bsdb:40943094/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7854
+    },
+    {
+     "taxon": "Butyricicoccus",
+     "signature_id": "bsdb:40943094/1/1",
+     "gold_increased": true,
+     "p_yes": 0.5839
+    },
+    {
+     "taxon": "Holdemanella",
+     "signature_id": "bsdb:40943094/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7408
+    },
+    {
+     "taxon": "Negativibacillus",
+     "signature_id": "bsdb:40943094/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7337
+    },
+    {
+     "taxon": "Subdoligranulum",
+     "signature_id": "bsdb:40943094/1/1",
+     "gold_increased": true,
+     "p_yes": 0.7177
+    },
+    {
+     "taxon": "Prevotellaceae",
+     "signature_id": "bsdb:40943094/1/1",
+     "gold_increased": true,
+     "p_yes": 0.5445
+    },
+    {
+     "taxon": "Alloprevotella",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2688
+    },
+    {
+     "taxon": "Asaccharospora",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2431
+    },
+    {
+     "taxon": "Catenibacterium",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2907
+    },
+    {
+     "taxon": "Desulfovibrio",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.5198
+    },
+    {
+     "taxon": "Dialister",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4964
+    },
+    {
+     "taxon": "Kandleria",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3624
+    },
+    {
+     "taxon": "Lutaonella",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4412
+    },
+    {
+     "taxon": "Megasphaera",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4365
+    },
+    {
+     "taxon": "Olsenella",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3852
+    },
+    {
+     "taxon": "Parolsenella",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3586
+    },
+    {
+     "taxon": "Phascolarctobacterium",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.5329
+    },
+    {
+     "taxon": "Prevotella",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3338
+    },
+    {
+     "taxon": "Romboutsia",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4838
+    },
+    {
+     "taxon": "Senegalimassilia",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.6981
+    },
+    {
+     "taxon": "Slackia",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3231
+    },
+    {
+     "taxon": "Bifidobacteriaceae",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.3167
+    },
+    {
+     "taxon": "Oscillospiraceae",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.5784
+    },
+    {
+     "taxon": "Peptostreptococcaceae",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.5046
+    },
+    {
+     "taxon": "Succinivibrionaceae",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.4375
+    },
+    {
+     "taxon": "Clostridium",
+     "signature_id": "bsdb:40943094/1/2",
+     "gold_increased": false,
+     "p_yes": 0.355
+    }
+   ],
+   "figure_type": {
+    "choice": "heatmap",
+    "confidence": 0.8212,
+    "probabilities": {
+     "lefse_lda_bar": 0.0471,
+     "cladogram": 0.0136,
+     "heatmap": 0.9157,
+     "box_or_violin": 0.0063,
+     "volcano": 0.0036,
+     "stacked_bar_composition": 0.0023,
+     "network": 0.0023,
+     "other": 0.0066,
+     "not_a_figure": 0.0025
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.8231
+    },
+    {
+     "choice": "positive_or_enriched_means_group_1",
+     "confidence": 0.8231
+    }
+   ]
+  },
+  {
+   "pmid": "30675188",
+   "figure_type_gold": "other",
+   "taxa": [
+    {
+     "taxon": "Anaerotruncus",
+     "signature_id": "bsdb:30675188/1/1",
+     "gold_increased": true,
+     "p_yes": 0.2816
+    },
+    {
+     "taxon": "Eubacterium ventriosum",
+     "signature_id": "bsdb:30675188/1/2",
+     "gold_increased": false,
+     "p_yes": 0.133
+    },
+    {
+     "taxon": "Lachnospira",
+     "signature_id": "bsdb:30675188/1/2",
+     "gold_increased": false,
+     "p_yes": 0.208
+    },
+    {
+     "taxon": "Lachnospiraceae",
+     "signature_id": "bsdb:30675188/1/2",
+     "gold_increased": false,
+     "p_yes": 0.2396
+    },
+    {
+     "taxon": "Megamonas",
+     "signature_id": "bsdb:30675188/1/2",
+     "gold_increased": false,
+     "p_yes": 0.0689
+    },
+    {
+     "taxon": "Anaerotruncus",
+     "signature_id": "bsdb:30675188/2/1",
+     "gold_increased": true,
+     "p_yes": 0.2711
+    },
+    {
+     "taxon": "Oscillospiraceae",
+     "signature_id": "bsdb:30675188/2/1",
+     "gold_increased": true,
+     "p_yes": 0.2211
+    },
+    {
+     "taxon": "Phascolarctobacterium",
+     "signature_id": "bsdb:30675188/2/1",
+     "gold_increased": true,
+     "p_yes": 0.772
+    },
+    {
+     "taxon": "Prevotella",
+     "signature_id": "bsdb:30675188/2/1",
+     "gold_increased": true,
+     "p_yes": 0.7665
+    },
+    {
+     "taxon": "Buchnera",
+     "signature_id": "bsdb:30675188/3/1",
+     "gold_increased": false,
+     "p_yes": 0.5268
+    },
+    {
+     "taxon": "Eubacterium ventriosum",
+     "signature_id": "bsdb:30675188/3/1",
+     "gold_increased": false,
+     "p_yes": 0.5083
+    },
+    {
+     "taxon": "Lachnospira",
+     "signature_id": "bsdb:30675188/3/1",
+     "gold_increased": false,
+     "p_yes": 0.4912
+    },
+    {
+     "taxon": "Phascolarctobacterium",
+     "signature_id": "bsdb:30675188/3/1",
+     "gold_increased": false,
+     "p_yes": 0.6579
+    }
+   ],
+   "figure_type": {
+    "choice": "lefse_lda_bar",
+    "confidence": 0.3844,
+    "probabilities": {
+     "lefse_lda_bar": 0.6385,
+     "cladogram": 0.0069,
+     "heatmap": 0.0148,
+     "box_or_violin": 0.1081,
+     "volcano": 0.0358,
+     "stacked_bar_composition": 0.0115,
+     "network": 0.0022,
+     "other": 0.1782,
+     "not_a_figure": 0.004
+    }
+   },
+   "orientation": [
+    {
+     "choice": "positive_or_enriched_means_group_0",
+     "confidence": 0.3832
+    },
+    {
+     "choice": "positive_or_enriched_means_group_0",
+     "confidence": 0.3832
+    },
+    {
+     "choice": "positive_or_enriched_means_group_0",
+     "confidence": 0.0879
+    },
+    {
+     "choice": "unclear",
+     "confidence": 0.0509
+    }
+   ]
+  }
+ ]
+}
