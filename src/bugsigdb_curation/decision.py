@@ -42,7 +42,8 @@ import json
 import os
 import re
 import time
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -471,6 +472,32 @@ class ClefDecisionModel:
 
         async with self._archive_lock:
             await asyncio.to_thread(_append)
+
+
+def require_credentials() -> None:
+    """Raise :class:`DecisionModelError` unless Cloudflare credentials are in the environment/``.env``.
+
+    For fail-fast checks before a long batch; the values are never returned or logged.
+    """
+    load_dotenv()
+    if not os.environ.get("CLOUDFLARE_ACCOUNT_ID") or not os.environ.get("CLOUDFLARE_API_TOKEN"):
+        raise DecisionModelError("CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN must be set")
+
+
+@asynccontextmanager
+async def open_decision_model(
+    model: str | None, *, archive: Path | None = None, timeout: float = 90.0, **kwargs: Any
+) -> AsyncIterator[ClefDecisionModel | None]:
+    """Yield a credentialed :class:`ClefDecisionModel` (owning its HTTP client) or ``None``.
+
+    ``model=None`` yields ``None`` so callers can write one ``async with`` whether or not a decision
+    model was requested. Credentials come from ``CLOUDFLARE_ACCOUNT_ID`` / ``CLOUDFLARE_API_TOKEN``.
+    """
+    if model is None:
+        yield None
+        return
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        yield ClefDecisionModel.from_env(client=client, model=model, archive=archive, **kwargs)
 
 
 AnswersForStage = (

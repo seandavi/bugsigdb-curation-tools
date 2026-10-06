@@ -44,7 +44,11 @@ from loguru import logger
 
 from bugsigdb_curation.curator.assemble import assemble_record
 from bugsigdb_curation.curator.design import DEFAULT_DESIGN, Design
-from bugsigdb_curation.curator.evidence import assemble_evidence, fetch_figure_image
+from bugsigdb_curation.curator.evidence import (
+    EvidenceBundle,
+    assemble_evidence,
+    fetch_figure_image,
+)
 from bugsigdb_curation.curator.experiment import ExperimentFields, extract_experiment
 from bugsigdb_curation.curator.extract import StudyFields, extract_study
 from bugsigdb_curation.curator.locate import LocatedArtifact, locate_artifact
@@ -53,10 +57,12 @@ from bugsigdb_curation.curator.ner import extract_names
 from bugsigdb_curation.curator.panel import review_signatures
 from bugsigdb_curation.curator.reconcile import reconcile_names
 from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL, resolve
+from bugsigdb_curation.curator.routing import rank_artifacts
 from bugsigdb_curation.curator.segment import segment_experiments
 from bugsigdb_curation.curator.signature import ExtractedSignature, extract_signatures
 from bugsigdb_curation.curator.taxonomy import DEFAULT_CACHE_PATH, NcbiTaxonomyResolver
 from bugsigdb_curation.curator.verify import verify_signatures
+from bugsigdb_curation.decision import DecisionModel, DecisionModelError
 from bugsigdb_curation.validate import Problem, default_schema_path, validate_instance
 
 #: The one source-config wired up for the walking skeleton (plan §6, decided
@@ -98,6 +104,7 @@ class CurationResult:
     problems: tuple[Problem, ...]
     design: Design = DEFAULT_DESIGN
     flags: tuple[str, ...] = field(default_factory=tuple)
+    annotations: dict[str, Any] = field(default_factory=dict)
 
 
 def _empty_study_fields(doi: str | None) -> StudyFields:
@@ -133,6 +140,30 @@ def _build_source_context(experiment_fields: ExperimentFields, artifact: Located
     ]
     parts.append(f"source: {artifact.provenance}")
     return "; ".join(parts)
+
+
+#: What a failed decision call can raise: the seam's own error (every Clef HTTP/schema failure), transport
+#: errors from the HTTP client, and ValueError from request validation. Anything else is a bug and must
+#: surface rather than silently turn into the regex locate.
+_DECISION_CALL_ERRORS = (DecisionModelError, httpx.HTTPError, ValueError)
+
+
+async def _rank_or_none(
+    bundle: EvidenceBundle, decision_model: DecisionModel | None, annotations: dict[str, Any] | None = None
+) -> list[LocatedArtifact] | None:
+    """The decision-model artifact ranking, or None (=> regex locate) when there is no decision
+    model or its call fails. A routing failure must never abort a study -- but it must not be silent
+    either: the failure is logged and, if `annotations` is given, recorded as `artifact_ranking_error`
+    so a run that quietly became regex-only (e.g. a rejected token) is visible in the output."""
+    if decision_model is None:
+        return None
+    try:
+        return await rank_artifacts(bundle, decision_model)
+    except _DECISION_CALL_ERRORS as exc:
+        logger.bind(stage="S5a").warning("decision-model ranking failed; using regex locate", error=repr(exc))
+        if annotations is not None:
+            annotations["artifact_ranking_error"] = repr(exc)
+        return None
 
 
 async def _extract_experiment_signatures(
@@ -203,8 +234,15 @@ async def curate_async(
     taxonomy_db_release: str | None = None,
     resolver: NcbiTaxonomyResolver | None = None,
     run_id: str | None = None,
+    decision_model: DecisionModel | None = None,
 ) -> CurationResult:
     """S0-S9: turn a bare PMID into a validated nested prediction record.
+
+    `decision_model`, if given, switches on the decision-model routing
+    judgments (`curator.routing`): today S5a ranks artifacts by p(DA) instead
+    of the keyword regex. Every judgment is best-effort -- a failed decision
+    call is logged and the stage falls back to its no-decision-model
+    behaviour -- and with `decision_model=None` the pipeline is unchanged.
 
     `design` selects one of the three §6b designs (default `fused-lean`,
     today's original walking skeleton, unchanged) -- see the module
@@ -272,9 +310,15 @@ async def curate_async(
             with logger.contextualize(pmcid=resolved.pmcid):
                 bundle = await assemble_evidence(pmid, resolved.pmcid, client=client)
 
+                annotations: dict[str, Any] = {}
                 study_fields = extract_study(bundle, resolved, model=model)
                 stubs = segment_experiments(bundle, model=model)
-                artifact = locate_artifact(bundle)
+                ranked = await _rank_or_none(bundle, decision_model, annotations)
+                if ranked is not None:
+                    annotations["artifact_ranking"] = [
+                        {"artifact": a.provenance, "kind": a.kind, "p_da": a.p_da} for a in ranked
+                    ]
+                artifact = locate_artifact(bundle, ranked)
 
                 experiments: list[tuple[ExperimentFields, list[ExtractedSignature], str | None]] = []
                 flags: list[str] = []
@@ -323,6 +367,7 @@ async def curate_async(
                     problems=tuple(problems),
                     design=design,
                     flags=tuple(flags),
+                    annotations=annotations,
                 )
         finally:
             if owns_resolver:

@@ -20,6 +20,7 @@ Architecture B's Experiment Workers are meant to add later; see the plan §2).
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
@@ -38,6 +39,9 @@ class LocatedArtifact:
     kind: Literal["table", "figure"]
     table: EvidenceTable | None = None
     figure: EvidenceFigure | None = None
+    #: Decision-model probability that this is a per-taxon DA artifact
+    #: (`curator.routing.rank_artifacts`); None when the regex locate chose it.
+    p_da: float | None = None
 
     @property
     def provenance(self) -> str:
@@ -48,8 +52,15 @@ class LocatedArtifact:
         return ""
 
 
-def locate_artifact(bundle: EvidenceBundle) -> LocatedArtifact | None:
-    """S5a: pick the bundle's best candidate differential-abundance artifact, if any."""
+def locate_artifact(bundle: EvidenceBundle, ranked: Sequence[LocatedArtifact] | None = None) -> LocatedArtifact | None:
+    """S5a: pick the bundle's best candidate differential-abundance artifact, if any.
+
+    `ranked` is the decision-model ranking (`curator.routing.rank_artifacts`, best first); when it is
+    non-empty its top artifact wins. Otherwise (no decision model, or its call failed) the DA-keyword
+    regex heuristic below decides, exactly as before.
+    """
+    if ranked:
+        return ranked[0]
     for table in bundle.tables:
         if _DA_SIGNAL_RE.search(table.caption or "") or _DA_SIGNAL_RE.search(table.label or ""):
             return LocatedArtifact(kind="table", table=table)
