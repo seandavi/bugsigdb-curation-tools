@@ -262,6 +262,7 @@ async def curate_async(
     run_id: str | None = None,
     decision_model: DecisionModel | None = None,
     ols_cache_path: Path | None = DEFAULT_OLS_CACHE_PATH,
+    ols: OlsClient | None = None,
 ) -> CurationResult:
     """S0-S9: turn a bare PMID into a validated nested prediction record.
 
@@ -269,7 +270,8 @@ async def curate_async(
     judgments (`curator.routing`): today S5a ranks artifacts by p(DA) instead
     of the keyword regex, and S4's free-text `body_site` labels are mapped to UBERON terms (recorded in
     `annotations["body_site_terms"]`; the record itself is untouched; `ols_cache_path` is the OLS4
-    search cache). Every judgment is best-effort -- a failed decision
+    search cache, ignored once `ols` is given directly -- like `resolver`, a batch caller may share one
+    `OlsClient` across studies and then owns saving its cache). Every judgment is best-effort -- a failed decision
     call is logged and the stage falls back to its no-decision-model
     behaviour -- and with `decision_model=None` the pipeline is unchanged.
 
@@ -312,7 +314,9 @@ async def curate_async(
         )
 
     # OLS is only ever contacted for the body-site mapping, which needs a decision model.
-    ols = OlsClient.load(client, cache_path=ols_cache_path) if decision_model is not None else None
+    owns_ols = ols is None and decision_model is not None
+    if owns_ols:
+        ols = OlsClient.load(client, cache_path=ols_cache_path)
 
     start = time.monotonic()
     with logger.contextualize(study_id=pmid, pmid=pmid, run_id=run_id):
@@ -415,7 +419,8 @@ async def curate_async(
                     annotations=annotations,
                 )
         finally:
-            if ols is not None:
+            if owns_ols:
+                assert ols is not None
                 ols.save_cache()
             if owns_resolver:
                 resolver.save_cache()

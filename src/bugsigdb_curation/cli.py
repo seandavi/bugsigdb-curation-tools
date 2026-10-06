@@ -35,6 +35,7 @@ from bugsigdb_curation.curator.design import DEFAULT_DESIGN as CURATE_DEFAULT_DE
 from bugsigdb_curation.curator.design import Design
 from bugsigdb_curation.curator.model import DEFAULT_MODEL as CURATE_DEFAULT_MODEL
 from bugsigdb_curation.curator.model import LiteLLMModel, Model, MockModel
+from bugsigdb_curation.curator.ols import OlsClient
 from bugsigdb_curation.curator.pipeline import CurationResult, curate_async
 from bugsigdb_curation.curator.pipeline import DEFAULT_CONFIG as CURATE_DEFAULT_CONFIG
 from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL as CURATE_DEFAULT_EMAIL
@@ -783,6 +784,7 @@ async def _run_curate_smoke(
     n_valid = 0
     n_errors = 0
     n_regex_fallbacks = 0
+    n_ontology_failures = 0
     # One shared client for the whole batch (reused connection pool/keep-
     # alive) instead of curate_async creating and tearing down a fresh
     # client per study -- fewer connections churned, less NCBI/PMC
@@ -798,10 +800,14 @@ async def _run_curate_smoke(
     # loop otherwise still risks. save_cache() runs once after the loop
     # instead of once per study.
     resolver = NcbiTaxonomyResolver.load(cache_path=taxonomy_cache, db_path=taxonomy_db, db_release=taxonomy_release)
+    ols: OlsClient | None = None
     async with (
         httpx.AsyncClient(timeout=30.0) as client,
         open_decision_model(decision_name, archive=decision_archive) as decision_model,
     ):
+        # Likewise one OlsClient (shared rate limiter + warm cache) when the body-site mapping is on.
+        if decision_model is not None:
+            ols = OlsClient.load(client)
         for study_id in ids:
             try:
                 result = await curate_async(
@@ -815,6 +821,7 @@ async def _run_curate_smoke(
                     resolver=resolver,
                     run_id=run_id,
                     decision_model=decision_model,
+                    ols=ols,
                 )
             except Exception as exc:  # noqa: BLE001 -- one bad study must not abort the whole batch
                 n_errors += 1
@@ -828,6 +835,8 @@ async def _run_curate_smoke(
             )
             if "artifact_ranking_error" in result.annotations:
                 n_regex_fallbacks += 1
+            if "body_site_terms_error" in result.annotations:
+                n_ontology_failures += 1
             if result.annotations:
                 # In a subdirectory so `eval score --pred <dir>` (which reads *.json here) never sees it.
                 (out_dir / "_annotations").mkdir(exist_ok=True)
@@ -842,6 +851,8 @@ async def _run_curate_smoke(
             if result.valid:
                 n_valid += 1
 
+    if ols is not None:
+        ols.save_cache()
     resolver.save_cache()
     resolver.close()  # this loop owns the shared resolver's TaxonomyDB handle; close it once, here.
     logger.bind(stage="cli", run_id=run_id).info(
@@ -850,11 +861,17 @@ async def _run_curate_smoke(
         n_valid=n_valid,
         n_errors=n_errors,
         n_decision_fallbacks=n_regex_fallbacks,
+        n_body_site_term_failures=n_ontology_failures,
     )
     if n_regex_fallbacks:
         console.print(
             f"[yellow]{n_regex_fallbacks} study(ies) fell back to the regex locate because the decision-model call "
             "failed (see artifact_ranking_error in _annotations/).[/yellow]"
+        )
+    if n_ontology_failures:
+        console.print(
+            f"[yellow]{n_ontology_failures} study(ies) have no body-site ontology terms for some experiment because "
+            "the OLS/decision call failed (see body_site_terms_error in _annotations/).[/yellow]"
         )
     console.print(
         f"[green]Curated {len(ids)} studies -> {out_dir}[/green] ({n_valid} valid, {n_errors} error(s))"

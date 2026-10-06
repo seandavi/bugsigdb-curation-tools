@@ -223,3 +223,57 @@ def test_programming_errors_are_not_swallowed(httpx_mock):
     _mock_ols(httpx_mock, "Feces", [FECES])
     with pytest.raises(KeyError):
         asyncio.run(_body_site_terms(0, ("Feces",), "T", Broken(), _ols(), {}))  # type: ignore[arg-type]
+
+
+def test_a_caller_supplied_ols_client_is_used_and_its_cache_left_to_the_caller(httpx_mock, tmp_path):
+    e2e._mock_idconv(httpx_mock)
+    e2e._mock_fulltext(httpx_mock)
+    e2e._mock_taxonomy(httpx_mock)
+    _mock_ols(httpx_mock, "Feces", [FECES, GUT])
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            ols = OlsClient.load(client, cache_path=tmp_path / "shared.json")
+            result = await curate_async(
+                e2e.PMID, model=MockModel(), client=client, decision_model=_decision(), ols=ols,
+                taxonomy_cache_path=tmp_path / "tax.json", ols_cache_path=tmp_path / "ignored.json",
+            )
+            return result, ols
+
+    result, ols = asyncio.run(run())
+    assert result.annotations["body_site_terms"][0]["status"] == "mapped"
+    assert "uberon|Feces|10" in ols.cache
+    assert not (tmp_path / "shared.json").exists() and not (tmp_path / "ignored.json").exists()  # caller saves
+
+
+def test_smoke_counts_studies_with_body_site_term_failures(monkeypatch, tmp_path):
+    import contextlib
+
+    from typer.testing import CliRunner
+
+    import bugsigdb_curation.cli as cli_module
+    from bugsigdb_curation.cli import app
+    from bugsigdb_curation.curator.pipeline import CurationResult
+
+    seen_ols: list = []
+
+    @contextlib.asynccontextmanager
+    async def fake_open(name, archive=None, **_):
+        yield object()  # a (never-called) decision model: only wiring is under test
+
+    async def fake_curate_async(pmid, **kwargs):
+        seen_ols.append(kwargs["ols"])
+        ann = {"body_site_terms_error": "boom"} if pmid == "A" else {"body_site_terms": []}
+        return CurationResult(pmid=pmid, pmcid=None, has_pmc=False, record={"uid": pmid}, valid=True, problems=(), annotations=ann)
+
+    monkeypatch.setattr(cli_module, "open_decision_model", fake_open)
+    monkeypatch.setattr(cli_module, "curate_async", fake_curate_async)
+    monkeypatch.setattr(cli_module, "smoke_study_ids", lambda: ["A", "B"])
+    monkeypatch.setattr(cli_module, "require_credentials", lambda: None)
+    monkeypatch.chdir(tmp_path)  # OlsClient's default cache path is relative: keep it out of the repo
+    res = CliRunner().invoke(app, ["curate", "--smoke", "--decision-model", "clef", "--out", str(tmp_path / "smoke")])
+    assert res.exit_code == 0, res.output
+    assert "1 study(ies) have no body-site ontology terms" in res.output
+    assert "fell back to the regex" not in res.output
+    assert len(seen_ols) == 2 and seen_ols[0] is seen_ols[1] and isinstance(seen_ols[0], OlsClient)  # one shared client
+    assert (tmp_path / "data" / "curator" / "ols_cache.json").exists()  # saved once after the batch
