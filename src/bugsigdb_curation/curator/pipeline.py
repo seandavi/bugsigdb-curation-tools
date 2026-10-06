@@ -194,14 +194,15 @@ async def _extract_experiment_signatures(
     called directly with a plain string.
     """
     design = Design(design)
+    groups = (experiment_fields.group_0_name, experiment_fields.group_1_name)
     if design is Design.fused_lean:
         signatures = await extract_signatures(
-            bundle_artifact, model=model, resolver=resolver, client=client, image_bytes=image_bytes
+            bundle_artifact, model=model, resolver=resolver, client=client, image_bytes=image_bytes, groups=groups
         )
         return signatures, ()
 
     source_context = _build_source_context(experiment_fields, bundle_artifact)
-    names = extract_names(bundle_artifact, model=model, image_bytes=image_bytes)
+    names = extract_names(bundle_artifact, model=model, image_bytes=image_bytes, groups=groups)
     signatures = await reconcile_names(
         names, model=model, resolver=resolver, client=client, source_context=source_context
     )
