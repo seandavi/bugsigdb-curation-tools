@@ -219,3 +219,13 @@ def test_reviewer_identity_is_shown_and_never_overwritten_with_an_empty_name(tmp
 def test_export_file_name_keeps_non_ascii_letters(tmp_path):
     names = run_scenario(tmp_path, "file_name")
     assert names == {"wang": "verdicts_1_王伟.json", "ada": "verdicts_1_ada-b-reviewer.json", "punct": "verdicts_1_anonymous.json"}
+
+
+def test_csv_numbers_experiments_and_signatures_like_the_page_and_keeps_zero_based_indexes(transcript):
+    (csv_download,) = [d for d in transcript["downloads"] if d["filename"].endswith(".csv")]
+    rows = list(csv.DictReader(io.StringIO(csv_download["text"])))
+    taxa = [r for r in rows if r["level"] == "taxon"]
+    assert [(r["experiment_no"], r["signature_no"]) for r in taxa] == [("1", "1"), ("1", "1"), ("1", "2"), ("2", "1")]
+    assert [(r["experiment_index"], r["signature_index"]) for r in taxa] == [("0", "0"), ("0", "0"), ("0", "1"), ("1", "0")]
+    study = next(r for r in rows if r["level"] == "study")
+    assert (study["experiment_no"], study["signature_no"], study["experiment_index"]) == ("", "", "")

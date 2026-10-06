@@ -196,13 +196,33 @@
     return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
   }
 
-  /** One row per judged item (and per free-text note): level, experiment, signature, taxon, verdict, note. */
+  /**
+   * One row per judged item (and per free-text note). `experiment_no` / `signature_no` count from 1, as the
+   * page shows them; `experiment_index` / `signature_index` count from 0, as the verdict JSON does.
+   */
   function toCsv(verdicts) {
-    var header = ["pmid", "packet_id", "reviewer", "level", "experiment", "signature", "taxon", "verdict", "note"];
+    var header = [
+      "pmid",
+      "packet_id",
+      "reviewer",
+      "level",
+      "experiment_no",
+      "signature_no",
+      "experiment_index",
+      "signature_index",
+      "taxon",
+      "verdict",
+      "note",
+    ];
     var rows = [header];
     var who = verdicts.reviewer.name;
+    function position(i) {
+      return i === "" ? ["", ""] : [i + 1, i];
+    }
     function add(level, e, s, taxon, verdict, note) {
-      rows.push([verdicts.pmid, verdicts.packet_id, who, level, e, s, taxon, verdict, note]);
+      var exp = position(e);
+      var sig = position(s);
+      rows.push([verdicts.pmid, verdicts.packet_id, who, level, exp[0], sig[0], exp[1], sig[1], taxon, verdict, note]);
     }
     add("study", "", "", "", verdicts.study.verdict, verdicts.study.note);
     verdicts.experiments.forEach(function (experiment) {
