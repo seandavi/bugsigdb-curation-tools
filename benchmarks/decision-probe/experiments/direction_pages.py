@@ -14,10 +14,16 @@ import re
 from typing import Any
 
 import pymupdf
+from probe_common import (
+    PMC_MAP,
+    RELATIONAL,
+    binary_report,
+    bounded_gather,
+    coverage_at_confidence,
+)
 
 from bugsigdb_curation.decision import DecisionModel, Noul
 from bugsigdb_curation.eval.gold import load_gold
-from common import PMC_MAP, RELATIONAL, binary_report, bounded_gather, coverage_at_confidence
 from experiments import supp_pages
 from experiments.figbench import clean_taxon
 

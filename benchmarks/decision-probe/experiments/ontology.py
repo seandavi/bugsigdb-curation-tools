@@ -21,9 +21,9 @@ from collections import defaultdict
 from typing import Any
 
 import httpx
+from probe_common import RELATIONAL, REPO, bounded_gather, coverage_at_confidence
 
 from bugsigdb_curation.decision import Choice, DecisionModel
-from common import RELATIONAL, REPO, bounded_gather, coverage_at_confidence
 
 OLS_URL = "https://www.ebi.ac.uk/ols4/api/search"
 CACHE = REPO / "data" / "decision-probe" / "ols"

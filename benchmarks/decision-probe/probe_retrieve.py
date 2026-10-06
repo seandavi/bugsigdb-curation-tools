@@ -4,8 +4,8 @@ Everything lands under ``data/decision-probe/<pmid>/`` (gitignored). Idempotent:
 re-running skips what is already on disk. Scorer-side tooling -- may sit next
 to gold, but it only *retrieves paper content*; it reads no gold itself.
 
-    uv run python benchmarks/decision-probe/retrieve.py            # all 19 smoke PMIDs
-    uv run python benchmarks/decision-probe/retrieve.py 34620922   # one PMID
+    uv run python benchmarks/decision-probe/probe_retrieve.py            # all 19 smoke PMIDs
+    uv run python benchmarks/decision-probe/probe_retrieve.py 34620922   # one PMID
 """
 
 from __future__ import annotations

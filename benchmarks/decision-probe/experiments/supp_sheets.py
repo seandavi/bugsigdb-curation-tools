@@ -6,9 +6,9 @@ from typing import Any
 
 import openpyxl
 import yaml
+from probe_common import LABELS, REPO
 
 from bugsigdb_curation.decision import DecisionModel
-from common import LABELS, REPO
 from experiments import _screen
 
 SUPP = REPO / "data" / "decision-probe" / "37864204" / "supplements"

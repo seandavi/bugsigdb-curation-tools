@@ -180,8 +180,8 @@ price ($0.24/M clef, $0.09/M clef-flash).
 ## Reproduce
 
 ```bash
-uv run python benchmarks/decision-probe/retrieve.py            # bundles, figures, supplements -> data/decision-probe/
-uv run python benchmarks/decision-probe/retrieve.py figbench   # the 15 manifest figures
+uv run python benchmarks/decision-probe/probe_retrieve.py            # bundles, figures, supplements -> data/decision-probe/
+uv run python benchmarks/decision-probe/probe_retrieve.py figbench   # the 15 manifest figures
 uv run python benchmarks/decision-probe/run.py <experiment>    # both models; --model clef|clef-flash
 uv run python benchmarks/decision-probe/rescore.py             # re-score archived results, no API
 uv run python benchmarks/decision-probe/report.py              # print the tables above

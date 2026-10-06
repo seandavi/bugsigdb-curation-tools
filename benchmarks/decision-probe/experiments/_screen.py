@@ -14,8 +14,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from probe_common import binary_report, bounded_gather, coverage_at_confidence
+
 from bugsigdb_curation.decision import Choice, DecisionModel, Noul, Score
-from common import binary_report, bounded_gather, coverage_at_confidence
 
 CONTENT_KINDS = {
     "da_taxa_table": "a table of taxa with differential-abundance statistics (LDA score, fold change, p/q values)",

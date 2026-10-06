@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import RUNS, archive_cost  # noqa: E402
+from probe_common import RUNS, archive_cost
 
 for results_path in sorted(RUNS.glob("*/*.results.json")):
     experiment = results_path.name.removesuffix(".results.json")

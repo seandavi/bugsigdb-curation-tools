@@ -10,9 +10,9 @@ from typing import Any
 
 import pymupdf
 import yaml
+from probe_common import LABELS, REPO
 
 from bugsigdb_curation.decision import DecisionModel
-from common import LABELS, REPO
 from experiments import _screen
 
 PDF = REPO / "data" / "decision-probe" / "34620922" / "supplements" / "41598_2021_99379_MOESM1_ESM.pdf"
@@ -22,7 +22,7 @@ DPI = 100
 MAX_IMAGE_BYTES = 200_000
 
 
-def render_page(page: "pymupdf.Page") -> bytes:
+def render_page(page: pymupdf.Page) -> bytes:
     for quality in (80, 65, 50, 35):
         data = page.get_pixmap(dpi=DPI).tobytes("jpeg", jpg_quality=quality)
         if len(data) <= MAX_IMAGE_BYTES:

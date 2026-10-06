@@ -19,7 +19,13 @@ from pathlib import Path
 import typer
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import MODELS, archive_cost, open_model, run_dir, write_summary  # noqa: E402
+from probe_common import (
+    MODELS,
+    archive_cost,
+    open_model,
+    run_dir,
+    write_summary,
+)
 
 app = typer.Typer(add_completion=False)
 

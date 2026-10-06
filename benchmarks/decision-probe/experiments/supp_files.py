@@ -7,14 +7,13 @@ any bytes are fetched. Labels: ``labels/p1_37864204_files.yaml`` (agent-drafted)
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 import yaml
+from probe_common import LABELS, REPO
 
 from bugsigdb_curation.decision import DecisionModel
 from bugsigdb_curation.supplements import _media_type_for_filename
-from common import LABELS, REPO
 from experiments import _screen
 
 

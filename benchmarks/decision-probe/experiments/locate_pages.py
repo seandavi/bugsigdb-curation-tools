@@ -11,10 +11,10 @@ import re
 from typing import Any
 
 import pymupdf
+from probe_common import PMC_MAP, RELATIONAL, bounded_gather, coverage_at_confidence
 
 from bugsigdb_curation.decision import Choice, DecisionModel
 from bugsigdb_curation.eval.gold import load_gold
-from common import PMC_MAP, RELATIONAL, bounded_gather, coverage_at_confidence
 from experiments import supp_pages
 
 NONE_OPTION = "none"

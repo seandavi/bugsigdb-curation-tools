@@ -19,10 +19,15 @@ import re
 from collections import defaultdict
 from typing import Any
 
-from bugsigdb_curation.decision import Choice, DecisionModel, Noul
+from probe_common import (
+    MANIFEST_PATH,
+    binary_report,
+    bounded_gather,
+    coverage_at_confidence,
+)
+from probe_retrieve import figbench_image_path
 
-from common import MANIFEST_PATH, binary_report, bounded_gather, coverage_at_confidence
-from retrieve import figbench_image_path
+from bugsigdb_curation.decision import Choice, DecisionModel, Noul
 
 FIGURE_TYPES = {
     "lefse_lda_bar": "ranked bar chart of an effect size (LDA score, log fold change) with bars signed/coloured by group",
