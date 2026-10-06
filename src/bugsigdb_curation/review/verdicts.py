@@ -19,6 +19,7 @@ import json
 import re
 import shutil
 import statistics
+import unicodedata
 from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
@@ -65,24 +66,78 @@ def _validator() -> Draft202012Validator:
     return Draft202012Validator(json.loads(review_schema_path().read_text(encoding="utf-8")))
 
 
+_PMID_RE = re.compile(r"[A-Za-z0-9_-]+")
+_SHA256_RE = re.compile(r"[0-9a-f]{64}")
+_TIMESTAMP_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})")
+
+
+def parse_timestamp(text: str) -> datetime:
+    """A verdict-file timestamp (ASCII ISO 8601 with `Z` or an offset) as an aware UTC datetime.
+
+    Raises ValueError for anything else, including well-formed text that is not a real instant
+    (`2026-02-30...`, hour 25) and non-ASCII digits.
+    """
+    if not _TIMESTAMP_RE.fullmatch(text):
+        raise ValueError(f"not an ISO 8601 timestamp: {text!r}")
+    try:
+        return datetime.fromisoformat(text).astimezone(UTC)
+    except ValueError as exc:
+        raise ValueError(f"not a real timestamp: {text!r} ({exc})") from exc
+
+
 def validate_verdicts(data: Any) -> list[str]:
-    """Schema violations in one verdict file's parsed JSON, as `path: message` strings (empty = valid)."""
+    """Problems in one verdict file's parsed JSON, as `path: message` strings (empty = valid).
+
+    The schema checks the shape; code then checks what its regexes cannot: `pmid` / `draft_sha256`
+    must match in full (a `$` pattern accepts a trailing newline) and both timestamps must be real
+    instants. Everything downstream (file names, ordering) may rely on these.
+    """
     errors = sorted(_validator().iter_errors(data), key=lambda e: list(e.absolute_path))
-    return [f"{'/'.join(str(p) for p in e.absolute_path) or '<root>'}: {e.message}" for e in errors]
+    problems = [f"{'/'.join(str(p) for p in e.absolute_path) or '<root>'}: {e.message}" for e in errors]
+    if problems:
+        return problems
+    for key, pattern in (("pmid", _PMID_RE), ("draft_sha256", _SHA256_RE)):
+        if not pattern.fullmatch(data[key]):
+            problems.append(f"{key}: {data[key]!r} does not match {pattern.pattern}")
+    for key in ("started_at", "exported_at"):
+        try:
+            parse_timestamp(data[key])
+        except ValueError as exc:
+            problems.append(f"{key}: {exc}")
+    return problems
+
+
+_MAX_SLUG_LENGTH = 64
 
 
 def _slug(text: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    """Lower-cased letters and digits of any script, joined by `-`; never holds a path separator, `.` or NUL."""
+    return re.sub(r"[^\w]+", "-", unicodedata.normalize("NFKC", text).lower(), flags=re.UNICODE).strip("-")
+
+
+def _short_hash(*parts: str) -> str:
+    return hashlib.sha256("\x00".join(parts).encode("utf-8")).hexdigest()[:8]
 
 
 def reviewer_slug(reviewer: dict[str, Any]) -> str:
-    """Filesystem-safe identity of a reviewer: slugged name, else slugged email, else `anonymous`."""
-    return _slug(reviewer.get("name") or "") or _slug(reviewer.get("email") or "") or "anonymous"
+    """Filesystem-safe identity of a reviewer, at most 64 characters.
+
+    The slugged name, else the slugged email, else `r-` + a hash of name and email (so reviewers whose
+    names have no sluggable characters, e.g. emoji, still stay distinct); `anonymous` only when both are
+    empty. Slugs keep non-ASCII letters: reviewers named 王伟 and 李娜 are two reviewers.
+    """
+    name, email = reviewer.get("name") or "", reviewer.get("email") or ""
+    slug = _slug(name) or _slug(email)
+    if not slug:
+        return f"r-{_short_hash(name, email)}" if name or email else "anonymous"
+    if len(slug) > _MAX_SLUG_LENGTH:
+        slug = f"{slug[: _MAX_SLUG_LENGTH - 9].rstrip('-')}-{_short_hash(name, email)}"
+    return slug
 
 
 def _filename_timestamp(exported_at: str) -> str:
     """`2026-10-06T12:34:56.789+02:00` -> `20261006T103456Z` (UTC, no colons: portable file names)."""
-    return datetime.fromisoformat(exported_at).astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
+    return parse_timestamp(exported_at).strftime("%Y%m%dT%H%M%SZ")
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +147,7 @@ def _filename_timestamp(exported_at: str) -> str:
 
 @dataclass(frozen=True, slots=True)
 class IngestResult:
-    """Outcome of ingesting one verdict file. `status`: ingested | invalid | refused."""
+    """Outcome of ingesting one verdict file. `status`: ingested | duplicate | invalid | refused | conflict."""
 
     source: Path
     status: str
@@ -114,7 +169,9 @@ def ingest_verdict_file(
 ) -> IngestResult:
     """Validate one verdict file and copy it to `dest/<pmid>/<reviewer_slug>_<exported_at>.json`.
 
-    The packet manifest (`<pmid>.manifest.json`, looked up in `manifests_dir`, or beside the verdict
+    A destination file that already exists with different content is a `conflict` (two reviews would
+    otherwise silently replace each other) unless `force`; with identical content it is a `duplicate`
+    and nothing is written. The packet manifest (`<pmid>.manifest.json`, looked up in `manifests_dir`, or beside the verdict
     file when none is given) pins the `draft_sha256` the reviewer was shown. A mismatch means the
     verdicts judge a different draft than the one on record: refused unless `force`, in which case
     it is ingested with a warning. No manifest found is not an error (the packet may be long gone),
@@ -149,6 +206,13 @@ def ingest_verdict_file(
             warnings.append(message)
 
     target = dest / data["pmid"] / f"{reviewer_slug(data['reviewer'])}_{_filename_timestamp(data['exported_at'])}.json"
+    if target.exists():
+        if target.read_bytes() == path.read_bytes():
+            return IngestResult(path, "duplicate", f"already ingested as {target}", dest=target, warnings=tuple(warnings))
+        if not force:
+            message = f"{target} already holds a different review by this reviewer from the same second"
+            return IngestResult(path, "conflict", message + " (use --force to overwrite it)")
+        warnings.append(f"overwrote {target}")
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(path, target)
     return IngestResult(path, "ingested", f"-> {target}", dest=target, warnings=tuple(warnings))
@@ -210,7 +274,7 @@ def _tally_one(tally: StudyTally, v: dict[str, Any]) -> None:
     for exp in v["experiments"]:
         tally.experiments[exp["verdict"] or "unreviewed"] += 1
         if exp["missing_note"].strip():
-            tally.notes.append((who, f"experiment {exp['index']} missing from draft", exp["missing_note"].strip()))
+            tally.notes.append((who, f"experiment {exp['index'] + 1} missing from draft", exp["missing_note"].strip()))
         for sig in exp["signatures"]:
             direction = sig["direction_verdict"] or "unreviewed"
             tally.directions[direction] += 1
@@ -234,12 +298,12 @@ def tally_verdicts(verdicts: Sequence[dict[str, Any]]) -> list[StudyTally]:
     """Group validated verdict files by draft (`pmid`, `draft_sha256`) and pool their counts.
 
     A reviewer who exported the same draft more than once counts once: only their latest export
-    (by `exported_at`) is used, so re-exports after further edits supersede earlier ones.
+    (by `exported_at`, compared as instants) is used, so re-exports after further edits supersede earlier ones.
     """
     latest: dict[tuple[str, str, str], dict[str, Any]] = {}
     for v in verdicts:
         key = (v["pmid"], v["draft_sha256"], reviewer_slug(v["reviewer"]))
-        if key not in latest or v["exported_at"] >= latest[key]["exported_at"]:
+        if key not in latest or parse_timestamp(v["exported_at"]) >= parse_timestamp(latest[key]["exported_at"]):
             latest[key] = v
     tallies: dict[tuple[str, str], StudyTally] = {}
     for (pmid, sha, _), v in sorted(latest.items()):
@@ -385,7 +449,7 @@ def render_report(tallies: Sequence[StudyTally], *, problems: Sequence[str] = ()
     for t in tallies:
         for (e, s), d in sorted(t.signature_directions.items()):
             lines.append(
-                f"| {label(t)} | {e} | {s} | {d['ok']} | {d['flipped']} | {d['unsure']} | {_pct(flip_rate(d))} |"
+                f"| {label(t)} | {e + 1} | {s + 1} | {d['ok']} | {d['flipped']} | {d['unsure']} | {_pct(flip_rate(d))} |"
             )
 
     lines += ["", "## Reviewer notes (missing from the draft, and comments)", ""]

@@ -232,8 +232,9 @@
   function exportFileName(verdicts, extension) {
     var slug =
       verdicts.reviewer.name
+        .normalize("NFKC")
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/[^\p{L}\p{N}_]+/gu, "-")
         .replace(/^-+|-+$/g, "") || "anonymous";
     return "verdicts_" + verdicts.pmid + "_" + slug + "." + extension;
   }

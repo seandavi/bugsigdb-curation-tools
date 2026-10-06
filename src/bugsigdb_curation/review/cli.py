@@ -155,12 +155,16 @@ def ingest_command(
     """Validate reviewers' verdict files and file them under DEST/<pmid>/."""
     results = ingest_verdict_files(paths, dest=dest, manifests_dir=manifests, force=force)
     for r in results:
-        colour = {"ingested": "green", "refused": "red", "invalid": "red"}[r.status]
+        colour = {"ingested": "green", "duplicate": "yellow", "refused": "red", "invalid": "red", "conflict": "red"}[
+            r.status
+        ]
         console.print(f"[{colour}]{r.status}[/{colour}] {r.source}: {escape(r.message)}")
         for warning in r.warnings:
             console.print(f"  [yellow]warning:[/yellow] {escape(warning)}")
-    n_bad = sum(r.status != "ingested" for r in results)
-    console.print(f"{len(results) - n_bad} ingested, {n_bad} not ingested")
+    n_duplicate = sum(r.status == "duplicate" for r in results)
+    n_bad = sum(r.status not in ("ingested", "duplicate") for r in results)
+    already = f", {n_duplicate} already ingested" if n_duplicate else ""
+    console.print(f"{len(results) - n_bad - n_duplicate} ingested{already}, {n_bad} not ingested")
     if n_bad:
         raise typer.Exit(code=1)
 

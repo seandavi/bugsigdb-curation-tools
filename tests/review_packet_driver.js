@@ -353,6 +353,13 @@ const scenarios = {
     t.nameFocused = !!w.byKey["reviewer.name"].focused;
     return t;
   },
+
+  /** Export file names keep non-ASCII letters (same rule as `reviewer_slug`), and fall back to `anonymous`. */
+  file_name() {
+    const w = makeWorld({});
+    const name = (n) => w.api.exportFileName({ reviewer: { name: n }, pmid: "1" }, "json");
+    return { wang: name("王伟"), ada: name("Ada B. Reviewer"), punct: name("!!!") };
+  },
 };
 
 const options = process.argv[4] ? JSON.parse(process.argv[4]) : {};

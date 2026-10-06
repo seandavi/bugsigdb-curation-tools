@@ -214,3 +214,8 @@ def test_reviewer_identity_is_shown_and_never_overwritten_with_an_empty_name(tmp
     assert json.loads(t["rememberedAfterBlank"])["name"] == "Ada Remembered"
     assert json.loads(t["rememberedAfterReset"])["name"] == "Ada Remembered"
     assert t["nameAfterChange"] == "" and t["rememberedAfterChange"] is None and t["nameFocused"] is True
+
+
+def test_export_file_name_keeps_non_ascii_letters(tmp_path):
+    names = run_scenario(tmp_path, "file_name")
+    assert names == {"wang": "verdicts_1_王伟.json", "ada": "verdicts_1_ada-b-reviewer.json", "punct": "verdicts_1_anonymous.json"}

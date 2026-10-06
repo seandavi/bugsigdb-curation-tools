@@ -15,7 +15,9 @@ from bugsigdb_curation.review.verdicts import (
     ingest_verdict_files,
     load_reviews,
     ok_rate,
+    parse_timestamp,
     render_report,
+    review_schema_path,
     reviewer_slug,
     tally_verdicts,
     taxa_precision,
@@ -239,3 +241,150 @@ def test_reviewer_slug_fallbacks():
     assert reviewer_slug({"name": "Dr. A. Reviewer", "email": "x@y.org"}) == "dr-a-reviewer"
     assert reviewer_slug({"name": "", "email": "x@y.org"}) == "x-y-org"
     assert reviewer_slug({"name": "", "email": ""}) == "anonymous"
+
+
+# --- timestamps and identifiers the schema regex alone lets through ---------------------------
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "2026-02-30T12:00:00.000Z",  # no 30 February
+        "2026-10-06T25:00:00.000Z",  # no hour 25
+        "\u0662\u0660\u0662\u0666-10-06T12:00:00.000Z",  # Arabic-Indic digits: Python \d matches them
+        "2026-10-06T12:00:00.000Z\n",  # trailing newline: `$` accepts it
+    ],
+)
+def test_timestamps_that_are_not_real_instants_are_invalid(bad):
+    for field in ("exported_at", "started_at"):
+        v = make_verdict()
+        v[field] = bad
+        errors = validate_verdicts(v)
+        assert errors and any(field in e for e in errors)
+
+
+@pytest.mark.parametrize(("field", "bad"), [("pmid", "123\n"), ("draft_sha256", "a" * 64 + "\n")])
+def test_trailing_newline_is_not_allowed_in_pmid_or_hash(field, bad):
+    v = make_verdict()
+    v[field] = bad
+    assert any(field in e for e in validate_verdicts(v))
+
+
+def test_schema_patterns_are_ascii_only():
+    schema = json.loads(review_schema_path().read_text(encoding="utf-8"))
+    assert "\\d" not in schema["$defs"]["timestamp"]["pattern"]
+
+
+def test_one_bad_date_does_not_abort_the_batch(tmp_path):
+    good1 = _write(tmp_path / "in" / "a.json", make_verdict(name="Ada", exported_at="2026-10-06T10:00:00.000Z"))
+    bad = _write(tmp_path / "in" / "b.json", make_verdict(name="Bo", exported_at="2026-02-30T10:00:00.000Z"))
+    good2 = _write(tmp_path / "in" / "c.json", make_verdict(name="Cy", exported_at="2026-10-06T11:00:00.000Z"))
+    results = ingest_verdict_files([good1, bad, good2], dest=tmp_path / "reviews")
+    assert [r.status for r in results] == ["ingested", "invalid", "ingested"]
+    assert "exported_at" in results[1].message
+    assert sorted(p.name for p in (tmp_path / "reviews" / PMID).iterdir()) == [
+        "ada_20261006T100000Z.json",
+        "cy_20261006T110000Z.json",
+    ]
+
+
+def test_cli_batch_with_a_bad_date_ends_with_a_summary(tmp_path, monkeypatch):
+    from typer.testing import CliRunner
+
+    from bugsigdb_curation.cli import app
+
+    for name, value in (("COLUMNS", "200"), ("NO_COLOR", "1"), ("TERM", "dumb")):
+        monkeypatch.setenv(name, value)
+    files = [
+        _write(tmp_path / "in" / "a.json", make_verdict(name="Ada")),
+        _write(tmp_path / "in" / "b.json", make_verdict(name="Bo", exported_at="2026-10-06T25:00:00.000Z")),
+        _write(tmp_path / "in" / "c.json", make_verdict(name="Cy")),
+    ]
+    result = CliRunner().invoke(app, ["review", "ingest", *map(str, files), "--dest", str(tmp_path / "r")])
+    assert result.exit_code == 1
+    assert "2 ingested, 1 not ingested" in " ".join(result.output.split())
+
+
+def test_parse_timestamp_is_utc_and_ordered_across_forms():
+    a = parse_timestamp("2026-10-06T12:00:00Z")
+    b = parse_timestamp("2026-10-06T12:00:00.123Z")
+    c = parse_timestamp("2026-10-06T13:00:00+02:00")  # 11:00 UTC
+    assert c < a < b
+    with pytest.raises(ValueError, match="timestamp"):
+        parse_timestamp("2026-13-01T00:00:00Z")
+
+
+# --- reviewer identity ----------------------------------------------------------------------
+
+
+def test_reviewer_slug_keeps_non_ascii_names_distinct_and_path_safe():
+    wang = reviewer_slug({"name": "王伟", "email": ""})
+    li = reviewer_slug({"name": "李娜", "email": ""})
+    assert wang == "王伟" and li == "李娜" and wang != li
+    for name in ("../../etc/passwd", "a/b\\c", "..", ".", "con", "x\x00y", "  ", "!!!", "😀", "a" * 300):
+        slug = reviewer_slug({"name": name, "email": ""})
+        assert slug and not set(slug) & set("/\\\x00.:") and len(slug) <= 64
+    # nothing sluggable: a stable hash of name+email keeps two such reviewers apart
+    emoji = reviewer_slug({"name": "😀", "email": ""})
+    assert emoji.startswith("r-") and emoji != reviewer_slug({"name": "😎", "email": ""})
+    assert emoji == reviewer_slug({"name": "😀", "email": ""})
+
+
+def test_non_ascii_reviewers_stay_distinct_on_disk_and_in_the_report(tmp_path):
+    one = _write(tmp_path / "in" / "1.json", make_verdict(name="王伟", study="ok"))
+    two = _write(tmp_path / "in" / "2.json", make_verdict(name="李娜", study="wrong"))
+    results = ingest_verdict_files([one, two], dest=tmp_path / "reviews")
+    assert [r.status for r in results] == ["ingested", "ingested"]
+    assert len(list((tmp_path / "reviews" / PMID).iterdir())) == 2
+    verdicts, problems = load_reviews(tmp_path / "reviews")
+    assert problems == []
+    (tally,) = tally_verdicts(verdicts)
+    assert tally.reviewers == {"王伟", "李娜"}
+    assert tally.study == {"ok": 1, "wrong": 1}
+
+
+def test_ingest_refuses_to_overwrite_a_different_file_unless_forced(tmp_path):
+    first = _write(tmp_path / "in" / "1.json", make_verdict(name="Ada", study="ok"))
+    second = _write(tmp_path / "in" / "2.json", make_verdict(name="Ada", study="wrong"))  # same name, same second
+    dest = tmp_path / "reviews"
+    assert ingest_verdict_files([first], dest=dest)[0].status == "ingested"
+    conflict = ingest_verdict_files([second], dest=dest)[0]
+    assert conflict.status == "conflict"
+    assert "--force" in conflict.message
+    (target,) = (dest / PMID).iterdir()
+    assert json.loads(target.read_text())["study"]["verdict"] == "ok"
+    assert ingest_verdict_files([second], dest=dest, force=True)[0].status == "ingested"
+    assert json.loads(target.read_text())["study"]["verdict"] == "wrong"
+
+
+def test_ingesting_identical_content_again_is_a_duplicate_no_op(tmp_path):
+    f = _write(tmp_path / "in" / "1.json", make_verdict(name="Ada"))
+    dest = tmp_path / "reviews"
+    assert ingest_verdict_files([f], dest=dest)[0].status == "ingested"
+    (target,) = (dest / PMID).iterdir()
+    mtime = target.stat().st_mtime_ns
+    again = ingest_verdict_files([f], dest=dest)[0]
+    assert again.status == "duplicate" and again.dest == target
+    assert target.stat().st_mtime_ns == mtime
+
+
+# --- latest wins / numbering ----------------------------------------------------------------
+
+
+def test_latest_export_is_decided_by_instant_not_by_string():
+    # as strings "...:00.123Z" < "...:00Z" ('.' < 'Z'), but it is the later instant
+    earlier = make_verdict(name="Ada", study="wrong", exported_at="2026-10-06T12:00:00Z")
+    later = make_verdict(name="Ada", study="ok", exported_at="2026-10-06T12:00:00.123Z")
+    assert tally_verdicts([later, earlier])[0].study == {"ok": 1}
+    assert tally_verdicts([earlier, later])[0].study == {"ok": 1}
+    # an offset form: 13:00+02:00 is 11:00 UTC, i.e. earlier than 12:00Z although "13" > "12"
+    offset = make_verdict(name="Ada", study="needs_edit", exported_at="2026-10-06T13:00:00+02:00")
+    assert tally_verdicts([offset, earlier])[0].study == {"wrong": 1}
+
+
+def test_report_numbers_experiments_and_signatures_from_one_like_the_packet():
+    v = make_verdict(directions={(0, 1): "flipped"}, missing_note="Missed Prevotella")
+    md = render_report(tally_verdicts([v]))
+    assert f"| {PMID} | 1 | 2 | 0 | 1 | 0 | 100.0% |" in md
+    assert f"| {PMID} | 0 |" not in md
+    assert "(experiment 1 missing from draft)" in md and "experiment 0" not in md
