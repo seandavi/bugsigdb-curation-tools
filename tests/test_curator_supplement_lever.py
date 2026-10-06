@@ -22,7 +22,7 @@ from typer.testing import CliRunner
 import bugsigdb_curation.cli as cli_module
 from bugsigdb_curation.cli import app
 from bugsigdb_curation.curator.experiment import ExperimentFields
-from bugsigdb_curation.curator.model import MockModel, ModelError
+from bugsigdb_curation.curator.model import MockModel, ModelCallError, ModelError
 from bugsigdb_curation.curator.ner import NamedTaxon
 from bugsigdb_curation.curator.pipeline import CurationResult, curate_async
 from bugsigdb_curation.curator.signature import ExtractedSignature, ExtractedTaxon
@@ -728,6 +728,39 @@ def test_a_failed_extraction_skips_only_that_unit(httpx_mock, tmp_path):
     assert failure["unit"] == "S1.xlsx::DA" and "malformed JSON" in failure["error"]
     groups = [e.get("group_1_name") for e in result.record["experiments"][1:]]
     assert groups == ["Cluster1", "Cluster2", "Cluster3", "Ileum"]  # the other routed units still landed
+
+
+def test_a_model_transport_error_in_extraction_skips_only_that_unit_and_keeps_the_main_text(httpx_mock, tmp_path):
+    baseline = _curate(httpx_mock, tmp_path, tag="base")
+
+    def rate_limited(messages):
+        if "S1.xlsx :: DA" in _prompt(messages):
+            raise ModelCallError("RateLimitError: slow down")
+        return _extract_answers(messages)
+
+    result = _curate(
+        httpx_mock, tmp_path, tag="rl", decision=_decision(), model=MockModel({"supplement_extract": rate_limited}),
+        supplements=True,
+    )
+    assert result.valid
+    (failure,) = result.annotations["supplement_extract_error"]
+    assert failure["unit"] == "S1.xlsx::DA" and "RateLimitError" in failure["error"]
+    experiments = result.record["experiments"]
+    main_experiments = baseline.record["experiments"]
+    assert experiments[: len(main_experiments)] == main_experiments  # the main-text record survives untouched
+    assert [e.get("group_1_name") for e in experiments[len(main_experiments) :]] == [
+        "Cluster1", "Cluster2", "Cluster3", "Ileum",
+    ]  # and so do the other routed units
+
+
+@pytest.mark.httpx_mock(assert_all_responses_were_requested=False)
+def test_a_model_call_error_in_a_main_text_stage_still_fails_the_study(httpx_mock, tmp_path):
+    class Down(MockModel):
+        def complete(self, *, stage, messages):
+            raise ModelCallError("RateLimitError: slow down")
+
+    with pytest.raises(ModelCallError):
+        _curate(httpx_mock, tmp_path, tag="main-down", model=Down(), supplements=False)
 
 
 def test_a_bug_in_extraction_is_not_swallowed(httpx_mock, tmp_path):

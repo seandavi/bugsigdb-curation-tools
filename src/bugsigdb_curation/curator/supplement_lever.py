@@ -83,6 +83,7 @@ MAX_IMAGE_BYTES = 200_000
 _RENDER_ATTEMPTS = ((100, 80), (100, 65), (100, 50), (100, 35), (72, 35), (50, 35))
 
 #: What a lever step can raise for a failed call or a bad generative response, beyond a bug in our code.
+#: `ModelCallError` (a transport/provider failure or malformed completion) is a `ModelError`, so it is covered.
 _EXPECTED_ERRORS = (*DECISION_CALL_ERRORS, ModelError)
 #: Jaccard overlap (of resolved taxon sets, same direction) at or above which a supplement experiment is
 #: considered already reported by the main text.

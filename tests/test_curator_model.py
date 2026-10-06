@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import os
 
+import httpx
 import litellm
 import pytest
 
 from bugsigdb_curation.curator.model import (
     DEFAULT_MODEL,
     LiteLLMModel,
+    ModelCallError,
     ModelError,
     MockModel,
     _GOOGLE_KEY_ENV_NAMES,
@@ -213,6 +215,52 @@ def test_litellm_model_raises_model_error_after_retry_still_malformed(monkeypatc
     model = LiteLLMModel(api_key="test-key")
 
     with pytest.raises(ModelError):
+        model.complete(stage="study_design", messages=[{"role": "user", "content": "x"}])
+
+
+def _raising_completion(exc: BaseException):
+    def fake_completion(**kwargs):
+        raise exc
+
+    return fake_completion
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        litellm.exceptions.RateLimitError("slow down", "gemini", "m"),
+        litellm.exceptions.ContextWindowExceededError("too long", "m", "gemini"),
+        litellm.exceptions.Timeout("timed out", "m", "gemini"),
+        litellm.exceptions.APIConnectionError("no route", "gemini", "m"),
+        litellm.exceptions.BudgetExceededError(current_cost=2.0, max_budget=1.0),
+        httpx.ConnectError("no route"),
+    ],
+)
+def test_litellm_transport_errors_become_model_call_errors_keeping_the_cause(monkeypatch, exc):
+    monkeypatch.setattr(litellm, "completion", _raising_completion(exc))
+    model = LiteLLMModel(api_key="test-key")
+
+    with pytest.raises(ModelCallError) as info:
+        model.complete(stage="supplement_extract", messages=[{"role": "user", "content": "x"}])
+    assert info.value.__cause__ is exc
+    assert isinstance(info.value, ModelError)
+
+
+@pytest.mark.parametrize("response", [{}, {"choices": []}, {"choices": [{}]}, {"choices": [{"message": None}]}, None])
+def test_a_malformed_response_shape_is_a_model_call_error(monkeypatch, response):
+    monkeypatch.setattr(litellm, "completion", lambda **kwargs: response)
+    model = LiteLLMModel(api_key="test-key")
+
+    with pytest.raises(ModelCallError) as info:
+        model.complete(stage="study_design", messages=[{"role": "user", "content": "x"}])
+    assert isinstance(info.value.__cause__, (KeyError, IndexError, TypeError))
+
+
+def test_a_programming_bug_in_the_completion_function_still_surfaces(monkeypatch):
+    monkeypatch.setattr(litellm, "completion", _raising_completion(AttributeError("bug")))
+    model = LiteLLMModel(api_key="test-key")
+
+    with pytest.raises(AttributeError):
         model.complete(stage="study_design", messages=[{"role": "user", "content": "x"}])
 
 
