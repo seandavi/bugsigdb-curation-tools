@@ -15,6 +15,8 @@ outage must not be mistaken for it or cached as it.
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -74,17 +76,30 @@ class OlsClient:
 
     @classmethod
     def load(cls, client: httpx.AsyncClient, *, cache_path: Path | None = DEFAULT_CACHE_PATH) -> OlsClient:
-        """Build a client from a JSON cache file (missing -> empty cache)."""
+        """Build a client from a JSON cache file (missing, unreadable or corrupt -> empty cache, with a warning).
+
+        The cache is a best-effort speed-up for a best-effort feature: a half-written file must cost a
+        re-fetch, not the whole run.
+        """
         cache: dict[str, list[dict[str, Any]]] = {}
         if cache_path is not None and Path(cache_path).exists():
-            cache = json.loads(Path(cache_path).read_text(encoding="utf-8"))
+            try:
+                loaded = json.loads(Path(cache_path).read_text(encoding="utf-8"))
+                if not isinstance(loaded, dict) or not all(isinstance(v, list) for v in loaded.values()):
+                    raise ValueError("expected a JSON object mapping query keys to lists of docs")
+                cache = loaded
+            except (OSError, ValueError) as exc:
+                logger.bind(stage="S4").warning(
+                    "ignoring unreadable OLS cache; starting empty", path=str(cache_path), error=repr(exc)
+                )
         return cls(client=client, cache=cache, cache_path=Path(cache_path) if cache_path is not None else None)
 
     async def search(self, query: str, ontology: str, *, rows: int = DEFAULT_ROWS) -> list[dict[str, Any]]:
         """Candidate term docs for `query` in `ontology`, in OLS rank order (possibly empty).
 
         Raises `httpx.HTTPStatusError` for a non-retryable error or once retries on a 429/5xx are
-        exhausted; transport errors propagate as-is. Failures are never cached.
+        exhausted, `ValueError` for a body that is not the expected OLS search response; transport errors
+        propagate as-is. Failures are never cached.
         """
         key = f"{ontology}|{query}|{rows}"
         if key in self.cache:
@@ -114,15 +129,29 @@ class OlsClient:
                 delay *= 2
                 continue
             response.raise_for_status()
-            docs: list[dict[str, Any]] = response.json()["response"]["docs"]
+            body = response.json()
+            docs = body.get("response", {}).get("docs") if isinstance(body, dict) else None
+            if not isinstance(docs, list) or not all(isinstance(doc, dict) for doc in docs):
+                raise ValueError("unexpected OLS response shape")
             self.cache[key] = docs
             return docs
         raise AssertionError("unreachable: the final attempt always returns or raises")  # pragma: no cover
 
     def save_cache(self, path: Path | None = None) -> None:
-        """Persist the in-memory cache to `path` (default: `self.cache_path`); no-op if neither set."""
+        """Persist the in-memory cache to `path` (default: `self.cache_path`); no-op if neither set.
+
+        Atomic: written to a temp file beside the target, then swapped in with `os.replace`, so an
+        interrupted save never leaves a truncated cache behind.
+        """
         target = Path(path) if path is not None else self.cache_path
         if target is None:
             return
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(self.cache, indent=2, sort_keys=True), encoding="utf-8")
+        fd, tmp_name = tempfile.mkstemp(dir=target.parent, prefix=f".{target.name}.", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(json.dumps(self.cache, indent=2, sort_keys=True))
+            os.replace(tmp_name, target)
+        except BaseException:
+            Path(tmp_name).unlink(missing_ok=True)
+            raise
