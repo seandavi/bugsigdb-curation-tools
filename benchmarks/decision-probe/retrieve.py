@@ -61,7 +61,14 @@ async def retrieve_study(pmid: str, client: httpx.AsyncClient) -> None:
     bundle_file = out / "bundle.json"
     if not bundle_file.exists():
         bundle = await assemble_evidence(pmid, pmcid, client=client)
-        xml = await fetch_fulltext_xml(client, pmcid)
+        for attempt in range(4):  # EuropePMC fullTextXML 500s transiently
+            try:
+                xml = await fetch_fulltext_xml(client, pmcid)
+                break
+            except httpx.HTTPStatusError:
+                if attempt == 3:
+                    raise
+                await asyncio.sleep(2 * (attempt + 1))
         payload = {
             "pmid": pmid,
             "pmcid": pmcid,

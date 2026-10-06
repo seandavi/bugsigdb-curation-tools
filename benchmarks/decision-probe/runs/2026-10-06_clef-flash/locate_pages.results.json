@@ -1,0 +1,287 @@
+{
+ "units": [
+  {
+   "id": "p27",
+   "tables": [
+    "24"
+   ],
+   "gold": [
+    "34620922/Experiment 31",
+    "34620922/Experiment 32",
+    "34620922/Experiment 33",
+    "34620922/Experiment 34",
+    "34620922/Experiment 35",
+    "34620922/Experiment 36",
+    "34620922/Experiment 4",
+    "34620922/Experiment 6"
+   ],
+   "pick": "none",
+   "conf": 0.2769
+  },
+  {
+   "id": "p28",
+   "tables": [
+    "25"
+   ],
+   "gold": [
+    "34620922/Experiment 1",
+    "34620922/Experiment 2",
+    "34620922/Experiment 3"
+   ],
+   "pick": "34620922/Experiment 2",
+   "conf": 0.1292
+  },
+  {
+   "id": "p29",
+   "tables": [
+    "25"
+   ],
+   "gold": [
+    "34620922/Experiment 1",
+    "34620922/Experiment 2",
+    "34620922/Experiment 3"
+   ],
+   "pick": "34620922/Experiment 3",
+   "conf": 0.2582
+  },
+  {
+   "id": "p30",
+   "tables": [
+    "26"
+   ],
+   "gold": [
+    "34620922/Experiment 4",
+    "34620922/Experiment 5",
+    "34620922/Experiment 6"
+   ],
+   "pick": "34620922/Experiment 6",
+   "conf": 0.085
+  },
+  {
+   "id": "p31",
+   "tables": [
+    "27"
+   ],
+   "gold": [
+    "34620922/Experiment 7",
+    "34620922/Experiment 8",
+    "34620922/Experiment 9"
+   ],
+   "pick": "34620922/Experiment 33",
+   "conf": 0.122
+  },
+  {
+   "id": "p32",
+   "tables": [
+    "27"
+   ],
+   "gold": [
+    "34620922/Experiment 7",
+    "34620922/Experiment 8",
+    "34620922/Experiment 9"
+   ],
+   "pick": "34620922/Experiment 9",
+   "conf": 0.1466
+  },
+  {
+   "id": "p33",
+   "tables": [
+    "28"
+   ],
+   "gold": [
+    "34620922/Experiment 10",
+    "34620922/Experiment 11",
+    "34620922/Experiment 23"
+   ],
+   "pick": "none",
+   "conf": 0.0999
+  },
+  {
+   "id": "p34",
+   "tables": [
+    "29"
+   ],
+   "gold": [
+    "34620922/Experiment 12",
+    "34620922/Experiment 13",
+    "34620922/Experiment 14"
+   ],
+   "pick": "34620922/Experiment 2",
+   "conf": 0.0629
+  },
+  {
+   "id": "p35",
+   "tables": [
+    "29"
+   ],
+   "gold": [
+    "34620922/Experiment 12",
+    "34620922/Experiment 13",
+    "34620922/Experiment 14"
+   ],
+   "pick": "34620922/Experiment 14",
+   "conf": 0.0909
+  },
+  {
+   "id": "p36",
+   "tables": [
+    "30"
+   ],
+   "gold": [
+    "34620922/Experiment 15",
+    "34620922/Experiment 16",
+    "34620922/Experiment 17"
+   ],
+   "pick": "none",
+   "conf": 0.2156
+  },
+  {
+   "id": "p38",
+   "tables": [
+    "33"
+   ],
+   "gold": [
+    "34620922/Experiment 37",
+    "34620922/Experiment 38",
+    "34620922/Experiment 39",
+    "34620922/Experiment 40",
+    "34620922/Experiment 41",
+    "34620922/Experiment 42",
+    "34620922/Experiment 43",
+    "34620922/Experiment 44",
+    "34620922/Experiment 45",
+    "34620922/Experiment 46",
+    "34620922/Experiment 47",
+    "34620922/Experiment 48"
+   ],
+   "pick": "none",
+   "conf": 0.4473
+  },
+  {
+   "id": "p39",
+   "tables": [
+    "33"
+   ],
+   "gold": [
+    "34620922/Experiment 37",
+    "34620922/Experiment 38",
+    "34620922/Experiment 39",
+    "34620922/Experiment 40",
+    "34620922/Experiment 41",
+    "34620922/Experiment 42",
+    "34620922/Experiment 43",
+    "34620922/Experiment 44",
+    "34620922/Experiment 45",
+    "34620922/Experiment 46",
+    "34620922/Experiment 47",
+    "34620922/Experiment 48"
+   ],
+   "pick": "none",
+   "conf": 0.2733
+  },
+  {
+   "id": "p40",
+   "tables": [
+    "34"
+   ],
+   "gold": [
+    "34620922/Experiment 18",
+    "34620922/Experiment 19",
+    "34620922/Experiment 20"
+   ],
+   "pick": "34620922/Experiment 38",
+   "conf": 0.2321
+  },
+  {
+   "id": "p41",
+   "tables": [
+    "34"
+   ],
+   "gold": [
+    "34620922/Experiment 18",
+    "34620922/Experiment 19",
+    "34620922/Experiment 20"
+   ],
+   "pick": "34620922/Experiment 20",
+   "conf": 0.3835
+  },
+  {
+   "id": "p42",
+   "tables": [
+    "35"
+   ],
+   "gold": [
+    "34620922/Experiment 21",
+    "34620922/Experiment 22",
+    "34620922/Experiment 27"
+   ],
+   "pick": "34620922/Experiment 40",
+   "conf": 0.2049
+  },
+  {
+   "id": "p43",
+   "tables": [
+    "35"
+   ],
+   "gold": [
+    "34620922/Experiment 21",
+    "34620922/Experiment 22",
+    "34620922/Experiment 27"
+   ],
+   "pick": "34620922/Experiment 22",
+   "conf": 0.3234
+  },
+  {
+   "id": "p44",
+   "tables": [
+    "36"
+   ],
+   "gold": [
+    "34620922/Experiment 28",
+    "34620922/Experiment 29",
+    "34620922/Experiment 30"
+   ],
+   "pick": "34620922/Experiment 48",
+   "conf": 0.1765
+  },
+  {
+   "id": "p45",
+   "tables": [
+    "36"
+   ],
+   "gold": [
+    "34620922/Experiment 28",
+    "34620922/Experiment 29",
+    "34620922/Experiment 30"
+   ],
+   "pick": "34620922/Experiment 29",
+   "conf": 0.2506
+  },
+  {
+   "id": "p46",
+   "tables": [
+    "37"
+   ],
+   "gold": [
+    "34620922/Experiment 24",
+    "34620922/Experiment 25",
+    "34620922/Experiment 26"
+   ],
+   "pick": "34620922/Experiment 44",
+   "conf": 0.1883
+  },
+  {
+   "id": "p47",
+   "tables": [
+    "37"
+   ],
+   "gold": [
+    "34620922/Experiment 24",
+    "34620922/Experiment 25",
+    "34620922/Experiment 26"
+   ],
+   "pick": "34620922/Experiment 25",
+   "conf": 0.2271
+  }
+ ]
+}

@@ -1,0 +1,45 @@
+{
+  "cost": {
+    "calls": 20,
+    "input_tokens": 80890,
+    "mean_latency_ms": 620.0
+  },
+  "coverage_at_confidence": [
+    {
+      "accuracy": 0.45,
+      "coverage": 1.0,
+      "n": 20,
+      "tau": 0.0
+    },
+    {
+      "accuracy": 0.4375,
+      "coverage": 0.8,
+      "n": 16,
+      "tau": 0.1
+    },
+    {
+      "accuracy": 0.45454545454545453,
+      "coverage": 0.55,
+      "n": 11,
+      "tau": 0.2
+    },
+    {
+      "accuracy": 0.6666666666666666,
+      "coverage": 0.15,
+      "n": 3,
+      "tau": 0.3
+    },
+    {
+      "accuracy": NaN,
+      "coverage": 0.0,
+      "n": 0,
+      "tau": 0.5
+    }
+  ],
+  "mean_gold_set_size": 4.15,
+  "n_options": 48,
+  "n_pages": 20,
+  "n_pages_with_gold": 20,
+  "none_picked": 5,
+  "top1_in_gold_set": 0.45
+}

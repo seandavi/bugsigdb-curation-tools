@@ -1,0 +1,1124 @@
+{
+ "units": [
+  {
+   "id": "34620922:figure1",
+   "pmid": "34620922",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.015
+  },
+  {
+   "id": "34620922:figure2",
+   "pmid": "34620922",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0169
+  },
+  {
+   "id": "34620922:figure3",
+   "pmid": "34620922",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0162
+  },
+  {
+   "id": "34620922:figure4",
+   "pmid": "34620922",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.018
+  },
+  {
+   "id": "34620922:figure5",
+   "pmid": "34620922",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0477
+  },
+  {
+   "id": "37864204:table1",
+   "pmid": "37864204",
+   "kind": "table",
+   "is_da": true,
+   "regex_hit": true,
+   "gold_experiments": [
+    "37864204/Experiment 12",
+    "37864204/Experiment 13",
+    "37864204/Experiment 14"
+   ],
+   "p_da": 0.9425,
+   "pick": "37864204/Experiment 12",
+   "pick_conf": 0.1056,
+   "n_options": 64
+  },
+  {
+   "id": "37864204:table2",
+   "pmid": "37864204",
+   "kind": "table",
+   "is_da": true,
+   "regex_hit": true,
+   "gold_experiments": [
+    "37864204/Experiment 12",
+    "37864204/Experiment 13",
+    "37864204/Experiment 14"
+   ],
+   "p_da": 0.879,
+   "pick": "37864204/Experiment 12",
+   "pick_conf": 0.3763,
+   "n_options": 64
+  },
+  {
+   "id": "37864204:figure1",
+   "pmid": "37864204",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": false,
+   "gold_experiments": [
+    "37864204/Experiment 47",
+    "37864204/Experiment 48",
+    "37864204/Experiment 49",
+    "37864204/Experiment 50",
+    "37864204/Experiment 51",
+    "37864204/Experiment 52",
+    "37864204/Experiment 53",
+    "37864204/Experiment 54",
+    "37864204/Experiment 55",
+    "37864204/Experiment 56",
+    "37864204/Experiment 57",
+    "37864204/Experiment 58"
+   ],
+   "p_da": 0.3471,
+   "pick": "none",
+   "pick_conf": 0.0209,
+   "n_options": 64
+  },
+  {
+   "id": "37864204:figure2",
+   "pmid": "37864204",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0291
+  },
+  {
+   "id": "37864204:figure3",
+   "pmid": "37864204",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": false,
+   "gold_experiments": [
+    "37864204/Experiment 15",
+    "37864204/Experiment 16",
+    "37864204/Experiment 17",
+    "37864204/Experiment 18",
+    "37864204/Experiment 19",
+    "37864204/Experiment 20",
+    "37864204/Experiment 21",
+    "37864204/Experiment 22",
+    "37864204/Experiment 23",
+    "37864204/Experiment 24",
+    "37864204/Experiment 25",
+    "37864204/Experiment 26",
+    "37864204/Experiment 27",
+    "37864204/Experiment 28",
+    "37864204/Experiment 29",
+    "37864204/Experiment 30",
+    "37864204/Experiment 31",
+    "37864204/Experiment 32",
+    "37864204/Experiment 33",
+    "37864204/Experiment 34",
+    "37864204/Experiment 35",
+    "37864204/Experiment 36",
+    "37864204/Experiment 37",
+    "37864204/Experiment 38",
+    "37864204/Experiment 39",
+    "37864204/Experiment 40",
+    "37864204/Experiment 41",
+    "37864204/Experiment 42",
+    "37864204/Experiment 43",
+    "37864204/Experiment 44",
+    "37864204/Experiment 45"
+   ],
+   "p_da": 0.8922,
+   "pick": "37864204/Experiment 15",
+   "pick_conf": 0.029,
+   "n_options": 64
+  },
+  {
+   "id": "37864204:figure4",
+   "pmid": "37864204",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.9115
+  },
+  {
+   "id": "37864204:figure5",
+   "pmid": "37864204",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.9404
+  },
+  {
+   "id": "30854760:table1",
+   "pmid": "30854760",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0256
+  },
+  {
+   "id": "30854760:table2",
+   "pmid": "30854760",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0127
+  },
+  {
+   "id": "30854760:figure1",
+   "pmid": "30854760",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.3263
+  },
+  {
+   "id": "30854760:figure2",
+   "pmid": "30854760",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": true,
+   "gold_experiments": [
+    "30854760/Experiment 1"
+   ],
+   "p_da": 0.9137
+  },
+  {
+   "id": "30854760:figure3",
+   "pmid": "30854760",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.6735
+  },
+  {
+   "id": "30854760:figure4",
+   "pmid": "30854760",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.2375
+  },
+  {
+   "id": "32552447:figure1",
+   "pmid": "32552447",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0123
+  },
+  {
+   "id": "32552447:figure2",
+   "pmid": "32552447",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": false,
+   "gold_experiments": [
+    "32552447/Experiment 1"
+   ],
+   "p_da": 0.3916
+  },
+  {
+   "id": "32552447:figure3",
+   "pmid": "32552447",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0185
+  },
+  {
+   "id": "32552447:figure4",
+   "pmid": "32552447",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0363
+  },
+  {
+   "id": "32552447:figure5",
+   "pmid": "32552447",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0809
+  },
+  {
+   "id": "32552447:figure6",
+   "pmid": "32552447",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.096
+  },
+  {
+   "id": "31215600:table1",
+   "pmid": "31215600",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0275
+  },
+  {
+   "id": "31215600:table2",
+   "pmid": "31215600",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0226
+  },
+  {
+   "id": "31215600:table3",
+   "pmid": "31215600",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0157
+  },
+  {
+   "id": "31215600:figure1",
+   "pmid": "31215600",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0176
+  },
+  {
+   "id": "31215600:figure2",
+   "pmid": "31215600",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0192
+  },
+  {
+   "id": "31215600:figure3",
+   "pmid": "31215600",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0177
+  },
+  {
+   "id": "31215600:figure4",
+   "pmid": "31215600",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": false,
+   "gold_experiments": [
+    "31215600/Experiment 1"
+   ],
+   "p_da": 0.9058
+  },
+  {
+   "id": "33167991:table1",
+   "pmid": "33167991",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.024
+  },
+  {
+   "id": "33167991:figure1",
+   "pmid": "33167991",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": true,
+   "gold_experiments": [
+    "33167991/Experiment 1"
+   ],
+   "p_da": 0.9008
+  },
+  {
+   "id": "33167991:figure2",
+   "pmid": "33167991",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.8653
+  },
+  {
+   "id": "33167991:figure3",
+   "pmid": "33167991",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.1145
+  },
+  {
+   "id": "33167991:figure4",
+   "pmid": "33167991",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.0834
+  },
+  {
+   "id": "34090383:table1",
+   "pmid": "34090383",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0247
+  },
+  {
+   "id": "34090383:figure1",
+   "pmid": "34090383",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0111
+  },
+  {
+   "id": "34090383:figure2",
+   "pmid": "34090383",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": true,
+   "gold_experiments": [
+    "34090383/Experiment 1"
+   ],
+   "p_da": 0.7297
+  },
+  {
+   "id": "34090383:figure3",
+   "pmid": "34090383",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0364
+  },
+  {
+   "id": "24192039:table1",
+   "pmid": "24192039",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0246
+  },
+  {
+   "id": "24192039:table2",
+   "pmid": "24192039",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.029
+  },
+  {
+   "id": "24192039:table3",
+   "pmid": "24192039",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.2511
+  },
+  {
+   "id": "24192039:figure1",
+   "pmid": "24192039",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": true,
+   "gold_experiments": [
+    "24192039/Experiment 1"
+   ],
+   "p_da": 0.9213
+  },
+  {
+   "id": "24192039:figure1",
+   "pmid": "24192039",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": false,
+   "gold_experiments": [
+    "24192039/Experiment 1"
+   ],
+   "p_da": 0.8886
+  },
+  {
+   "id": "24192039:figure2",
+   "pmid": "24192039",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0309
+  },
+  {
+   "id": "24192039:figure2",
+   "pmid": "24192039",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0197
+  },
+  {
+   "id": "24192039:figure3",
+   "pmid": "24192039",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0428
+  },
+  {
+   "id": "24192039:figure3",
+   "pmid": "24192039",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0177
+  },
+  {
+   "id": "24192039:figure3",
+   "pmid": "24192039",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.0712
+  },
+  {
+   "id": "24192039:figure4",
+   "pmid": "24192039",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.0694
+  },
+  {
+   "id": "24192039:figure5",
+   "pmid": "24192039",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.5671
+  },
+  {
+   "id": "24192039:figure6",
+   "pmid": "24192039",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.6191
+  },
+  {
+   "id": "24192039:figure6",
+   "pmid": "24192039",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.1569
+  },
+  {
+   "id": "32753953:table1",
+   "pmid": "32753953",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0252
+  },
+  {
+   "id": "32753953:table2",
+   "pmid": "32753953",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0152
+  },
+  {
+   "id": "32753953:figure1",
+   "pmid": "32753953",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0316
+  },
+  {
+   "id": "32753953:figure2",
+   "pmid": "32753953",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": true,
+   "gold_experiments": [
+    "32753953/Experiment 1"
+   ],
+   "p_da": 0.9239
+  },
+  {
+   "id": "32753953:figure3",
+   "pmid": "32753953",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0903
+  },
+  {
+   "id": "32753953:figure4",
+   "pmid": "32753953",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0228
+  },
+  {
+   "id": "32753953:figure5",
+   "pmid": "32753953",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.019
+  },
+  {
+   "id": "38387693:table1",
+   "pmid": "38387693",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.028
+  },
+  {
+   "id": "38387693:table2",
+   "pmid": "38387693",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0186
+  },
+  {
+   "id": "38387693:figure1",
+   "pmid": "38387693",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0175
+  },
+  {
+   "id": "38387693:figure2",
+   "pmid": "38387693",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0137
+  },
+  {
+   "id": "38387693:figure3",
+   "pmid": "38387693",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0099
+  },
+  {
+   "id": "38387693:figure4",
+   "pmid": "38387693",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": true,
+   "gold_experiments": [
+    "38387693/Experiment 1"
+   ],
+   "p_da": 0.8792
+  },
+  {
+   "id": "38387693:figure5",
+   "pmid": "38387693",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0219
+  },
+  {
+   "id": "38387693:figure1",
+   "pmid": "38387693",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0267
+  },
+  {
+   "id": "29459704:table1",
+   "pmid": "29459704",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0234
+  },
+  {
+   "id": "29459704:figure1",
+   "pmid": "29459704",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": true,
+   "gold_experiments": [
+    "29459704/Experiment 1"
+   ],
+   "p_da": 0.8131
+  },
+  {
+   "id": "29459704:figure2",
+   "pmid": "29459704",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0615
+  },
+  {
+   "id": "29459704:figure3",
+   "pmid": "29459704",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.8809
+  },
+  {
+   "id": "29459704:figure4",
+   "pmid": "29459704",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.1664
+  },
+  {
+   "id": "29459704:figure5",
+   "pmid": "29459704",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0516
+  },
+  {
+   "id": "29459704:figure6",
+   "pmid": "29459704",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.7195
+  },
+  {
+   "id": "33804656:figure1",
+   "pmid": "33804656",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0116
+  },
+  {
+   "id": "33804656:figure2",
+   "pmid": "33804656",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.8877
+  },
+  {
+   "id": "33804656:figure3",
+   "pmid": "33804656",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0111
+  },
+  {
+   "id": "33804656:figure4",
+   "pmid": "33804656",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0861
+  },
+  {
+   "id": "33804656:figure5",
+   "pmid": "33804656",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": true,
+   "gold_experiments": [
+    "33804656/Experiment 1",
+    "33804656/Experiment 2",
+    "33804656/Experiment 3",
+    "33804656/Experiment 4"
+   ],
+   "p_da": 0.8149,
+   "pick": "33804656/Experiment 3",
+   "pick_conf": 0.2209,
+   "n_options": 4
+  },
+  {
+   "id": "41670382:table1",
+   "pmid": "41670382",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0397
+  },
+  {
+   "id": "41670382:figure1",
+   "pmid": "41670382",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0112
+  },
+  {
+   "id": "41670382:figure2",
+   "pmid": "41670382",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.6798
+  },
+  {
+   "id": "41670382:figure3",
+   "pmid": "41670382",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": true,
+   "gold_experiments": [
+    "41670382/Experiment 1"
+   ],
+   "p_da": 0.8143
+  },
+  {
+   "id": "41670382:figure4",
+   "pmid": "41670382",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.0662
+  },
+  {
+   "id": "41670382:figure5",
+   "pmid": "41670382",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.0214
+  },
+  {
+   "id": "41670382:figure6",
+   "pmid": "41670382",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.0708
+  },
+  {
+   "id": "35233023:table1",
+   "pmid": "35233023",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0298
+  },
+  {
+   "id": "35233023:table2",
+   "pmid": "35233023",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0182
+  },
+  {
+   "id": "35233023:figure1",
+   "pmid": "35233023",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.2757
+  },
+  {
+   "id": "35233023:figure2",
+   "pmid": "35233023",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0193
+  },
+  {
+   "id": "35233023:figure3",
+   "pmid": "35233023",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": true,
+   "gold_experiments": [
+    "35233023/Experiment 1",
+    "35233023/Experiment 2"
+   ],
+   "p_da": 0.8573,
+   "pick": "none",
+   "pick_conf": 0.0105,
+   "n_options": 2
+  },
+  {
+   "id": "35233023:figure4",
+   "pmid": "35233023",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0172
+  },
+  {
+   "id": "35387878:figure1",
+   "pmid": "35387878",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0251
+  },
+  {
+   "id": "35387878:figure2",
+   "pmid": "35387878",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": true,
+   "gold_experiments": [
+    "35387878/Experiment 2"
+   ],
+   "p_da": 0.8936
+  },
+  {
+   "id": "35387878:figure3",
+   "pmid": "35387878",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.0426
+  },
+  {
+   "id": "35387878:figure4",
+   "pmid": "35387878",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0234
+  },
+  {
+   "id": "35387878:figure5",
+   "pmid": "35387878",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.0249
+  },
+  {
+   "id": "35387878:figure6",
+   "pmid": "35387878",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.9059
+  },
+  {
+   "id": "35387878:figure7",
+   "pmid": "35387878",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.0233
+  },
+  {
+   "id": "40943094:table1",
+   "pmid": "40943094",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0307
+  },
+  {
+   "id": "40943094:figure1",
+   "pmid": "40943094",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0166
+  },
+  {
+   "id": "40943094:figure2",
+   "pmid": "40943094",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": false,
+   "gold_experiments": [
+    "40943094/Experiment 1"
+   ],
+   "p_da": 0.3356
+  },
+  {
+   "id": "40943094:figure3",
+   "pmid": "40943094",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0583
+  },
+  {
+   "id": "30675188:table1",
+   "pmid": "30675188",
+   "kind": "table",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0097
+  },
+  {
+   "id": "30675188:figure1",
+   "pmid": "30675188",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0917
+  },
+  {
+   "id": "30675188:figure2",
+   "pmid": "30675188",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.6286
+  },
+  {
+   "id": "30675188:figure3",
+   "pmid": "30675188",
+   "kind": "figure",
+   "is_da": true,
+   "regex_hit": false,
+   "gold_experiments": [
+    "30675188/Experiment 1",
+    "30675188/Experiment 2",
+    "30675188/Experiment 3"
+   ],
+   "p_da": 0.148,
+   "pick": "30675188/Experiment 1",
+   "pick_conf": 0.205,
+   "n_options": 3
+  },
+  {
+   "id": "30675188:figure4",
+   "pmid": "30675188",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": true,
+   "gold_experiments": [],
+   "p_da": 0.1082
+  },
+  {
+   "id": "30675188:figure5",
+   "pmid": "30675188",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.035
+  },
+  {
+   "id": "30675188:figure6",
+   "pmid": "30675188",
+   "kind": "figure",
+   "is_da": false,
+   "regex_hit": false,
+   "gold_experiments": [],
+   "p_da": 0.0204
+  }
+ ]
+}
