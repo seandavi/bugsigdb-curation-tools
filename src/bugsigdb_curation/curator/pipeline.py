@@ -35,7 +35,8 @@ from __future__ import annotations
 
 import asyncio
 import time
-from dataclasses import dataclass, field
+from collections.abc import Sequence
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -54,15 +55,17 @@ from bugsigdb_curation.curator.extract import StudyFields, extract_study
 from bugsigdb_curation.curator.locate import LocatedArtifact, locate_artifact
 from bugsigdb_curation.curator.model import Model
 from bugsigdb_curation.curator.ner import extract_names
+from bugsigdb_curation.curator.ols import DEFAULT_CACHE_PATH as DEFAULT_OLS_CACHE_PATH
+from bugsigdb_curation.curator.ols import OlsClient
 from bugsigdb_curation.curator.panel import review_signatures
 from bugsigdb_curation.curator.reconcile import reconcile_names
 from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL, resolve
-from bugsigdb_curation.curator.routing import rank_artifacts
+from bugsigdb_curation.curator.routing import DECISION_CALL_ERRORS, map_body_sites, rank_artifacts
 from bugsigdb_curation.curator.segment import segment_experiments
 from bugsigdb_curation.curator.signature import ExtractedSignature, extract_signatures
 from bugsigdb_curation.curator.taxonomy import DEFAULT_CACHE_PATH, NcbiTaxonomyResolver
 from bugsigdb_curation.curator.verify import verify_signatures
-from bugsigdb_curation.decision import DecisionModel, DecisionModelError
+from bugsigdb_curation.decision import DecisionModel
 from bugsigdb_curation.validate import Problem, default_schema_path, validate_instance
 
 #: The one source-config wired up for the walking skeleton (plan §6, decided
@@ -142,12 +145,6 @@ def _build_source_context(experiment_fields: ExperimentFields, artifact: Located
     return "; ".join(parts)
 
 
-#: What a failed decision call can raise: the seam's own error (every Clef HTTP/schema failure), transport
-#: errors from the HTTP client, and ValueError from request validation. Anything else is a bug and must
-#: surface rather than silently turn into the regex locate.
-_DECISION_CALL_ERRORS = (DecisionModelError, httpx.HTTPError, ValueError)
-
-
 async def _rank_or_none(
     bundle: EvidenceBundle, decision_model: DecisionModel | None, annotations: dict[str, Any] | None = None
 ) -> list[LocatedArtifact] | None:
@@ -159,11 +156,37 @@ async def _rank_or_none(
         return None
     try:
         return await rank_artifacts(bundle, decision_model)
-    except _DECISION_CALL_ERRORS as exc:
+    except DECISION_CALL_ERRORS as exc:
         logger.bind(stage="S5a").warning("decision-model ranking failed; using regex locate", error=repr(exc))
         if annotations is not None:
             annotations["artifact_ranking_error"] = repr(exc)
         return None
+
+
+async def _body_site_terms(
+    experiment_index: int,
+    body_sites: Sequence[str],
+    study_title: str,
+    decision_model: DecisionModel,
+    ols: OlsClient,
+    annotations: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """The S4 body-site -> UBERON mappings for one experiment as sidecar entries, or `[]` if the OLS
+    search / decision call fails. Same best-effort contract as `_rank_or_none`: the failure is logged
+    and appended to `annotations["body_site_terms_error"]` (one `{"experiment_index", "error"}` entry
+    per failing experiment), never aborts the study, and only the expected transport/decision errors
+    are absorbed (a bug still surfaces)."""
+    try:
+        mappings = await map_body_sites(
+            body_sites, context_title=study_title, decision_model=decision_model, ols=ols
+        )
+    except DECISION_CALL_ERRORS as exc:
+        logger.bind(stage="S4").warning("body-site ontology mapping failed; skipping", error=repr(exc))
+        annotations.setdefault("body_site_terms_error", []).append(
+            {"experiment_index": experiment_index, "error": repr(exc)}
+        )
+        return []
+    return [{"experiment_index": experiment_index, **asdict(m)} for m in mappings]
 
 
 async def _extract_experiment_signatures(
@@ -235,12 +258,17 @@ async def curate_async(
     resolver: NcbiTaxonomyResolver | None = None,
     run_id: str | None = None,
     decision_model: DecisionModel | None = None,
+    ols_cache_path: Path | None = DEFAULT_OLS_CACHE_PATH,
+    ols: OlsClient | None = None,
 ) -> CurationResult:
     """S0-S9: turn a bare PMID into a validated nested prediction record.
 
     `decision_model`, if given, switches on the decision-model routing
     judgments (`curator.routing`): today S5a ranks artifacts by p(DA) instead
-    of the keyword regex. Every judgment is best-effort -- a failed decision
+    of the keyword regex, and S4's free-text `body_site` labels are mapped to UBERON terms (recorded in
+    `annotations["body_site_terms"]`; the record itself is untouched; `ols_cache_path` is the OLS4
+    search cache, ignored once `ols` is given directly -- like `resolver`, a batch caller may share one
+    `OlsClient` across studies and then owns saving its cache). Every judgment is best-effort -- a failed decision
     call is logged and the stage falls back to its no-decision-model
     behaviour -- and with `decision_model=None` the pipeline is unchanged.
 
@@ -282,6 +310,11 @@ async def curate_async(
             cache_path=taxonomy_cache_path, db_path=taxonomy_db_path, db_release=taxonomy_db_release
         )
 
+    # OLS is only ever contacted for the body-site mapping, which needs a decision model.
+    owns_ols = ols is None and decision_model is not None
+    if owns_ols:
+        ols = OlsClient.load(client, cache_path=ols_cache_path)
+
     start = time.monotonic()
     with logger.contextualize(study_id=pmid, pmid=pmid, run_id=run_id):
         try:
@@ -322,12 +355,22 @@ async def curate_async(
 
                 experiments: list[tuple[ExperimentFields, list[ExtractedSignature], str | None]] = []
                 flags: list[str] = []
+                body_site_terms: list[dict[str, Any]] = []
                 # NOTE: no per-experiment error isolation -- one bad ExperimentStub
                 # (a raised exception from S4/S5a/S5b) aborts the whole study here.
                 # Deferred to Architecture-B's fan-out (plan §2/§5), which isolates
                 # each Experiment Worker; out of scope for this Design-1 skeleton.
                 for stub in stubs:
                     experiment_fields = extract_experiment(bundle, stub, model=model)
+                    if decision_model is not None and ols is not None:
+                        body_site_terms += await _body_site_terms(
+                            len(experiments),
+                            experiment_fields.body_site,
+                            study_fields.title or bundle.metadata.title or "",
+                            decision_model,
+                            ols,
+                            annotations,
+                        )
 
                     signatures: list[ExtractedSignature] = []
                     source: str | None = None
@@ -348,6 +391,9 @@ async def curate_async(
                         source = artifact.provenance
 
                     experiments.append((experiment_fields, signatures, source))
+
+                if body_site_terms:
+                    annotations["body_site_terms"] = body_site_terms
 
                 record = assemble_record(resolved, study_fields, experiments)
                 problems = validate_instance(record, "Study", default_schema_path())
@@ -370,6 +416,9 @@ async def curate_async(
                     annotations=annotations,
                 )
         finally:
+            if owns_ols:
+                assert ols is not None
+                ols.save_cache()
             if owns_resolver:
                 resolver.save_cache()
                 # Close the resolver's local TaxonomyDB handle (if any) --
