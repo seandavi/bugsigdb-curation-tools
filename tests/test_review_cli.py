@@ -11,6 +11,7 @@ from review_support import DATA_DIR, PMID, load_draft, make_verdict, sample_evid
 from typer.testing import CliRunner
 
 from bugsigdb_curation.cli import app
+from bugsigdb_curation.review import cli as review_cli
 from bugsigdb_curation.review.packet import save_evidence
 from bugsigdb_curation.review.verdicts import canonical_sha256
 
@@ -167,3 +168,75 @@ def test_packet_with_nan_in_the_draft_fails_cleanly(tmp_path):
     assert result.exit_code == 1
     assert "holds NaN or Infinity" in _plain(result.output)
     assert not (tmp_path / "o").exists()
+
+
+def _fake_fetch(monkeypatch, evidence):
+    calls: list[str] = []
+
+    async def fake(record, pmcid):
+        calls.append("fetch")
+        return evidence
+
+    monkeypatch.setattr(review_cli, "_fetch", fake)
+    return calls
+
+
+def _degraded(license_="cc by"):
+    from dataclasses import replace
+
+    return replace(sample_evidence(license_), problems=("licence lookup failed: HTTPStatusError",))
+
+
+def test_degraded_fetch_is_not_cached_and_warns(tmp_path, monkeypatch):
+    calls = _fake_fetch(monkeypatch, _degraded())
+    pred = _pred(tmp_path)
+    cache = tmp_path / "evidence"
+    result = runner.invoke(
+        app, ["review", "packet", "--pred", str(pred), "--out", str(tmp_path / "o"), "--evidence-dir", str(cache)]
+    )
+    assert result.exit_code == 0, result.output
+    text = _plain(result.output)
+    assert "evidence is incomplete" in text and "licence lookup failed" in text
+    assert "images, tables or the licence may be missing" in text.lower() and "not cached" in text.lower()
+    assert not (cache / PMID / "evidence.json").exists()
+    assert (tmp_path / "o" / f"{PMID}.html").is_file()
+    # so the next build retries instead of reusing it
+    runner.invoke(
+        app, ["review", "packet", "--pred", str(pred), "--out", str(tmp_path / "o"), "--evidence-dir", str(cache)]
+    )
+    assert calls == ["fetch", "fetch"]
+
+
+def test_complete_fetch_is_cached(tmp_path, monkeypatch):
+    _fake_fetch(monkeypatch, sample_evidence("cc by"))
+    cache = tmp_path / "evidence"
+    result = runner.invoke(
+        app,
+        ["review", "packet", "--pred", str(_pred(tmp_path)), "--out", str(tmp_path / "o"), "--evidence-dir", str(cache)],
+    )
+    assert result.exit_code == 0, result.output
+    assert (cache / PMID / "evidence.json").is_file()
+    assert "incomplete" not in _plain(result.output)
+
+
+def test_refresh_evidence_ignores_the_cache_and_replaces_it(tmp_path, monkeypatch):
+    cache = tmp_path / "evidence"
+    save_evidence(sample_evidence("cc by", image=b"stale"), cache / PMID)
+    calls = _fake_fetch(monkeypatch, sample_evidence("cc by"))
+    pred = _pred(tmp_path)
+    args = ["review", "packet", "--pred", str(pred), "--out", str(tmp_path / "o"), "--evidence-dir", str(cache)]
+    result = runner.invoke(app, args)
+    assert "Using cached evidence" in _plain(result.output) and calls == []
+    result = runner.invoke(app, [*args, "--refresh-evidence"])
+    assert result.exit_code == 0, result.output
+    assert "Using cached evidence" not in _plain(result.output) and calls == ["fetch"]
+    assert (cache / PMID / "Figure_2.img").read_bytes() == sample_evidence("cc by").images["Figure 2"]
+
+
+def test_refresh_evidence_with_offline_is_an_error(tmp_path):
+    result = runner.invoke(
+        app,
+        ["review", "packet", "--pred", str(_pred(tmp_path)), "--out", str(tmp_path / "o"), "--offline", "--refresh-evidence"],
+    )
+    assert result.exit_code == 1
+    assert "cannot be used with --offline" in _plain(result.output)

@@ -88,6 +88,8 @@ class PacketEvidence:
 
     `images` maps a figure's provenance (e.g. "Figure 2") to its raw bytes, only for figures actually
     fetched. `license` is the EuropePMC `license` string (e.g. "cc by"); None means unknown.
+    `problems` lists what failed while fetching (empty for a complete fetch); it is not cached, since a
+    cache entry only ever holds complete evidence.
     """
 
     pmcid: str | None
@@ -95,6 +97,12 @@ class PacketEvidence:
     figures: tuple[EvidenceFigure, ...] = ()
     tables: tuple[EvidenceTable, ...] = ()
     images: dict[str, bytes] = field(default_factory=dict)
+    problems: tuple[str, ...] = ()
+
+    @property
+    def degraded(self) -> bool:
+        """True when a fetch step failed, so figures, tables, images or the licence may be missing."""
+        return bool(self.problems)
 
 
 def license_allows_embedding(license_: str | None) -> bool:
@@ -212,7 +220,8 @@ async def fetch_packet_evidence(
 
     `pmcid` is resolved from the PMID when not given. Every step degrades to "less evidence" rather than
     failing the packet: no PMCID -> empty evidence; licence lookup fails -> licence unknown (no images
-    embedded); an image fails to download -> that figure is shown as legend + link.
+    embedded); an image fails to download -> that figure is shown as legend + link. Each failure is
+    recorded in `problems`, so callers can tell a degraded result from a complete one.
     """
     pmid = study_pmid(record)
     if pmcid is None:
@@ -220,17 +229,20 @@ async def fetch_packet_evidence(
     if pmcid is None:
         return PacketEvidence(pmcid=None, license=None)
 
+    problems: list[str] = []
     try:
         license_: str | None = await fetch_article_license(pmcid, client=client)
     except (httpx.HTTPError, ValueError) as exc:
         logger.warning("licence lookup failed; images will not be embedded", pmcid=pmcid, error=repr(exc))
+        problems.append(f"licence lookup failed ({exc!r}); no images are embedded")
         license_ = None
 
     try:
         bundle = await assemble_evidence(pmid, pmcid, client=client)
     except httpx.HTTPError as exc:
         logger.warning("evidence fetch failed; packet will carry no evidence", pmcid=pmcid, error=repr(exc))
-        return PacketEvidence(pmcid=pmcid, license=license_)
+        problems.append(f"could not fetch the article's figures and tables ({exc!r})")
+        return PacketEvidence(pmcid=pmcid, license=license_, problems=tuple(problems))
 
     cited = _cited_artifacts(record)
     figures = tuple(f for f in bundle.figures if f.number is not None and ("figure", f.number) in cited)
@@ -243,10 +255,13 @@ async def fetch_packet_evidence(
                 data = await fetch_figure_image(figure, client=client)
             except httpx.HTTPError as exc:
                 logger.warning("figure image fetch failed", figure=figure.provenance, error=repr(exc))
+                problems.append(f"could not download the image for {figure.provenance} ({exc!r})")
                 continue
             if data:
                 images[figure.provenance] = data
-    return PacketEvidence(pmcid=pmcid, license=license_, figures=figures, tables=tables, images=images)
+    return PacketEvidence(
+        pmcid=pmcid, license=license_, figures=figures, tables=tables, images=images, problems=tuple(problems)
+    )
 
 
 def save_evidence(evidence: PacketEvidence, directory: Path) -> None:

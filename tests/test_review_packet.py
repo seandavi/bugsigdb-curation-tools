@@ -488,6 +488,7 @@ def test_fetch_survives_license_lookup_failure(httpx_mock: HTTPXMock):
     httpx_mock.add_response(url=PMC_ARTICLE_URL.format(pmcid="PMC9000001"), text=HTML)
     evidence = _fetch()
     assert evidence.license is None and evidence.images == {} and evidence.figures
+    assert evidence.degraded and any("licence" in p for p in evidence.problems)
 
 
 def test_fetch_survives_image_download_failure(httpx_mock: HTTPXMock):
@@ -495,6 +496,21 @@ def test_fetch_survives_image_download_failure(httpx_mock: HTTPXMock):
     httpx_mock.add_response(url=BLOB, status_code=503)
     evidence = _fetch()
     assert evidence.images == {} and evidence.license == "cc by"
+    assert evidence.degraded and any("Figure 2" in p for p in evidence.problems)
+
+
+def test_fetch_survives_evidence_assembly_failure_but_reports_it(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(url=re.compile(re.escape(EUROPEPMC_CORE_SEARCH_URL) + ".*"), json={"resultList": {"result": []}})
+    httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid="PMC9000001"), status_code=503)
+    evidence = _fetch()
+    assert evidence.figures == () and evidence.tables == ()
+    assert evidence.degraded and any("figures and tables" in p for p in evidence.problems)
+
+
+def test_complete_fetch_and_no_pmcid_are_not_degraded(httpx_mock: HTTPXMock):
+    _mock_article(httpx_mock, "cc by")
+    httpx_mock.add_response(url=BLOB, content=figure_png())
+    assert not _fetch().degraded
 
 
 def test_static_markup_makes_no_false_promises_without_javascript():

@@ -77,6 +77,9 @@ def packet_command(
         "--evidence-dir",
         help="Evidence cache: reused when it holds this study's evidence, written after a fetch otherwise.",
     ),
+    refresh_evidence: bool = typer.Option(
+        False, "--refresh-evidence", help="Ignore an existing --evidence-dir cache: fetch again and replace it."
+    ),
     pmcid: str | None = typer.Option(None, "--pmcid", help="PMCID of the paper (default: resolved from the PMID)."),
     model_label: str | None = typer.Option(
         None, "--model-label", help="Model that produced the draft, shown in the banner."
@@ -100,9 +103,13 @@ def packet_command(
     else:
         notes = {}
 
+    if refresh_evidence and offline:
+        error_console.print("[red]Error:[/red] --refresh-evidence cannot be used with --offline")
+        raise typer.Exit(code=1)
+
     pmid = study_pmid(record)
     evidence: PacketEvidence | None = None
-    if evidence_dir is not None:
+    if evidence_dir is not None and not refresh_evidence:
         evidence = load_evidence(evidence_dir / pmid)
         if evidence is not None:
             console.print(f"Using cached evidence from {evidence_dir / pmid}")
@@ -114,7 +121,14 @@ def packet_command(
                 f"[yellow]Warning:[/yellow] could not fetch evidence ({escape(str(exc))}); building without it"
             )
         else:
-            if evidence_dir is not None:
+            if evidence.degraded:
+                error_console.print(
+                    "[yellow]Warning:[/yellow] evidence is incomplete: "
+                    + escape("; ".join(evidence.problems))
+                    + ". Images, tables or the licence may be missing from this packet."
+                    + (" Not cached; rerun to retry." if evidence_dir is not None else "")
+                )
+            elif evidence_dir is not None:
                 save_evidence(evidence, evidence_dir / pmid)
     if evidence is None:
         console.print("[yellow]Built without evidence[/yellow]: reviewers will see links to the paper only.")
