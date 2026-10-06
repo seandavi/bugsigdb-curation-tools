@@ -8,7 +8,8 @@ no account and no server.
   testable offline. `evidence` may be None (an offline packet: legends/figures are not shown).
 * `fetch_packet_evidence` is the only network code: it gathers the cited tables/figures from
   EuropePMC/PMC and the article licence. Figure IMAGES are embedded as data URLs only when the licence is
-  CC BY or CC0 (otherwise the legend and a link are shown) and each image is capped at `MAX_IMAGE_BYTES`.
+  CC BY or CC0 (otherwise the legend and a link are shown); each image is capped at `MAX_IMAGE_BYTES` and
+  all images of a packet together at `MAX_TOTAL_IMAGE_BYTES`.
 * `build_manifest` records what a packet was built from (`draft_sha256` in particular), so `review ingest`
   can refuse verdicts that judge a different draft.
 
@@ -39,13 +40,15 @@ from bugsigdb_curation.review.verdicts import canonical_sha256
 
 #: Embedded figure images larger than this are linked, not embedded (keeps packets emailable).
 MAX_IMAGE_BYTES = 1_500_000
+#: Raw bytes of embedded images allowed in one packet; further figures are linked (base64 adds a third on top).
+MAX_TOTAL_IMAGE_BYTES = 6_000_000
 #: Table rows shown per evidence panel; longer tables are cut with a note and a link to the paper.
 MAX_TABLE_ROWS = 60
 
 EUROPEPMC_CORE_SEARCH_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
 
 _PACKAGE_DIR = Path(__file__).parent
-_EMBEDDABLE_LICENSE_RE = re.compile(r"(cc[ -]by|cc0)([ -]\d\.\d)?")
+_EMBEDDABLE_LICENSE_RE = re.compile(r"(cc[ -]by|cc0)([ -][0-9]\.[0-9])?")
 _TABLE_SOURCE_RE = re.compile(r"\s*table\s*#?\s*(\d+)", re.IGNORECASE)
 _HEADER_KEYS = ("uid", "pmid", "doi", "title", "authors", "journal", "year", "citation_mode", "experiments")
 _EXPERIMENT_FIELDS = (
@@ -356,6 +359,7 @@ class _PacketBuilder:
         self.meta = meta
         self.pmcid = (evidence.pmcid if evidence and evidence.pmcid else None) or meta.pmcid
         self.embedded: dict[str, dict[str, str]] = {}
+        self.embedded_bytes = 0
 
     # --- banner / header -------------------------------------------------------------------
 
@@ -617,7 +621,14 @@ class _PacketBuilder:
                 f'<p class="hint">The image is too large to embed ({len(data) / 1e6:.1f} MB; limit '
                 f"{MAX_IMAGE_BYTES / 1e6:.1f} MB). {self._paper_link()} to see it.</p>"
             )
+        elif provenance not in self.embedded and self.embedded_bytes + len(data) > MAX_TOTAL_IMAGE_BYTES:
+            image_html = (
+                f'<p class="hint">Not embedded: this packet already carries {self.embedded_bytes / 1e6:.1f} MB of '
+                f"figures (limit {MAX_TOTAL_IMAGE_BYTES / 1e6:.1f} MB). {self._paper_link()} to see it.</p>"
+            )
         else:
+            if provenance not in self.embedded:
+                self.embedded_bytes += len(data)
             self.embedded[provenance] = {
                 "type": sniff_image_mime(data),
                 "data": base64.b64encode(data).decode("ascii"),

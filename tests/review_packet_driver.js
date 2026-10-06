@@ -360,6 +360,17 @@ const scenarios = {
     const name = (n) => w.api.exportFileName({ reviewer: { name: n }, pmid: "1" }, "json");
     return { wang: name("王伟"), ada: name("Ada B. Reviewer"), punct: name("!!!") };
   },
+
+  /** The same taxon name twice in one signature: two controls, two verdicts, both exported. */
+  duplicate_taxa() {
+    const w = makeWorld({});
+    nameYourself(w);
+    setControl(w, "exp.0.sig.0.taxon.0.verdict", "correct");
+    setControl(w, "exp.0.sig.0.taxon.1.verdict", "wrong_taxon");
+    setControl(w, "exp.0.sig.0.taxon.1.note", "second mention");
+    click(w, "export-json");
+    return JSON.parse(w.downloads[0].text).experiments[0].signatures[0].taxa;
+  },
 };
 
 const options = process.argv[4] ? JSON.parse(process.argv[4]) : {};

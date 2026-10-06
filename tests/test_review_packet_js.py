@@ -229,3 +229,14 @@ def test_csv_numbers_experiments_and_signatures_like_the_page_and_keeps_zero_bas
     assert [(r["experiment_index"], r["signature_index"]) for r in taxa] == [("0", "0"), ("0", "0"), ("0", "1"), ("1", "0")]
     study = next(r for r in rows if r["level"] == "study")
     assert (study["experiment_no"], study["signature_no"], study["experiment_index"]) == ("", "", "")
+
+
+def test_duplicate_taxon_names_in_one_signature_keep_separate_verdicts(tmp_path):
+    record = load_draft()
+    taxa = record["experiments"][0]["signatures"][0]["taxa"]
+    taxa[1] = {**taxa[1], "taxon_name": taxa[0]["taxon_name"]}
+    exported = run_scenario(tmp_path, "duplicate_taxa", record)
+    assert [(t["name"], t["verdict"], t["note"]) for t in exported] == [
+        (taxa[0]["taxon_name"], "correct", ""),
+        (taxa[0]["taxon_name"], "wrong_taxon", "second mention"),
+    ]

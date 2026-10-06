@@ -19,6 +19,7 @@ from bugsigdb_curation.retrieval import EUROPEPMC_FULLTEXT_URL, PMC_ARTICLE_URL
 from bugsigdb_curation.review.packet import (
     EUROPEPMC_CORE_SEARCH_URL,
     MAX_IMAGE_BYTES,
+    MAX_TOTAL_IMAGE_BYTES,
     PacketEvidence,
     build_manifest,
     build_packet,
@@ -258,6 +259,15 @@ def test_error_keys_produce_fallback_notice(key):
         ("CC BY", True),
         ("cc0", True),
         ("cc by 4.0", True),
+        ("cc-by-4.0", True),
+        ("CC-BY", True),
+        ("cc0 1.0", True),
+        ("CC0-1.0", True),
+        ("cc-by-nc-4.0", False),
+        ("CC BY-SA 4.0", False),
+        ("cc by-nd 4.0", False),
+        ("cc-by-nc-nd", False),
+        ("cc by 4.0 and more", False),
         ("cc by-nc", False),
         ("cc by-sa", False),
         ("cc by-nc-nd", False),
@@ -300,6 +310,57 @@ def test_oversized_image_is_linked_not_embedded():
     assert _json_block(page, "packet-images") == {}
     assert "too large to embed" in page
     assert "Figures shown in this packet are reproduced from" not in page
+
+
+def _record_citing_figures(numbers: range) -> dict[str, Any]:
+    record = load_draft()
+    signature = record["experiments"][0]["signatures"][0]
+    record["experiments"][0]["signatures"] = [{**signature, "source": f"Figure {n}"} for n in numbers]
+    record["experiments"] = record["experiments"][:1]
+    return record
+
+
+def _evidence_with_figures(numbers: range, size: int) -> PacketEvidence:
+    from dataclasses import replace
+
+    base = sample_evidence("cc by")
+    template = base.figures[0]
+    figures = tuple(replace(template, figure_id=f"F{n}", number=str(n), label=f"Figure {n}.") for n in numbers)
+    images = {f"Figure {n}": figure_png() + b"\x00" * size for n in numbers}
+    return replace(base, figures=figures, tables=(), images=images)
+
+
+def test_total_embedded_image_budget_links_the_rest(monkeypatch):
+    assert MAX_TOTAL_IMAGE_BYTES == 6_000_000
+    numbers = range(2, 8)  # six figures of ~1.4 MB each = 8.4 MB, under the per-image cap, over the budget
+    page = _build(record=_record_citing_figures(numbers), evidence=_evidence_with_figures(numbers, 1_400_000))
+    embedded = _json_block(page, "packet-images")
+    raw_total = sum(len(base64.b64decode(v["data"])) for v in embedded.values())
+    assert 0 < len(embedded) < len(numbers) and raw_total <= MAX_TOTAL_IMAGE_BYTES
+    assert list(embedded) == [f"Figure {n}" for n in numbers[: len(embedded)]]  # in document order
+    assert page.count("Not embedded: this packet already carries") == len(numbers) - len(embedded)
+    for n in numbers[len(embedded) :]:
+        assert f"Evidence: Figure {n}" in page  # legend and link remain
+
+
+def test_a_figure_cited_twice_is_embedded_once_and_counted_once(monkeypatch):
+    monkeypatch.setattr("bugsigdb_curation.review.packet.MAX_TOTAL_IMAGE_BYTES", 1_500_000)
+    record = _record_citing_figures(range(2, 3))
+    record["experiments"][0]["signatures"].append({**record["experiments"][0]["signatures"][0], "source": "Figure 2B"})
+    page = _build(record=record, evidence=_evidence_with_figures(range(2, 3), 1_000_000))
+    assert list(_json_block(page, "packet-images")) == ["Figure 2"]
+    assert "Not embedded" not in page
+
+
+def test_draft_strings_survive_the_json_block_untouched():
+    record = load_draft()
+    tricky = "x <!-- y --> z \u2028 w \u2029 </script> & \u00e9"
+    record["title"] = tricky
+    record["experiments"][0]["signatures"][0]["taxa"][0]["taxon_name"] = tricky
+    page = _build(record=record)
+    assert _json_block(page, "packet-data")["record"] == record
+    block = re.search(r'id="packet-data">(.*?)</script>', page, re.DOTALL).group(1)
+    assert "<!--" not in block and "</script" not in block
 
 
 def test_image_that_could_not_be_fetched_says_so():
