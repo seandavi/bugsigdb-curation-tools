@@ -222,7 +222,7 @@ def test_pipeline_records_body_site_terms_and_leaves_the_record_unchanged(httpx_
 def test_no_decision_model_means_no_ols_traffic_and_no_annotations(httpx_mock, tmp_path):
     result = _curate(httpx_mock, tmp_path, None, tag="none")
     assert result.annotations == {}
-    assert not (tmp_path / "ols-none.json").exists() or json.loads((tmp_path / "ols-none.json").read_text()) == {}
+    assert not (tmp_path / "ols-none.json").exists()  # no client was even built, let alone saved
     assert all("ols4" not in str(r.url) for r in httpx_mock.get_requests())
 
 
@@ -325,7 +325,7 @@ def test_a_caller_supplied_ols_client_is_used_and_its_cache_left_to_the_caller(h
     assert not (tmp_path / "shared.json").exists() and not (tmp_path / "ignored.json").exists()  # caller saves
 
 
-def test_smoke_counts_studies_with_body_site_term_failures(monkeypatch, tmp_path):
+def test_smoke_counts_studies_with_body_site_term_failures_and_saves_the_ols_cache_once(monkeypatch, tmp_path):
     import contextlib
 
     from typer.testing import CliRunner
@@ -335,6 +335,12 @@ def test_smoke_counts_studies_with_body_site_term_failures(monkeypatch, tmp_path
     from bugsigdb_curation.curator.pipeline import CurationResult
 
     seen_ols: list = []
+    saves: list = []
+    real_save = OlsClient.save_cache
+
+    def spy_save(self, path=None):
+        saves.append(self.cache_path)
+        real_save(self, path)
 
     @contextlib.asynccontextmanager
     async def fake_open(name, archive=None, **_):
@@ -342,17 +348,64 @@ def test_smoke_counts_studies_with_body_site_term_failures(monkeypatch, tmp_path
 
     async def fake_curate_async(pmid, **kwargs):
         seen_ols.append(kwargs["ols"])
+        if pmid == "C":
+            raise RuntimeError("study blew up")
         ann = {"body_site_terms_error": [{"experiment_index": 0, "error": "boom"}]} if pmid == "A" else {"body_site_terms": []}
         return CurationResult(pmid=pmid, pmcid=None, has_pmc=False, record={"uid": pmid}, valid=True, problems=(), annotations=ann)
 
+    monkeypatch.setattr(OlsClient, "save_cache", spy_save)
     monkeypatch.setattr(cli_module, "open_decision_model", fake_open)
     monkeypatch.setattr(cli_module, "curate_async", fake_curate_async)
-    monkeypatch.setattr(cli_module, "smoke_study_ids", lambda: ["A", "B"])
+    monkeypatch.setattr(cli_module, "smoke_study_ids", lambda: ["A", "B", "C"])
     monkeypatch.setattr(cli_module, "require_credentials", lambda: None)
-    monkeypatch.chdir(tmp_path)  # OlsClient's default cache path is relative: keep it out of the repo
-    res = CliRunner().invoke(app, ["curate", "--smoke", "--decision-model", "clef", "--out", str(tmp_path / "smoke")])
+    ols_cache = tmp_path / "elsewhere" / "ols.json"
+    res = CliRunner().invoke(
+        app,
+        ["curate", "--smoke", "--decision-model", "clef", "--out", str(tmp_path / "smoke"), "--ols-cache", str(ols_cache)],
+    )
     assert res.exit_code == 0, res.output
     assert "1 study(ies) have no body-site ontology terms" in res.output
     assert "fell back to the regex" not in res.output
-    assert len(seen_ols) == 2 and seen_ols[0] is seen_ols[1] and isinstance(seen_ols[0], OlsClient)  # one shared client
-    assert (tmp_path / "data" / "curator" / "ols_cache.json").exists()  # saved once after the batch
+    assert "1 error(s)" in res.output
+    assert len(seen_ols) == 3 and len({id(o) for o in seen_ols}) == 1 and isinstance(seen_ols[0], OlsClient)  # one shared client
+    assert saves == [ols_cache]  # saved exactly once, to --ols-cache, despite a study failing
+    assert ols_cache.exists()
+
+
+def test_single_pmid_threads_ols_cache_to_curate_async(monkeypatch, tmp_path):
+    import contextlib
+
+    from typer.testing import CliRunner
+
+    import bugsigdb_curation.cli as cli_module
+    from bugsigdb_curation.cli import app
+    from bugsigdb_curation.curator.ols import DEFAULT_CACHE_PATH
+    from bugsigdb_curation.curator.pipeline import CurationResult
+
+    seen: list[dict] = []
+
+    @contextlib.asynccontextmanager
+    async def fake_open(name, archive=None, **_):
+        yield object()
+
+    async def fake_curate_async(pmid, **kwargs):
+        seen.append(kwargs)
+        return CurationResult(pmid=pmid, pmcid=None, has_pmc=False, record={}, valid=True, problems=())
+
+    monkeypatch.setattr(cli_module, "open_decision_model", fake_open)
+    monkeypatch.setattr(cli_module, "curate_async", fake_curate_async)
+    monkeypatch.setattr(cli_module, "require_credentials", lambda: None)
+    base = ["curate", "--pmid", "1", "--decision-model", "clef", "--out", str(tmp_path / "o.json")]
+    assert CliRunner().invoke(app, [*base, "--ols-cache", str(tmp_path / "my-ols.json")]).exit_code == 0
+    assert CliRunner().invoke(app, base).exit_code == 0
+    assert [kw["ols_cache_path"] for kw in seen] == [tmp_path / "my-ols.json", DEFAULT_CACHE_PATH]
+
+
+def test_decision_model_help_mentions_body_site_mapping():
+    from typer.testing import CliRunner
+
+    from bugsigdb_curation.cli import app
+
+    out = " ".join(CliRunner().invoke(app, ["curate", "--help"]).output.split())
+    assert "UBERON" in out and "today: S5a artifact ranking" not in out
+    assert "--ols-cache" in out
