@@ -33,7 +33,7 @@ imports it. The seam itself is `src/bugsigdb_curation/decision.py` (merged in #2
 | **P3 orientation** | per-taxon ≥ 0.9 on benchmark figures; flipped LEfSe figure caught | Figures: 0.68 / 0.70. Only LEfSe-style bar charts reach 0.95 / 0.88 (n = 41 taxa, 3 figures). 34620922 table pages: **text 0.51 (chance)**, **image 0.76 (clef) / 0.66 (flash)**; signature-majority 0.83 (clef, image). | **NO-GO** as a general verifier. A *conditional* use survives: clef + page/figure image, accept only at confidence ≥ 0.5 (0.91–0.93 accuracy at 23–35 % coverage). The image is essential (text-only is chance). |
 | **P4 arity** | ≥ 0.9 on labelled tables | 4-way arity accuracy 0.25–0.80 (n = 24): fails, because the label scheme conflates "page of many 2-group tables" with "all-pairwise". But the decision the pipeline needs — *does this table need a one-vs-rest decomposition?* — was **3/3 with 0 false positives** on the supplement pages in all four (model × text/image) runs. | **Narrow GO** for one-vs-rest detection (smoke, n = 3 positives); **NO-GO** for 4-way arity. Needs more positives (second big paper) before relying on it. |
 | **P5 ontology — body_site** | recall@10 ≥ 0.9 and choice acc ≥ 0.9 | recall@10 0.995; acc given present 0.946 (clef) / 0.976 (flash); experiment-weighted 0.99; at conf ≥ 0.7: 0.99 at 57–69 % coverage. | **GO** (with the easy-vocabulary caveat). |
-| **P5 ontology — condition** | same | recall@10 **0.896** (just under the gate); acc 0.861 / 0.874; at conf ≥ 0.7: 0.97–0.98 at 52 % coverage. Misses are mostly gold IDs outside efo/mondo/hp (OBA 0.17, NCBITAXON 0, CHEBI 0.73 recall); many "errors" are equivalent terms in two ontologies (e.g. *Anemia* MONDO vs HP). | **NO-GO as is**; widen the searched ontologies (oba, chebi, ncbitaxon, go) and score equivalence classes, then re-run. Coverage-at-confidence ≥ 0.7 is already useful. |
+| **P5 ontology — condition** | same | recall@10 **0.896** (just under the gate); acc 0.861 / 0.874; at conf ≥ 0.7: 0.97–0.98 at 52 % coverage. Misses are mostly gold IDs outside efo/mondo/hp (OBA 0.17, NCBITAXON 0, CHEBI 0.73 recall); many "errors" look like near-equivalent terms in two ontologies (e.g. *Anemia*: gold MONDO, picked HP; not verified term-by-term). | **NO-GO as is**; widen the searched ontologies (oba, chebi, ncbitaxon, go) and score equivalence classes, then re-run. Coverage-at-confidence ≥ 0.7 is already useful. |
 
 **Model axis.** clef-flash (9B, ~2.7× cheaper) matches clef on text/tabular judgments (sheets, pages-as-text,
 ontology) and is sometimes better calibrated (Brier), but is clearly worse when an image or a long option list
@@ -44,7 +44,7 @@ list price (input tokens only; output tokens are 0). Per-experiment table below.
 
 **Surprises worth knowing.**
 * The Workers AI **pre-flight token estimate scales with encoded image bytes**: a 0.8 MB PNG page was rejected
-  as ~274k tokens against a 65k context, while the same page as a ≤ 200 KB JPEG used ~1.6k. The probe encodes
+  as ~274k tokens against a 65k context, while pages re-encoded as ≤ 200 KB JPEGs averaged ~1.6k tokens per call. The probe encodes
   pages as size-capped JPEGs. Any production caller needs the same guard.
 * Query *phrasing* matters: in the live smoke, clef-flash scored an obvious DA table at p = 0.29 for a
   `noul` yes/no, yet picked the right option at 0.99 in a `choice`. Prefer `choice` over `noul` where possible.
@@ -167,8 +167,8 @@ price ($0.24/M clef, $0.09/M clef-flash).
 * **P3 orientation `choice`** (per-figure "what does positive/enriched mean") was asked but is *not* scored
   against gold: gold has no per-figure orientation label. Its answers are stored in each `figbench` summary and
   were unstable across signatures of the same figure.
-* **P4 main-text tables** (second half of the issue's P4 unit) were not run: the 17 bundles contain only
-  7 DA-cited main-text artifacts, none multi-group.
+* **P4 main-text tables** (second half of the issue's P4 unit) were not run: no arity labels were written for the
+  main-text DA tables/figures in the bundles (20 DA-cited artifacts), so P4 rests on supplement pages/sheets only.
 * **P5 context** is the study *title* (from `studies.csv`), not the abstract. Candidates: OLS4 search
   (`uberon`; `efo,mondo,hp`), top 10, in OLS rank order. Labels with commas / multiple ids (127 body-site
   combos) and the 13 ambiguous body-site labels were excluded.
