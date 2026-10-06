@@ -43,6 +43,7 @@ addopts = "-m 'not network'"
 [dependency-groups]
 dev = [
     "jsonschema>=4.26.0",
+    "pymupdf>=1.28.2",
     "pytest>=9.1.1",
     "pytest-httpx>=0.36.2",
 ]

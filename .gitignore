@@ -21,3 +21,6 @@ venv/
 /paper/*.pdf
 /paper/*_files/
 /paper/.quarto/
+
+# Decision-probe raw API archives (scored summaries/results are tracked)
+benchmarks/decision-probe/runs/*/*.jsonl
