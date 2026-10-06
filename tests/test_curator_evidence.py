@@ -201,3 +201,179 @@ def test_fetch_figure_image_returns_none_without_blob_url():
             return await fetch_figure_image(figure, client=client)
 
     assert asyncio.run(run()) is None
+
+
+# --- PMC article HTML: challenge detection, retry, throttle, cache ----------------------------------------
+
+import test_curator_pipeline_e2e as _e2e  # noqa: E402 -- reuse the offline e2e fixtures below
+
+from bugsigdb_curation.curator import evidence as evidence_module  # noqa: E402
+from bugsigdb_curation.curator.evidence import (  # noqa: E402
+    PmcRequestLimiter,
+    fetch_pmc_html,
+    is_pmc_challenge,
+)
+
+CHALLENGE = "<html><body>" + "x" * 500 + '<div class="g-recaptcha">please verify</div></body></html>'
+GOOD = '<html><img src="https://cdn.ncbi.nlm.nih.gov/pmc/blobs/a/1/b/fig-g001.webp"></html>'
+URL = PMC_ARTICLE_URL.format(pmcid="PMC1")
+
+
+def _no_sleep_recorder():
+    sleeps: list[float] = []
+
+    async def sleep(s: float) -> None:
+        sleeps.append(s)
+
+    return sleeps, sleep
+
+
+def test_is_pmc_challenge():
+    assert is_pmc_challenge(CHALLENGE)
+    assert not is_pmc_challenge(GOOD)
+    assert not is_pmc_challenge("<html>a short real page with no figures</html>")
+    # a real page that has figures AND mentions captcha in a script is not a challenge
+    assert not is_pmc_challenge(GOOD + "<script>recaptcha</script>")
+
+
+def test_challenge_then_success_retries_with_backoff_and_caches(httpx_mock: HTTPXMock, tmp_path):
+    httpx_mock.add_response(url=URL, text=CHALLENGE)
+    httpx_mock.add_response(url=URL, text=CHALLENGE)
+    httpx_mock.add_response(url=URL, text=GOOD)
+    sleeps, sleep = _no_sleep_recorder()
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            first = await fetch_pmc_html(
+                client, "PMC1", cache_dir=tmp_path, limiter=PmcRequestLimiter(0.0), sleep=sleep, backoff=(5.0, 12.0)
+            )
+            # second call: served from the cache with no HTTP at all (an extra request would fail the mock)
+            second = await fetch_pmc_html(client, "PMC1", cache_dir=tmp_path, sleep=sleep)
+            return first, second
+
+    first, second = asyncio.run(run())
+    assert first == second == GOOD
+    assert len(sleeps) == 2 and 4.0 <= sleeps[0] <= 6.0 and 9.6 <= sleeps[1] <= 14.4  # 5 s and 12 s, +-20% jitter
+    assert (tmp_path / "PMC1.html").read_text() == GOOD
+    assert len(httpx_mock.get_requests()) == 3
+
+
+def test_challenge_pages_are_never_cached(httpx_mock: HTTPXMock, tmp_path):
+    httpx_mock.add_response(url=URL, text=CHALLENGE, is_reusable=True)
+    sleeps, sleep = _no_sleep_recorder()
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await fetch_pmc_html(
+                client, "PMC1", cache_dir=tmp_path, limiter=PmcRequestLimiter(0.0), sleep=sleep, attempts=3, backoff=(1.0,)
+            )
+
+    assert asyncio.run(run()) is None  # exhausted: best-effort None, never raises
+    assert len(httpx_mock.get_requests()) == 3 and len(sleeps) == 2
+    assert not list(tmp_path.glob("*.html"))
+
+
+def test_429_is_retried_but_404_and_500_give_up_immediately(httpx_mock: HTTPXMock, tmp_path):
+    httpx_mock.add_response(url=URL, status_code=429)
+    httpx_mock.add_response(url=URL, text=GOOD)
+    _, sleep = _no_sleep_recorder()
+
+    async def run(pmcid):
+        async with httpx.AsyncClient() as client:
+            return await fetch_pmc_html(client, pmcid, limiter=PmcRequestLimiter(0.0), sleep=sleep, backoff=(1.0,))
+
+    assert asyncio.run(run("PMC1")) == GOOD
+    httpx_mock.add_response(url=PMC_ARTICLE_URL.format(pmcid="PMC404"), status_code=404)
+    assert asyncio.run(run("PMC404")) is None
+    httpx_mock.add_response(url=PMC_ARTICLE_URL.format(pmcid="PMC500"), status_code=500)
+    assert asyncio.run(run("PMC500")) is None
+    assert len(httpx_mock.get_requests()) == 4  # 429 + retry, then one each for 404 and 500: no retries
+
+
+def test_limiter_spaces_requests_by_min_interval():
+    now = [100.0]
+    sleeps: list[float] = []
+
+    async def sleep(s: float) -> None:
+        sleeps.append(s)
+        now[0] += s
+
+    async def run():
+        limiter = PmcRequestLimiter(min_interval=3.0)
+        for _ in range(3):
+            await limiter.acquire(sleep=sleep, clock=lambda: now[0])
+
+    asyncio.run(run())
+    assert sleeps == [3.0, 3.0]  # the first request is free
+
+
+def test_assemble_evidence_survives_a_challenge_and_resolves_figure_blobs(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid="PMC1234567"), text=XML_FIXTURE)
+    httpx_mock.add_response(url=PMC_ARTICLE_URL.format(pmcid="PMC1234567"), text=CHALLENGE)
+    httpx_mock.add_response(url=PMC_ARTICLE_URL.format(pmcid="PMC1234567"), text=HTML_FIXTURE)
+
+    async def run() -> EvidenceBundle:
+        async with httpx.AsyncClient() as client:
+            return await assemble_evidence("21850056", "PMC1234567", client=client)
+
+    assert asyncio.run(run()).figures[0].blob_url is not None  # the old code returned None here, silently
+
+
+def _ranked_figure_first():
+    from bugsigdb_curation.decision import MockDecisionModel, NoulAnswer
+
+    return MockDecisionModel(
+        {"s5a_locate": lambda state, qs: {"is_da_artifact": NoulAnswer(0.9 if state["kind"] == "figure" else 0.1)}}
+    )
+
+
+FIG_BLOB = "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/a1/1/b2/fig1.jpg"
+FIG_XML = _e2e.XML_FIXTURE.replace(
+    "</body>",
+    '<fig id="F1"><label>Figure 1.</label><caption><p>LEfSe taxa that differ between groups.</p></caption>'
+    '<graphic xlink:href="fig1.jpg"/></fig></body>',
+)
+
+
+def _e2e_study(httpx_mock, tmp_path, *, image_status, n_experiments=2):
+    from bugsigdb_curation.curator.model import MockModel
+    from bugsigdb_curation.curator.pipeline import curate_async
+
+    _e2e._mock_idconv(httpx_mock)
+    httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid=_e2e.PMCID), text=FIG_XML)
+    httpx_mock.add_response(url=PMC_ARTICLE_URL.format(pmcid=_e2e.PMCID), text=f'<html><img src="{FIG_BLOB}"></html>')
+    _e2e._mock_taxonomy(httpx_mock)
+    httpx_mock.add_response(url=FIG_BLOB, status_code=image_status, content=b"\x89PNG\r\n\x1a\n" + b"0" * 16, is_reusable=True)
+    segment = {"experiments": [{"index": i, "description": f"comparison {i}"} for i in range(n_experiments)]}
+    model = MockModel(responses={"segment": segment})
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await curate_async(
+                _e2e.PMID, model=model, client=client, decision_model=_ranked_figure_first(),
+                taxonomy_cache_path=tmp_path / "t.json", ols_cache_path=tmp_path / "o.json", html_cache_dir=tmp_path / "h",
+            )
+
+    return asyncio.run(run()), FIG_BLOB
+
+
+def test_figure_image_is_fetched_once_per_study_not_once_per_experiment(httpx_mock: HTTPXMock, tmp_path):
+    _mock_ols_none(httpx_mock)
+    result, blob = _e2e_study(httpx_mock, tmp_path, image_status=200)
+    assert sum(1 for r in httpx_mock.get_requests() if str(r.url) == blob) == 1
+    assert len(result.record["experiments"]) == 2
+    assert "figure_image_unavailable" not in result.annotations
+
+
+def test_a_failed_image_download_degrades_instead_of_aborting_and_is_flagged(httpx_mock: HTTPXMock, tmp_path):
+    _mock_ols_none(httpx_mock)
+    result, _ = _e2e_study(httpx_mock, tmp_path, image_status=500)
+    assert result.annotations["figure_image_unavailable"].startswith("Figure")
+    assert result.record["experiments"]  # the study still produced a record
+
+
+def _mock_ols_none(httpx_mock: HTTPXMock) -> None:
+    """The decision-model path also maps body_site via OLS4; answer it with no candidates (optional mock)."""
+    import re
+
+    httpx_mock.add_response(url=re.compile(r"https://www\.ebi\.ac\.uk/ols4/api/search.*"), json={"response": {"docs": []}}, is_optional=True, is_reusable=True)

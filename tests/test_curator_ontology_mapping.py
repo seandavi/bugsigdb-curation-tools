@@ -192,6 +192,7 @@ def _curate(httpx_mock, tmp_path, decision, *, tag, ols_docs=None, ols_status=20
                 decision_model=decision,
                 taxonomy_cache_path=tmp_path / f"tax-{tag}.json",
                 ols_cache_path=tmp_path / f"ols-{tag}.json",
+                html_cache_dir=tmp_path / f"html-{tag}",
             )
 
     return asyncio.run(run())
