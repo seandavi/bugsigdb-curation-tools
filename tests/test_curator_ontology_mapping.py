@@ -366,7 +366,8 @@ def test_smoke_counts_studies_with_body_site_term_failures_and_saves_the_ols_cac
     assert res.exit_code == 0, res.output
     assert "1 study(ies) have no body-site ontology terms" in res.output
     assert "fell back to the regex" not in res.output
-    assert "1 error(s)" in res.output
+    # Rich wraps the console line at the terminal width (narrower on CI), so compare whitespace-normalised
+    assert "1 error(s)" in " ".join(res.output.split())
     assert len(seen_ols) == 3 and len({id(o) for o in seen_ols}) == 1 and isinstance(seen_ols[0], OlsClient)  # one shared client
     assert saves == [ols_cache]  # saved exactly once, to --ols-cache, despite a study failing
     assert ols_cache.exists()
@@ -406,6 +407,10 @@ def test_decision_model_help_mentions_body_site_mapping():
 
     from bugsigdb_curation.cli import app
 
-    out = " ".join(CliRunner().invoke(app, ["curate", "--help"]).output.split())
+    import re
+
+    # Rich styles/wraps help per terminal: pin a wide, colourless terminal and strip any ANSI left over.
+    raw = CliRunner().invoke(app, ["curate", "--help"], env={"COLUMNS": "250", "NO_COLOR": "1", "TERM": "dumb"}).output
+    out = " ".join(re.sub(r"\x1b\[[0-9;]*m", "", raw).split())
     assert "UBERON" in out and "today: S5a artifact ranking" not in out
     assert "--ols-cache" in out
