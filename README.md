@@ -141,6 +141,30 @@ excluded from the output CSV (its PMID was simply never queried). When that
 happens, a `Note: N study row(s) excluded (PMID outside --limit).` line is
 printed to stderr so the row-count drop isn't silent.
 
+### Human review packets (`bugsigdb review`)
+
+Drafts written by `bugsigdb curate` have no gold, so BugSigDB curators' verdicts
+are the evaluation. A **review packet** is one self-contained `.html` file (inline
+CSS/JS, no network requests): the reviewer opens it, judges the draft against the
+paper, clicks *Export*, and sends back one JSON file.
+
+```bash
+# 1. build a packet (+ <pmid>.manifest.json pinning the draft's sha256)
+uv run bugsigdb review packet --pred preds/21850056.json --out packets/ \
+    --model-label gemini-3-pro --design-label split-verify
+#    picks up preds/21850056.annotations.json automatically; --offline skips fetching evidence,
+#    --evidence-dir DIR caches it, --pmcid overrides the PMID->PMCID lookup
+# 2. file returned verdicts (validated against schema/review_verdict.schema.json)
+uv run bugsigdb review ingest ~/Downloads/verdicts_21850056_*.json --manifests packets/   # -> data/reviews/<pmid>/
+# 3. aggregate
+uv run bugsigdb review report --reviews data/reviews --out report.md
+```
+
+Figure images are embedded only when the article's EuropePMC licence is CC BY or
+CC0 (and each image is under ~1.5 MB); otherwise the packet shows the legend and a
+link. `ingest` refuses verdicts whose `draft_sha256` differs from the manifest
+unless `--force`. Verdicts contain reviewer names/emails: `data/` is git-ignored.
+
 ## License
 
 Schema released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
