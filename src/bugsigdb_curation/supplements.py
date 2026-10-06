@@ -21,9 +21,9 @@ For a PMCID, a paper's supplementary files are:
    `bugsigdb_curation.curator.evidence.assemble_evidence` tolerates a missing
    `fullTextXML` (best-effort, logged, not raised).
 
-This module is deliberately standalone: it is not imported by
-`bugsigdb_curation.curator.pipeline` or `bugsigdb_curation.curator.evidence`
-(that wiring is a follow-up PR). It also never imports
+`bugsigdb_curation.curator.supplement_lever` builds on this module (fetch,
+unpack, text rendering) for the opt-in ``--supplements`` lever; this module
+itself stays free of curator imports. It also never imports
 `bugsigdb_curation.eval` and never reads a gold path, in keeping with the
 workflow plan's data firewall (§6e) -- this is a retrieval module, not a
 curator module, but there's no reason for it to go anywhere near gold data
@@ -32,6 +32,7 @@ either.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import csv
 import io
@@ -143,12 +144,32 @@ class SupplementFile:
     raw_bytes: bytes
 
 
-def unpack_supplement_zip(zip_bytes: bytes) -> list[SupplementFile]:
+#: ZIP members never worth reading: videos, EPS vector art and nested archives.
+_SKIPPED_EXTENSIONS = frozenset(
+    {".mp4", ".mov", ".avi", ".mkv", ".wmv", ".mpg", ".mpeg", ".m4v", ".webm", ".eps", ".zip"}
+)
+
+#: Defaults of `fetch_supplement_zip`'s download guard: EuropePMC's ZIP for 37864204 was 262 MB (two
+#: videos) and took ~11 minutes, which a best-effort enrichment channel must not wait for.
+MAX_ZIP_BYTES = 60 * 1024 * 1024
+ZIP_TIMEOUT_SECONDS = 90.0
+#: Default cap on one unpacked member (uncompressed size).
+MAX_MEMBER_BYTES = 25 * 1024 * 1024
+
+
+def unpack_supplement_zip(
+    zip_bytes: bytes,
+    *,
+    max_member_bytes: int = MAX_MEMBER_BYTES,
+    skipped: list[tuple[str, str]] | None = None,
+) -> list[SupplementFile]:
     """Unzip a supplementary-files archive in-memory into `SupplementFile`s.
 
-    Directory entries are skipped. `media_type` is derived from the entry's
-    filename extension (see `_media_type_for_filename`) -- the zip's own
-    entries carry no separate content-type metadata.
+    Directory entries are skipped, as are members that are not useful to a reader (video, EPS,
+    nested ZIP) or larger than `max_member_bytes`; each skipped member is appended to `skipped`
+    (when given) as ``(filename, reason)``. `media_type` is derived from the entry's filename
+    extension (see `_media_type_for_filename`) -- the zip's own entries carry no separate
+    content-type metadata.
     """
     files: list[SupplementFile] = []
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
@@ -156,6 +177,15 @@ def unpack_supplement_zip(zip_bytes: bytes) -> list[SupplementFile]:
             if info.is_dir():
                 continue
             filename = Path(info.filename).name
+            reason = None
+            if Path(filename).suffix.lower() in _SKIPPED_EXTENSIONS:
+                reason = "file type not useful (video, EPS or nested archive)"
+            elif info.file_size > max_member_bytes:
+                reason = f"larger than {max_member_bytes} bytes ({info.file_size})"
+            if reason is not None:
+                if skipped is not None:
+                    skipped.append((filename, reason))
+                continue
             raw_bytes = zf.read(info.filename)
             files.append(
                 SupplementFile(
@@ -170,22 +200,59 @@ def unpack_supplement_zip(zip_bytes: bytes) -> list[SupplementFile]:
 # --- thin network I/O (not covered by pure-parser tests) --------------------------------
 
 
-async def fetch_supplement_zip(pmcid: str, *, client: httpx.AsyncClient) -> bytes | None:
+async def fetch_supplement_zip(
+    pmcid: str,
+    *,
+    client: httpx.AsyncClient,
+    max_bytes: int = MAX_ZIP_BYTES,
+    timeout: float = ZIP_TIMEOUT_SECONDS,
+) -> bytes | None:
     """GET the EuropePMC supplementary-files ZIP for `pmcid`, or None if unavailable.
 
     Best-effort, mirroring `assemble_evidence`'s fullTextXML 404 tolerance
     (`bugsigdb_curation.curator.evidence`): a 404 (no supplementary files for
     this PMCID) is a normal outcome, not a failure -- logged at INFO and
-    returns None. Any other HTTP error, or a 200 response whose
-    `Content-Type` isn't a zip, is logged as a WARNING and also returns None
-    rather than raising -- this is a best-effort enrichment channel, never
-    something that should abort a caller's run.
+    returns None. Any other HTTP error, a 200 response whose `Content-Type`
+    isn't a zip, or a download that exceeds the guard is logged as a WARNING
+    and also returns None rather than raising -- this is a best-effort
+    enrichment channel, never something that should abort a caller's run.
+
+    The body is streamed and abandoned as soon as it passes `max_bytes` (a
+    declared `Content-Length` over the cap is refused before any body is read)
+    or the whole download passes `timeout` seconds.
     """
     log = logger.bind(stage="supplements")
     url = EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid=pmcid)
     try:
-        response = await client.get(url)
-        response.raise_for_status()
+        async with asyncio.timeout(timeout):
+            async with client.stream("GET", url) as response:
+                response.raise_for_status()
+                content_type = response.headers.get("content-type", "")
+                if "zip" not in content_type.lower():
+                    log.warning(
+                        "supplementary files response was not a zip",
+                        pmcid=pmcid,
+                        content_type=content_type,
+                    )
+                    return None
+                declared = response.headers.get("content-length", "")
+                if declared.isdigit() and int(declared) > max_bytes:
+                    log.warning(
+                        "supplementary files zip too large; skipping", pmcid=pmcid, content_length=int(declared), max_bytes=max_bytes
+                    )
+                    return None
+                body = bytearray()
+                async for chunk in response.aiter_bytes():
+                    body.extend(chunk)
+                    if len(body) > max_bytes:
+                        log.warning(
+                            "supplementary files zip exceeded the size cap; aborting download", pmcid=pmcid, max_bytes=max_bytes
+                        )
+                        return None
+                return bytes(body)
+    except TimeoutError:
+        log.warning("supplementary files download timed out; skipping", pmcid=pmcid, timeout=timeout)
+        return None
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 404:
             log.info("no supplementary files for pmcid", pmcid=pmcid)
@@ -200,28 +267,21 @@ async def fetch_supplement_zip(pmcid: str, *, client: httpx.AsyncClient) -> byte
         log.warning("supplementary files fetch failed", pmcid=pmcid, error=str(exc))
         return None
 
-    content_type = response.headers.get("content-type", "")
-    if "zip" not in content_type.lower():
-        log.warning(
-            "supplementary files response was not a zip",
-            pmcid=pmcid,
-            content_type=content_type,
-        )
-        return None
-    return response.content
 
-
-async def fetch_supplements(pmcid: str, *, client: httpx.AsyncClient) -> list[SupplementFile]:
+async def fetch_supplements(
+    pmcid: str, *, client: httpx.AsyncClient, skipped: list[tuple[str, str]] | None = None
+) -> list[SupplementFile]:
     """High-level: fetch the supplementary-files ZIP for `pmcid` and unpack it.
 
     Returns `[]` (not an error) when there's no ZIP to unpack -- either
     because EuropePMC has none for this PMCID, or the fetch otherwise failed
-    best-effort (see `fetch_supplement_zip`).
+    best-effort (see `fetch_supplement_zip`). Members skipped while unpacking
+    are appended to `skipped` (see `unpack_supplement_zip`).
     """
     zip_bytes = await fetch_supplement_zip(pmcid, client=client)
     if zip_bytes is None:
         return []
-    return unpack_supplement_zip(zip_bytes)
+    return unpack_supplement_zip(zip_bytes, skipped=skipped)
 
 
 # --- model-ready content: text rendering + document content blocks ----------------------

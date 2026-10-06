@@ -156,7 +156,7 @@ def test_unpack_supplement_zip_skips_directory_entries_and_maps_media_type():
         ("f.doc", "docx"),
         ("f.jpg", "image"),
         ("f.png", "image"),
-        ("f.zip", "other"),
+        ("f.txt", "other"),
         ("f", "other"),
     ],
 )
@@ -164,6 +164,32 @@ def test_unpack_supplement_zip_media_type_by_extension(filename, expected):
     zip_bytes = _build_zip({filename: b"data"})
     files = unpack_supplement_zip(zip_bytes)
     assert files[0].media_type == expected
+
+
+def test_unpack_skips_videos_eps_nested_zips_and_oversized_members_and_reports_them():
+    zip_bytes = _build_zip(
+        {
+            "movie.MP4": b"v",
+            "clip.mov": b"v",
+            "fig.eps": b"e",
+            "inner.zip": b"z",
+            "huge.csv": b"x" * 200,
+            "keep.csv": b"a,b\n",
+        }
+    )
+    skipped: list[tuple[str, str]] = []
+    files = unpack_supplement_zip(zip_bytes, max_member_bytes=100, skipped=skipped)
+
+    assert [f.filename for f in files] == ["keep.csv"]
+    reasons = dict(skipped)
+    assert set(reasons) == {"movie.MP4", "clip.mov", "fig.eps", "inner.zip", "huge.csv"}
+    assert "larger than" in reasons["huge.csv"]
+    assert "not useful" in reasons["movie.MP4"]
+
+
+def test_unpack_without_a_skipped_collector_still_skips():
+    files = unpack_supplement_zip(_build_zip({"a.mp4": b"v", "b.csv": b"x\n"}))
+    assert [f.filename for f in files] == ["b.csv"]
 
 
 # --- fetch_supplement_zip / fetch_supplements (network, mocked) --------------------------
@@ -220,6 +246,64 @@ def test_fetch_supplement_zip_returns_none_on_non_404_http_error(httpx_mock: HTT
             return await fetch_supplement_zip("PMC2222222", client=client)
 
     assert asyncio.run(run()) is None
+
+
+def test_fetch_supplement_zip_aborts_when_the_body_exceeds_max_bytes(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url=EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid="PMC3333333"),
+        content=b"x" * 5000,
+        headers={"Content-Type": "application/zip"},
+    )
+
+    async def run() -> bytes | None:
+        async with httpx.AsyncClient() as client:
+            return await fetch_supplement_zip("PMC3333333", client=client, max_bytes=1000)
+
+    assert asyncio.run(run()) is None
+
+
+def test_fetch_supplement_zip_refuses_up_front_on_a_declared_oversize_length(httpx_mock: HTTPXMock):
+    read: list[bool] = []
+
+    class Body(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            read.append(True)
+            yield b"x"
+
+    httpx_mock.add_response(
+        url=EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid="PMC3333334"),
+        stream=Body(),
+        headers={"Content-Type": "application/zip", "Content-Length": "262000000"},
+    )
+
+    async def run() -> bytes | None:
+        async with httpx.AsyncClient() as client:
+            return await fetch_supplement_zip("PMC3333334", client=client)
+
+    assert asyncio.run(run()) is None
+    assert read == []  # refused from the headers alone, nothing downloaded
+
+
+def test_fetch_supplement_zip_aborts_when_the_total_time_exceeds_timeout(httpx_mock: HTTPXMock):
+    async def slow(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(2)
+        return httpx.Response(200, content=b"zip", headers={"Content-Type": "application/zip"})
+
+    httpx_mock.add_callback(slow, url=EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid="PMC3333335"))
+
+    async def run() -> bytes | None:
+        async with httpx.AsyncClient() as client:
+            return await fetch_supplement_zip("PMC3333335", client=client, timeout=0.05)
+
+    assert asyncio.run(run()) is None
+
+
+def test_fetch_supplement_zip_default_guards_are_60mb_and_90s():
+    import inspect
+
+    params = inspect.signature(fetch_supplement_zip).parameters
+    assert params["max_bytes"].default == 60 * 1024 * 1024
+    assert params["timeout"].default == 90.0
 
 
 def test_fetch_supplements_returns_unpacked_files(httpx_mock: HTTPXMock):
