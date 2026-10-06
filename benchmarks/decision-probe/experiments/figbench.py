@@ -145,7 +145,6 @@ async def run(model: DecisionModel) -> dict[str, Any]:
 
 def score(results: dict[str, Any]) -> dict[str, Any]:
     items = results["items"]
-    figtypes = {i["pmid"]: i for i in items}
     ft_correct = [i["figure_type"]["choice"] == i["figure_type_gold"] for i in items]
     ft_conf = [i["figure_type"]["confidence"] for i in items]
 

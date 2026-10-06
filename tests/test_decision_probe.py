@@ -15,10 +15,10 @@ import pytest
 PROBE = Path(__file__).resolve().parents[1] / "benchmarks" / "decision-probe"
 sys.path.insert(0, str(PROBE))
 
-import common  # noqa: E402
-from experiments import _screen, figbench, locate  # noqa: E402
+import probe_common as common
+from experiments import _screen, figbench, locate
 
-from bugsigdb_curation.decision import MockDecisionModel, NoulAnswer  # noqa: E402
+from bugsigdb_curation.decision import MockDecisionModel, NoulAnswer
 
 
 def test_auroc_perfect_inverted_and_ties():
