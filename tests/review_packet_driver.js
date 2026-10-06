@@ -1,5 +1,14 @@
 // Drives a built review packet under Node with a minimal fake DOM (no browser).
-// usage: node review_packet_driver.js packet.html  -> prints a JSON transcript on stdout.
+// usage: node review_packet_driver.js packet.html [scenario] [options-json]
+//   -> prints a JSON transcript on stdout. Scenarios are the functions in `scenarios` below.
+//
+// What this driver does NOT cover (it is a regex-parsed fake DOM, not a browser):
+//   * real HTML parsing (attribute quoting, entities, nesting, <noscript> handling);
+//   * a real <select>: a browser silently drops an assigned value that is not one of its <option>s,
+//     the fake keeps whatever string it is given;
+//   * a real Blob download (file name, MIME type and encoding as the browser's save dialog sees them);
+//   * localStorage under file:// (per-browser rules about origins and private windows).
+// `chromium --headless --screenshot` (see the README) is the check for how the page actually renders.
 "use strict";
 const fs = require("fs");
 const vm = require("vm");
@@ -51,7 +60,7 @@ function fakeElement(tag, attrs) {
   };
 }
 
-function makeWorld(storageData) {
+function makeWorld(storageData, storageMode) {
   const byKey = {};
   const controls = [];
   const buttons = [];
@@ -77,10 +86,10 @@ function makeWorld(storageData) {
     imgs.push(el);
   }
   const ids = {};
-  ["progress-text", "progress-bar", "save-status", "export-error"].forEach((id) => {
-    ids[id] = fakeElement("span", {});
-    ids[id].classList._owner = ids[id];
-  });
+  for (const m of formHtml.matchAll(/<(\w+)\b[^>]*?\bid="([^"]+)"/g)) {
+    ids[m[2]] = fakeElement(m[1], {});
+    ids[m[2]].classList._owner = ids[m[2]];
+  }
   ids["packet-data"] = { textContent: jsonBlock("packet-data") };
   ids["packet-images"] = { textContent: jsonBlock("packet-images") };
 
@@ -131,13 +140,28 @@ function makeWorld(storageData) {
     revokeObjectURL() {},
   };
   const window = {
-    localStorage: storage,
     confirm(message) {
       confirms.push(message);
       return world.confirmAnswer;
     },
     setTimeout() {},
   };
+  if (storageMode === "null") {
+    window.localStorage = null;
+  } else if (storageMode === "denied") {
+    Object.defineProperty(window, "localStorage", {
+      get() {
+        throw new Error("SecurityError");
+      },
+    });
+  } else {
+    if (storageMode === "setItem-throws") {
+      storage.setItem = () => {
+        throw new Error("QuotaExceededError");
+      };
+    }
+    window.localStorage = storage;
+  }
   const sandbox = { document, window, Blob, URL, JSON, Date, Object, Array, String, Number, isNaN };
   vm.createContext(sandbox);
   vm.runInContext(script, sandbox); // no `window`-less path: auto-init runs exactly as in a browser
@@ -158,87 +182,103 @@ function click(world, action, attrs) {
   button.fire("click");
 }
 
-const transcript = {};
-const storageData = {};
-let w = makeWorld(storageData);
-transcript.initialProgress = w.ids["progress-text"].textContent;
-transcript.imageSrcPrefix = w.imgs.length ? w.imgs[0].src.slice(0, 22) : null;
-transcript.imageCount = w.imgs.length;
-const packetData = JSON.parse(w.ids["packet-data"].textContent);
-transcript.reviewKeys = w.api.reviewKeys(packetData.record);
-
-// 1. exporting with no reviewer name is refused
-click(w, "export-json");
-transcript.noNameDownloads = w.downloads.length;
-transcript.noNameError = w.ids["export-error"].textContent;
-
-// 2. simulated review
-setControl(w, "reviewer.name", "Ada B. Reviewer");
-setControl(w, "reviewer.email", "ada@example.org");
-setControl(w, "reviewer.role", "curator");
-click(w, "mark-taxa-correct", { "data-exp": "0", "data-sig": "0" });
-transcript.afterMarkAll = [w.byKey["exp.0.sig.0.taxon.0.verdict"].value, w.byKey["exp.0.sig.0.taxon.1.verdict"].value];
-setControl(w, "exp.0.sig.0.taxon.1.verdict", "wrong_taxon");
-setControl(w, "exp.0.sig.0.taxon.1.note", 'has "quotes", and, commas');
-setControl(w, "exp.0.sig.0.direction", "ok");
-setControl(w, "exp.0.sig.1.direction", "flipped");
-setControl(w, "exp.0.sig.1.taxon.0.verdict", "not_in_source");
-setControl(w, "exp.1.sig.0.taxon.0.verdict", "unsure");
-setControl(w, "exp.0.verdict", "needs_edit");
-setControl(w, "exp.0.note", "check group labels");
-setControl(w, "exp.0.missing_note", "Prevotella copri increased");
-setControl(w, "exp.1.verdict", "ok");
-setControl(w, "study.verdict", "ok");
-setControl(w, "missing_experiments_note", "Experiment on weight loss");
-setControl(w, "overall.time_saved_rating", "4");
-setControl(w, "overall.would_publish_after_edits", "yes");
-setControl(w, "overall.comment", "Nice draft");
-setControl(w, "minutes_spent", "25");
-transcript.progressAfterReview = w.ids["progress-text"].textContent;
-transcript.selectDataV = w.byKey["exp.0.verdict"].attrs["data-v"];
-
-// 3. export (one item still unreviewed -> confirm is asked)
-click(w, "export-json");
-click(w, "export-csv");
-transcript.confirms = w.confirms.slice();
-transcript.downloads = w.downloads.slice();
-
-// 4. persistence: a fresh page load with the same storage restores everything
-const savedKeys = Object.keys(storageData);
-const w2 = makeWorld(storageData);
-transcript.storageKeys = savedKeys;
-transcript.restoredProgress = w2.ids["progress-text"].textContent;
-transcript.restored = {
-  note: w2.byKey["exp.0.sig.0.taxon.1.note"].value,
-  verdict: w2.byKey["exp.0.sig.1.direction"].value,
-  name: w2.byKey["reviewer.name"].value,
-  rating: w2.byKey["overall.time_saved_rating"].value,
-};
-
-// 5. zoom toggles on click
-if (w.imgs.length) {
-  w.imgs[0].fire("click");
-  transcript.zoomed = w.imgs[0].classes.has("zoomed");
+function lastCsv(world) {
+  return world.downloads.filter((d) => d.filename.endsWith(".csv")).pop();
 }
 
-// 6. reset (declined, then accepted)
-w2.confirmAnswer = false;
-click(w2, "reset");
-transcript.progressAfterDeclinedReset = w2.ids["progress-text"].textContent;
-w2.confirmAnswer = true;
-click(w2, "reset");
-transcript.progressAfterReset = w2.ids["progress-text"].textContent;
-transcript.valueAfterReset = w2.byKey["exp.0.verdict"].value;
-transcript.storageAfterReset = Object.keys(storageData).filter((k) => k.indexOf("reviewer") === -1);
+function nameYourself(world, name) {
+  setControl(world, "reviewer.name", name || "Ada B. Reviewer");
+}
 
-// 7. restoreState tolerates garbage and drops out-of-range values
-const api = w.api;
-const bad = api.restoreState(
-  { values: { "exp.0.verdict": "great", "exp.0.note": "kept", "bogus.key": "x", "study.verdict": 5 } },
-  packetData.record,
-  "2026-01-01T00:00:00.000Z",
-);
-transcript.restoreGarbage = bad.values;
-transcript.restoreNull = api.restoreState(null, packetData.record, "2026-01-01T00:00:00.000Z").values;
+const scenarios = {
+  /** The full simulated review: export, persistence, reset, restore. */
+  review() {
+    const transcript = {};
+    const storageData = {};
+    let w = makeWorld(storageData);
+    transcript.initialProgress = w.ids["progress-text"].textContent;
+    transcript.imageSrcPrefix = w.imgs.length ? w.imgs[0].src.slice(0, 22) : null;
+    transcript.imageCount = w.imgs.length;
+    const packetData = JSON.parse(w.ids["packet-data"].textContent);
+    transcript.reviewKeys = w.api.reviewKeys(packetData.record);
 
-process.stdout.write(JSON.stringify(transcript));
+    // 1. exporting with no reviewer name is refused
+    click(w, "export-json");
+    transcript.noNameDownloads = w.downloads.length;
+    transcript.noNameError = w.ids["export-error"].textContent;
+
+    // 2. simulated review
+    setControl(w, "reviewer.name", "Ada B. Reviewer");
+    setControl(w, "reviewer.email", "ada@example.org");
+    setControl(w, "reviewer.role", "curator");
+    click(w, "mark-taxa-correct", { "data-exp": "0", "data-sig": "0" });
+    transcript.afterMarkAll = [w.byKey["exp.0.sig.0.taxon.0.verdict"].value, w.byKey["exp.0.sig.0.taxon.1.verdict"].value];
+    setControl(w, "exp.0.sig.0.taxon.1.verdict", "wrong_taxon");
+    setControl(w, "exp.0.sig.0.taxon.1.note", 'has "quotes", and, commas');
+    setControl(w, "exp.0.sig.0.direction", "ok");
+    setControl(w, "exp.0.sig.1.direction", "flipped");
+    setControl(w, "exp.0.sig.1.taxon.0.verdict", "not_in_source");
+    setControl(w, "exp.1.sig.0.taxon.0.verdict", "unsure");
+    setControl(w, "exp.0.verdict", "needs_edit");
+    setControl(w, "exp.0.note", "check group labels");
+    setControl(w, "exp.0.missing_note", "Prevotella copri increased");
+    setControl(w, "exp.1.verdict", "ok");
+    setControl(w, "study.verdict", "ok");
+    setControl(w, "missing_experiments_note", "Experiment on weight loss");
+    setControl(w, "overall.time_saved_rating", "4");
+    setControl(w, "overall.would_publish_after_edits", "yes");
+    setControl(w, "overall.comment", "Nice draft");
+    setControl(w, "minutes_spent", "25");
+    transcript.progressAfterReview = w.ids["progress-text"].textContent;
+    transcript.selectDataV = w.byKey["exp.0.verdict"].attrs["data-v"];
+
+    // 3. export (one item still unreviewed -> confirm is asked)
+    click(w, "export-json");
+    click(w, "export-csv");
+    transcript.confirms = w.confirms.slice();
+    transcript.downloads = w.downloads.slice();
+
+    // 4. persistence: a fresh page load with the same storage restores everything
+    const savedKeys = Object.keys(storageData);
+    const w2 = makeWorld(storageData);
+    transcript.storageKeys = savedKeys;
+    transcript.restoredProgress = w2.ids["progress-text"].textContent;
+    transcript.restored = {
+      note: w2.byKey["exp.0.sig.0.taxon.1.note"].value,
+      verdict: w2.byKey["exp.0.sig.1.direction"].value,
+      name: w2.byKey["reviewer.name"].value,
+      rating: w2.byKey["overall.time_saved_rating"].value,
+    };
+
+    // 5. zoom toggles on click
+    if (w.imgs.length) {
+      w.imgs[0].fire("click");
+      transcript.zoomed = w.imgs[0].classes.has("zoomed");
+    }
+
+    // 6. reset (declined, then accepted)
+    w2.confirmAnswer = false;
+    click(w2, "reset");
+    transcript.progressAfterDeclinedReset = w2.ids["progress-text"].textContent;
+    w2.confirmAnswer = true;
+    click(w2, "reset");
+    transcript.progressAfterReset = w2.ids["progress-text"].textContent;
+    transcript.valueAfterReset = w2.byKey["exp.0.verdict"].value;
+    transcript.storageAfterReset = Object.keys(storageData).filter((k) => k.indexOf("reviewer") === -1);
+
+    // 7. restoreState tolerates garbage and drops out-of-range values
+    const api = w.api;
+    const bad = api.restoreState(
+      { values: { "exp.0.verdict": "great", "exp.0.note": "kept", "bogus.key": "x", "study.verdict": 5 } },
+      packetData.record,
+      "2026-01-01T00:00:00.000Z",
+    );
+    transcript.restoreGarbage = bad.values;
+    transcript.restoreNull = api.restoreState(null, packetData.record, "2026-01-01T00:00:00.000Z").values;
+
+    return transcript;
+  },
+};
+
+const options = process.argv[4] ? JSON.parse(process.argv[4]) : {};
+process.stdout.write(JSON.stringify(scenarios[process.argv[3] || "review"](options)));
