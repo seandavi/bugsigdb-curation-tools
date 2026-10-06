@@ -38,6 +38,7 @@ from bugsigdb_curation.curator.model import LiteLLMModel, Model, MockModel
 from bugsigdb_curation.curator.pipeline import CurationResult, curate_async
 from bugsigdb_curation.curator.pipeline import DEFAULT_CONFIG as CURATE_DEFAULT_CONFIG
 from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL as CURATE_DEFAULT_EMAIL
+from bugsigdb_curation.curator.resolve import resolve as resolve_pmid
 from bugsigdb_curation.curator.smoke import smoke_study_ids
 from bugsigdb_curation.curator.taxonomy import DEFAULT_CACHE_PATH as CURATE_DEFAULT_TAXONOMY_CACHE
 from bugsigdb_curation.curator.taxonomy import NcbiTaxonomyResolver
@@ -71,6 +72,7 @@ from bugsigdb_curation.pmc_map import (
     write_mapping_csv,
 )
 from bugsigdb_curation.split import split_full_dump
+from bugsigdb_curation.supplements import SupplementFile, fetch_supplements, supplement_to_text
 from bugsigdb_curation.taxonomy.cli import taxonomy_app
 from bugsigdb_curation.validate import (
     InstanceResult,
@@ -1008,3 +1010,117 @@ def eval_gold_command(
         sys.stdout.write(text)
 
     error_console.print(f"Dumped {len(nested)} gold studies.")
+
+
+# ---------------------------------------------------------------------------
+# supplements: standalone supplement fetch/parse -- NOT wired into the
+# curator pipeline (`curator/pipeline.py`, `curator/evidence.py`); that's a
+# deliberate follow-up PR. Read-only, no gold access.
+# ---------------------------------------------------------------------------
+
+
+@app.command("supplements")
+def supplements_command(
+    pmid: str | None = typer.Option(
+        None, "--pmid", help="PMID to resolve to a PMCID before fetching supplements. Mutually exclusive with --pmcid."
+    ),
+    pmcid: str | None = typer.Option(
+        None, "--pmcid", help="PMCID to fetch supplements for directly. Mutually exclusive with --pmid."
+    ),
+    email: str = typer.Option(
+        CURATE_DEFAULT_EMAIL,
+        "--email",
+        help="Contact email sent to NCBI's idconv API when resolving --pmid (their etiquette for unauthenticated use).",
+    ),
+    dump: Path | None = typer.Option(
+        None,
+        "--dump",
+        help="Directory to write each fetched file's raw bytes (and parsed text, where available) to, for inspection.",
+    ),
+    log_format: LogFormat | None = _LOG_FORMAT_OPTION,
+    log_level: str | None = _LOG_LEVEL_OPTION,
+) -> None:
+    """Fetch and list a paper's supplementary files (standalone; read-only, no gold access).
+
+    Resolves `--pmid` to a PMCID via the same public NCBI idconv path S0 uses
+    (`bugsigdb_curation.curator.resolve.resolve`), or accepts `--pmcid`
+    directly to skip resolution. Fetches the EuropePMC ``supplementaryFiles``
+    ZIP for that PMCID (`bugsigdb_curation.supplements.fetch_supplements`)
+    and prints a table of filename / media type / size / text-preview
+    availability. This command only reads public EuropePMC/NCBI REST data --
+    never a cached/gold file -- and is not wired into `bugsigdb curate`.
+    """
+    configure_logging(fmt=log_format.value if log_format is not None else None, level=log_level)
+    console = Console()
+    error_console = Console(stderr=True)
+
+    if bool(pmid) == bool(pmcid):
+        error_console.print("[red]Error:[/red] pass exactly one of --pmid or --pmcid.")
+        raise typer.Exit(code=2)
+
+    try:
+        asyncio.run(_run_supplements(pmid, pmcid, email, dump, console, error_console))
+    except PmcMapError as exc:
+        error_console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from None
+    except httpx.HTTPError as exc:
+        error_console.print(f"[red]Error:[/red] request failed: {exc}")
+        raise typer.Exit(code=1) from None
+
+
+async def _run_supplements(
+    pmid: str | None,
+    pmcid: str | None,
+    email: str,
+    dump: Path | None,
+    console: Console,
+    error_console: Console,
+) -> None:
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resolved_pmcid = pmcid
+        if resolved_pmcid is None:
+            assert pmid is not None  # guaranteed by the exactly-one-of check in supplements_command
+            resolved = await resolve_pmid(pmid, client=client, email=email)
+            if resolved.pmcid is None:
+                error_console.print(f"[yellow]PMID {pmid} has no PMCID (not in PMC); nothing to fetch.[/yellow]")
+                return
+            resolved_pmcid = resolved.pmcid
+            console.print(f"[dim]Resolved PMID {pmid} -> {resolved_pmcid}[/dim]")
+
+        files = await fetch_supplements(resolved_pmcid, client=client)
+
+    if not files:
+        console.print(f"[yellow]No supplementary files found for {resolved_pmcid}.[/yellow]")
+        return
+
+    _print_supplements_table(files, resolved_pmcid, console)
+
+    if dump is not None:
+        _dump_supplements(files, dump)
+        console.print(f"[green]Dumped {len(files)} file(s) to {dump}[/green]")
+
+
+def _text_preview_flag(f: SupplementFile) -> str:
+    if f.media_type == "pdf":
+        return "n/a (native doc)"
+    return "yes" if supplement_to_text(f) else "no"
+
+
+def _print_supplements_table(files: list[SupplementFile], pmcid: str, console: Console) -> None:
+    table = Table(title=f"Supplementary files ({pmcid})")
+    table.add_column("Filename")
+    table.add_column("Media type")
+    table.add_column("Size", justify="right")
+    table.add_column("Text preview")
+    for f in files:
+        table.add_row(f.filename, f.media_type, human_size(len(f.raw_bytes)), _text_preview_flag(f))
+    console.print(table)
+
+
+def _dump_supplements(files: list[SupplementFile], dump_dir: Path) -> None:
+    dump_dir.mkdir(parents=True, exist_ok=True)
+    for f in files:
+        (dump_dir / f.filename).write_bytes(f.raw_bytes)
+        text = supplement_to_text(f)
+        if text is not None:
+            (dump_dir / f"{f.filename}.txt").write_text(text, encoding="utf-8")
