@@ -1057,10 +1057,15 @@ def test_e2e_routes_extracts_expands_and_dedupes(httpx_mock, tmp_path):
     assert all([s["abundance_in_group_1"] for s in e["signatures"]] == ["increased"] for e in ovr)
     assert [t["ncbi_id"] for t in ovr[0]["signatures"][0]["taxa"]] == [301301, 40520]  # ids from the authority path
     assert supplement[0]["host_species"] == "Homo sapiens" and supplement[0]["sequencing_type"] == "16S"  # S4 exp 0 defaults
-    assert supplement[0]["body_site"] == ["Feces"] and "body_site" not in supplement[-1]  # only if the supplement states it
+    # the first comparison states its own site; every other one inherits it because the paper's only main-text
+    # experiment (hence "every main-text experiment") names one site -- and says so in the annotation
+    assert supplement[0]["body_site"] == ["Feces"] and supplement[-1]["body_site"] == ["Feces"]
     all_four = ["host_species", "sequencing_type", "statistical_test", "mht_correction"]
     assert result.annotations["supplement_inherited_fields"] == [
-        {"source": source, "group_1_name": group_1, "fields": all_four, "from_main_experiment": 0}
+        {
+            "source": source, "group_1_name": group_1, "from_main_experiment": 0,
+            "fields": all_four if group_1 == "Crohn" else [*all_four, "body_site"],
+        }
         for source, group_1 in [
             ("S1.xlsx :: DA", "Crohn"), ("S1.xlsx :: DA", "Treated"), ("S1.xlsx :: DA", "Other"),
             ("S1.xlsx :: OVR", "Cluster1"), ("S1.xlsx :: OVR", "Cluster2"), ("S1.xlsx :: OVR", "Cluster3"),
@@ -1439,3 +1444,52 @@ def test_cli_declares_the_supplements_flag_and_describes_it():
     param = _curate_params()["supplements"]
     assert "--supplements" in param.opts and "--no-supplements" in param.secondary_opts
     assert param.default is False and "supplementary files" in param.help
+
+
+# --- round 2: rank labels, cohort-level body site, supplement-vs-supplement threshold --------------------------
+
+
+def test_rank_labels_are_stripped_from_extracted_taxon_names_but_not_from_real_names():
+    from collections import Counter
+
+    from bugsigdb_curation.curator.supplement_lever import _taxon_name
+
+    cuts: Counter[str] = Counter()
+    assert [_taxon_name(v, cuts) for v in ("Genus: Streptococcus", "Family: Veillonellaceae", "species - Prevotella copri",
+                                           "  Order:Lactobacillales ", "Streptococcus", "Classical Bacteroides", None)] == [
+        "Streptococcus", "Veillonellaceae", "Prevotella copri", "Lactobacillales", "Streptococcus", "Classical Bacteroides", "",
+    ]
+
+
+def test_shared_body_site_only_when_every_main_experiment_agrees():
+    from bugsigdb_curation.curator.supplement_lever import shared_body_site
+
+    def record(*site):
+        return _fields(body_site=tuple(site)), [], "x"
+
+    assert shared_body_site([record("Feces"), record("Feces")]) == ("Feces",)
+    assert shared_body_site([record("Feces"), record("Cecum")]) == ()  # a multi-site paper: no cohort-level site
+    assert shared_body_site([record("Feces"), record()]) == ()  # one main experiment with no site: don't guess
+    assert shared_body_site([]) == ()
+
+
+def test_inherited_field_names_includes_body_site_only_when_a_site_is_offered_and_none_stated():
+    stated = SupplementComparison("A", "B", ("Cecum",), (), (NamedTaxon("x", "increased"),))
+    bare = SupplementComparison("A", "B", (), (), (NamedTaxon("x", "increased"),))
+    assert "body_site" not in inherited_field_names(stated, _fields(), ("Feces",))  # it stated its own
+    assert "body_site" in inherited_field_names(bare, _fields(), ("Feces",))
+    assert "body_site" not in inherited_field_names(bare, _fields(), ())  # no shared site: stays empty
+    assert inherited_field_names(bare, None, ("Feces",)) == ["body_site"]
+
+
+def test_supplement_vs_supplement_needs_a_near_identical_set_but_main_text_keeps_the_looser_threshold():
+    # Different files, same groups, Jaccard 0.6: different tables of one paper (another rank or method), kept
+    a = _record("increased", *_taxa(1, 2, 3, 4, 5), source="S1.xlsx :: T1")
+    b = _record("increased", *_taxa(1, 2, 3, 6), source="S2.xlsx :: T2")  # 3/6 = 0.5
+    c = _record("increased", *_taxa(1, 2, 3, 4, 5, 6), source="S3.xlsx :: T3")  # vs a: 5/6 = 0.83 -> a copy
+    kept, dropped = drop_duplicate_experiments([a, b, c], [])
+    assert kept == [a, b] and [d["source"] for d in dropped] == ["S3.xlsx :: T3"]
+    # the same 0.5 overlap against the MAIN TEXT is still a duplicate
+    main = [_record("increased", *_taxa(1, 2, 3), source="Table 2")]
+    kept, dropped = drop_duplicate_experiments([_record("increased", *_taxa(1, 2, 3, 4, 5, 6))], main)  # 3/6
+    assert kept == [] and dropped[0]["jaccard"] == 0.5
