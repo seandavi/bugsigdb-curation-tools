@@ -146,9 +146,49 @@ def test_index_carries_the_required_notices_and_instructions(packets: Path) -> N
     assert "unsure" in text and "never guess" in text
     assert "Export verdicts (JSON)" in text
     assert "Sean Davis &lt;sean@example.org&gt;" in text
-    assert "autosaves" in text and "export early and often" in text.lower()
+    assert "autosaves" in text
     assert "nothing is uploaded" in text.lower()
     assert NAME in text and DATE in text and "abc1234" in text and bundle.manifest["content_sha256"] in text
+
+
+def _normalised(text: str) -> str:
+    return " ".join(text.split())
+
+
+def test_reviewer_instructions_are_accurate_about_the_export(packets: Path) -> None:
+    bundle = make_bundle(packets)
+    texts = {
+        "README.txt": _normalised(bundle.files["README.txt"].decode("utf-8")),
+        "index.html": index_text(bundle),
+    }
+    for where, text in texts.items():
+        assert "verdicts_<pmid>_<your-name>.json" in text.replace("&lt;", "<").replace("&gt;", ">"), where
+        assert "timestamp" not in text, where
+        assert "Downloads folder" in text, where
+        assert "NOT the CSV" in text, where
+        assert "once per packet when you finish" in text and "if you stop early" in text, where
+        assert "extract the zip somewhere else" in text.lower(), where
+
+
+def test_the_export_file_name_in_the_instructions_matches_packet_js() -> None:
+    script = (Path(bundle_module.__file__).parent / "packet.js").read_text(encoding="utf-8")
+    assert '"verdicts_" + verdicts.pmid + "_" + slug + "." + extension' in script
+
+
+def test_identity_wording_is_exact_and_points_to_manifest_hash(packets: Path) -> None:
+    bundle = make_bundle(packets)
+    readme = _normalised(bundle.files["README.txt"].decode("utf-8"))
+    assert "sha256 of manifest.json" in readme
+    assert (
+        "content_sha256" in readme
+        and "packets/*.html" in readme
+        and "does not cover index.html, README.txt or ATTRIBUTION.txt" in readme
+    )
+    assert "same Python" in _normalised(bundle_module.__doc__ or "") and "manifest.json" in (
+        bundle_module.__doc__ or ""
+    )
+    text = index_text(bundle)
+    assert "Content hash (sha256 of the packets)" not in text and "Packets hash" in text
 
 
 def test_index_pluralises_counts(packets: Path) -> None:

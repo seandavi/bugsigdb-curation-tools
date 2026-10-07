@@ -2,8 +2,13 @@
 
 A bundle is `index.html` (a card per study, linking the packets), the packets themselves, `README.txt`,
 `ATTRIBUTION.txt` and `manifest.json`, optionally zipped. Everything here is pure and offline: the same
-inputs (packets, name, date, contact) give byte-identical files and a byte-identical zip. The packets are
-copied verbatim, never modified.
+inputs (packets, name, date, contact) give byte-identical files. The zip is byte-identical only on the same
+Python and zlib build (deflate output can differ between zlib versions), so across machines compare the
+files, not the zip: `manifest.json` lists every file with its sha256, and the sha256 of `manifest.json` itself
+identifies the bundle. `content_sha256` is narrower: the sha256 of the sorted `path<TAB>sha256` lines of
+`packets/*.html` and `packets/*.manifest.json` only, so it does not cover `index.html`, `README.txt` or
+`ATTRIBUTION.txt` (the contact address is among what it leaves out). The packets are copied verbatim, never
+modified.
 """
 
 from __future__ import annotations
@@ -419,9 +424,11 @@ They were produced by software from the published papers and have not been check
 <li>Open a packet (below) in Chrome, Firefox or Safari.</li>
 <li>Judge each experiment, signature and taxon against the evidence panel next to it. If something is unknown or unclear, choose <em>unsure</em> — never guess.</li>
 <li>Enter your name in the <em>Overall</em> section.</li>
-<li>Click <strong>Export verdicts (JSON)</strong> and send the file(s) to {contact_html}.</li>
+<li>Click <strong>Export verdicts (JSON)</strong>. The file is named <code>verdicts_&lt;pmid&gt;_&lt;your-name&gt;.json</code> and lands in your browser's Downloads folder.</li>
+<li>Send the JSON file(s) to {contact_html} &mdash; the JSON files, NOT the CSV (the CSV is only a convenience copy).</li>
 </ol>
-<p>Your progress autosaves in that browser, on that computer, for that file. Export early and often, and don't move or rename the packet file while you work.</p>
+<p>Export once per packet when you finish it, and export if you stop early so nothing is lost.</p>
+<p>Your progress autosaves in that browser, on that computer, for that file. Don't move or rename the packet file while you work; if you extract the zip somewhere else, your progress may not carry over, so export first.</p>
 <p>Privacy: nothing is uploaded. Everything stays on your computer until you send the exported file yourself.</p>
 </section>
 <section class="cards" aria-label="Studies to review">
@@ -430,7 +437,7 @@ They were produced by software from the published papers and have not been check
 </main>
 <footer>
 <p>Bundle {_e(name)} · built {_e(date)} · builder commit {_e(builder_commit or "unknown")}<br>
-Content hash (sha256 of the packets): <code>{_e(content_sha256)}</code></p>
+Packets hash (content_sha256 in <code>manifest.json</code>; covers the packet files only): <code>{_e(content_sha256)}</code></p>
 <p>Figures are reproduced from open-access papers under their stated licences; see <code>ATTRIBUTION.txt</code>.</p>
 </footer>
 </body></html>
@@ -451,10 +458,13 @@ HOW TO REVIEW
 3. Judge each experiment, signature and taxon against the evidence panel beside it.
    If something is unknown or unclear, choose "unsure". Never guess.
 4. Enter your name in the Overall section.
-5. Click "Export verdicts (JSON)" and send the file(s) to {to}.
+5. Click "Export verdicts (JSON)". The file is named verdicts_<pmid>_<your-name>.json and lands in your
+   browser's Downloads folder.
+6. Send the JSON file(s) to {to}: the JSON files, NOT the CSV (the CSV is only a convenience copy).
 
-Progress autosaves in that browser, on that computer, for that file. Export early and often,
-and do not move or rename the packet file while you work.
+Export once per packet when you finish it, and export if you stop early so nothing is lost.
+Progress autosaves in that browser, on that computer, for that file. Do not move or rename the packet
+file while you work. If you extract the zip somewhere else, your progress may not carry over, so export first.
 
 PRIVACY
 Nothing is uploaded. Everything stays on your computer until you send the exported file yourself.
@@ -470,7 +480,7 @@ Direction:   ok             increased/decreased is right for the signature
 Experiment / study: ok, needs edit, wrong, unsure
 
 HOW THE FILE COMES BACK
-The exported file is named verdicts_<pmid>_<timestamp>.json (one per packet you finish).
+The exported file is named verdicts_<pmid>_<your-name>.json (one per packet you finish).
 Email it, or put it in the shared folder, as {to} asks.
 
 FILES
@@ -478,6 +488,13 @@ index.html        the list of studies, with a link to each packet
 packets/          one self-contained review page per study (and its manifest)
 ATTRIBUTION.txt   authors, journal and licence for the figures shown
 manifest.json     file list with sha256 checksums
+
+CHECKING A COPY
+manifest.json lists every file in the bundle with its sha256, so the sha256 of manifest.json identifies the
+whole bundle. Its content_sha256 field is narrower: the sha256 of the sorted "path<TAB>sha256" lines of
+packets/*.html and packets/*.manifest.json only. It does not cover index.html, README.txt or ATTRIBUTION.txt
+(the contact address is among what it leaves out), so equal content_sha256 values do not mean the same bundle.
+The zip is byte-identical only when built with the same Python and zlib; compare manifest.json instead.
 """
 
 
