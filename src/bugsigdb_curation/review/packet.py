@@ -97,6 +97,9 @@ class PacketEvidence:
 
     pmcid: str | None
     license: str | None
+    #: The article's authors from its JATS front matter -- the attribution fallback when the draft record has none
+    #: (a CC BY packet must credit the authors, and a draft's own `authors` can be absent).
+    authors: tuple[str, ...] = ()
     figures: tuple[EvidenceFigure, ...] = ()
     tables: tuple[EvidenceTable, ...] = ()
     images: dict[str, bytes] = field(default_factory=dict)
@@ -263,7 +266,13 @@ async def fetch_packet_evidence(
             if data:
                 images[figure.provenance] = data
     return PacketEvidence(
-        pmcid=pmcid, license=license_, figures=figures, tables=tables, images=images, problems=tuple(problems)
+        pmcid=pmcid,
+        license=license_,
+        authors=tuple(bundle.metadata.authors),
+        figures=figures,
+        tables=tables,
+        images=images,
+        problems=tuple(problems),
     )
 
 
@@ -278,6 +287,7 @@ def save_evidence(evidence: PacketEvidence, directory: Path) -> None:
     payload = {
         "pmcid": evidence.pmcid,
         "license": evidence.license,
+        "authors": list(evidence.authors),
         "figures": [asdict(f) for f in evidence.figures],
         "tables": [asdict(t) for t in evidence.tables],
         "images": image_files,
@@ -294,6 +304,7 @@ def load_evidence(directory: Path) -> PacketEvidence | None:
     return PacketEvidence(
         pmcid=payload.get("pmcid"),
         license=payload.get("license"),
+        authors=tuple(payload.get("authors", [])),  # absent in caches written before this field existed
         figures=tuple(EvidenceFigure(**f) for f in payload.get("figures", [])),
         tables=tuple(
             EvidenceTable(**{**t, "rows": tuple(tuple(r) for r in t["rows"])}) for t in payload.get("tables", [])
@@ -423,7 +434,7 @@ class _PacketBuilder:
         if r.get("doi"):
             links.append(f'<a href="https://doi.org/{_e(r["doi"])}">DOI {_e(r["doi"])}</a>')
         journal_year = " · ".join(str(x) for x in (r.get("journal"), r.get("year")) if x)
-        authors = _join(r.get("authors"))
+        authors = self._authors()
         license_ = self.evidence.license if self.evidence else None
         rows = [_field_row("Study design", r.get("study_design"))]
         rows += [
@@ -686,11 +697,15 @@ class _PacketBuilder:
             "page. Nothing is uploaded.</p></section>"
         )
 
+    def _authors(self) -> str:
+        """The draft's authors, else the article's own (from the evidence fetch), else ''."""
+        return _join(self.record.get("authors")) or (_join(list(self.evidence.authors)) if self.evidence else "")
+
     def attribution(self) -> str:
         if not self.embedded or self.evidence is None:
             return ""
         r = self.record
-        authors = _join(r.get("authors")) or "authors not stated"
+        authors = self._authors() or "authors not stated"
         return (
             '<p class="attribution">Figures shown in this packet are reproduced from: '
             f"{_e(authors)}. {_e(r.get('title') or '')} {_e(r.get('journal') or '')} {_e(r.get('year') or '')}. "
