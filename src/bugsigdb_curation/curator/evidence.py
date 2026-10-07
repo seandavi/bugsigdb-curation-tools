@@ -100,9 +100,10 @@ async def fetch_fulltext_xml_with_retry(
 # good pages on disk so each article is fetched once across runs.
 
 PMC_HTML_MIN_INTERVAL = 3.0
-PMC_HTML_ATTEMPTS = 4
-#: Waits before retry 1, 2, 3 after a challenge (seconds; +-20% jitter applied).
-PMC_HTML_BACKOFF = (5.0, 12.0, 25.0)
+PMC_HTML_ATTEMPTS = 5
+#: Waits before retry 1..4 after a challenge (seconds; +-20% jitter applied). A challenge can outlast ~45 s when
+#: PMC has seen a burst from this IP (observed: all of 4 quick retries failed), so back off further.
+PMC_HTML_BACKOFF = (10.0, 30.0, 60.0, 120.0)
 _CHALLENGE_MARKERS = ("recaptcha", "captcha", "challenge-platform")
 
 

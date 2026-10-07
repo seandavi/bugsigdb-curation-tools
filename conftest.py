@@ -121,5 +121,5 @@ def _isolated_pmc_html_cache(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: 
     from bugsigdb_curation.curator import evidence
 
     monkeypatch.setattr(evidence, "PMC_LIMITER", evidence.PmcRequestLimiter(min_interval=0.0))
-    monkeypatch.setattr(evidence, "PMC_HTML_BACKOFF", (0.0, 0.0, 0.0))
+    monkeypatch.setattr(evidence, "PMC_HTML_BACKOFF", (0.0, 0.0, 0.0, 0.0))
     monkeypatch.setattr(evidence, "FULLTEXT_BACKOFF", (0.0, 0.0, 0.0))
