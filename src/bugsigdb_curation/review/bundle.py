@@ -78,10 +78,16 @@ class _Study:
     evidence_cited: tuple[str, ...]
     n_images: int
     builder_commit: str | None
+    evidence_problems: tuple[str, ...]
+    authors_from_page: bool
 
     @property
     def licence_ok(self) -> bool:
         return license_allows_embedding(self.license)
+
+    @property
+    def cites_figures(self) -> bool:
+        return any(label.startswith("Figure ") for label in self.evidence_cited)
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +106,7 @@ def _embedded_json(page: str, pattern: re.Pattern[str]) -> Any:
 
 
 def _page_authors(page: str, record: dict[str, Any]) -> tuple[str, ...]:
-    """The draft's authors, else the article's own that the packet header shows (the JATS fallback), else ()."""
+    """Authors for a packet that predates `meta.attribution_authors`: the draft's, else the page's citation line."""
     authors = record.get("authors")
     if isinstance(authors, list) and authors:
         return tuple(str(a) for a in authors)
@@ -116,8 +122,16 @@ def _page_authors(page: str, record: dict[str, Any]) -> tuple[str, ...]:
     return tuple(part.strip() for part in text.split(";") if part.strip())
 
 
+def _credited_authors(page: str, record: dict[str, Any], meta: dict[str, Any]) -> tuple[tuple[str, ...], bool]:
+    """The authors the packet credits, and whether they had to be scraped (an older packet without the meta field)."""
+    recorded = meta.get("attribution_authors")
+    if isinstance(recorded, list):
+        return tuple(str(a) for a in recorded), False
+    return _page_authors(page, record), True
+
+
 def _line(value: object) -> str:
-    """`value` as one line of plain text: whitespace collapsed, C0/C1 control characters (newlines, ANSI escapes) removed."""
+    """`value` as one line of plain text: whitespace collapsed, C0/C1 controls (newlines, ANSI escapes) removed."""
     return _CONTROL_RE.sub("", " ".join(str(value).split()))
 
 
@@ -200,7 +214,22 @@ def _read_study(html_path: Path, problems: list[str]) -> _Study | None:
     signatures = [s for e in experiments for s in e.get("signatures") or [] if isinstance(s, dict)]
     cited = {c for s in signatures if (c := cited_artifact(s.get("source"))) is not None}
     images = _embedded_json(page, _PACKET_IMAGES_RE)
-    license_ = manifest.get("license")
+    n_images = len(images) if isinstance(images, dict) else 0
+    license_ = manifest.get("license") if isinstance(manifest.get("license"), str) else None
+    if n_images and not license_allows_embedding(license_):
+        refuse(
+            f"embeds {n_images} figure image(s) but the licence is {_line(license_ or 'unknown')}; "
+            "figures may not be redistributed"
+        )
+    authors, authors_from_page = _credited_authors(page, record, meta)
+    if n_images and not authors and license_allows_embedding(license_):
+        refuse(
+            f"embeds {n_images} figure image(s) but names no authors; a CC BY figure must credit the authors "
+            "(rebuild the packet from a draft or article that states them)"
+        )
+    if len(problems) > start:
+        return None
+    problems_field = manifest.get("evidence_problems")
     return _Study(
         pmid=stem,
         packet_id=manifest["packet_id"],
@@ -208,18 +237,20 @@ def _read_study(html_path: Path, problems: list[str]) -> _Study | None:
         html_bytes=html_bytes,
         manifest_bytes=manifest_bytes,
         title=str(record.get("title") or ""),
-        authors=_page_authors(page, record),
+        authors=authors,
         journal=str(record.get("journal") or ""),
         year=str(record.get("year") or ""),
         doi=str(record.get("doi") or ""),
         pmcid=manifest.get("pmcid") if isinstance(manifest.get("pmcid"), str) else None,
-        license=license_ if isinstance(license_, str) and license_ else None,
+        license=license_ or None,
         n_experiments=len(experiments),
         n_signatures=len(signatures),
         n_taxa=sum(len(s.get("taxa") or []) for s in signatures),
         evidence_cited=tuple(_evidence_label(k, n) for k, n in sorted(cited, key=_natural_key)),
-        n_images=len(images) if isinstance(images, dict) else 0,
+        n_images=n_images,
         builder_commit=manifest.get("builder_commit") if isinstance(manifest.get("builder_commit"), str) else None,
+        evidence_problems=tuple(str(x) for x in problems_field) if isinstance(problems_field, list) else (),
+        authors_from_page=authors_from_page,
     )
 
 
@@ -245,9 +276,21 @@ def _read_studies(packets_dir: Path) -> tuple[list[_Study], list[str]]:
         if study.license is None:
             warnings.append(f"PMID {study.pmid}: licence unknown; figures were not embedded")
         elif not study.licence_ok:
-            warnings.append(f"PMID {study.pmid}: licence '{study.license}' is not CC BY/CC0")
-        if study.n_images == 0:
-            warnings.append(f"PMID {study.pmid}: no figure images embedded (reviewers get legends and links only)")
+            warnings.append(f"PMID {study.pmid}: licence '{_line(study.license)}' is not CC BY/CC0")
+        elif study.n_images == 0 and study.cites_figures:
+            warnings.append(
+                f"PMID {study.pmid}: cites figures but embeds no figure images (reviewers get legends and links only)"
+            )
+        if study.evidence_problems:
+            warnings.append(
+                f"PMID {study.pmid}: the packet may be incomplete; evidence fetch problems: "
+                + "; ".join(_line(p) for p in study.evidence_problems)
+            )
+        if study.authors_from_page:
+            warnings.append(
+                f"PMID {study.pmid}: packet predates meta.attribution_authors; "
+                "authors were read from the packet's visible citation line"
+            )
     return sorted(studies, key=_pmid_key), warnings
 
 
@@ -463,7 +506,7 @@ def _render_attribution(studies: list[_Study], *, name: str) -> str:
             lines.append("  CHECK: the licence is unknown, so figures were not embedded.")
         elif not study.licence_ok:
             lines.append(f"  CHECK: the licence ({study.license}) is not CC BY or CC0, so figures were not embedded.")
-        if not study.n_images:
+        elif not study.n_images and study.cites_figures:
             lines.append(
                 "  CHECK: no figure images were embedded in this packet (reviewers see legends and links only)."
             )

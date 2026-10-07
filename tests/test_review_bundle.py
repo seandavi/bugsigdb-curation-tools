@@ -41,6 +41,8 @@ def write_packet(
     with_image: bool = True,
     builder_commit: str | None = "abc1234",
     evidence_authors: tuple[str, ...] = (),
+    problems: tuple[str, ...] = (),
+    table_only: bool = False,
 ) -> None:
     """Build a real packet + manifest for a variant of the fixture draft, the way `review packet` does."""
     record = load_draft()
@@ -48,11 +50,15 @@ def write_packet(
     record["uid"] = pmid
     if title is not None:
         record["title"] = title
+    if table_only:
+        for experiment in record["experiments"]:
+            for signature in experiment["signatures"]:
+                signature["source"] = "Table 1"
     if authors is None:
         record.pop("authors")
     else:
         record["authors"] = authors
-    evidence = replace(sample_evidence(license_), authors=evidence_authors)
+    evidence = replace(sample_evidence(license_), authors=evidence_authors, problems=problems)
     if not with_image:
         evidence = replace(evidence, images={})
     meta = make_meta(record, built_at="2026-10-06T12:00:00Z", builder_commit=builder_commit, pmcid="PMC9000001")
@@ -215,8 +221,86 @@ def test_authors_fall_back_to_the_articles_own_when_the_draft_has_none(tmp_path:
 
 def test_authors_are_marked_when_nobody_states_them(tmp_path: Path) -> None:
     directory = tmp_path / "p"
-    write_packet(directory, "99000001", authors=None)
-    assert "authors not stated" in make_bundle(directory).files["index.html"].decode("utf-8")
+    write_packet(directory, "99000001", authors=None, with_image=False)
+    bundle = make_bundle(directory)
+    assert "authors not stated" in bundle.files["index.html"].decode("utf-8")
+    assert "Authors: not stated" in bundle.files["ATTRIBUTION.txt"].decode("utf-8")
+
+
+def test_authors_come_from_the_meta_the_packet_recorded_not_the_page_markup(tmp_path: Path) -> None:
+    directory = tmp_path / "p"
+    write_packet(directory, "99000001", authors=None, evidence_authors=("Jats J", "Xml X"))
+    page = (directory / "99000001.html").read_text(encoding="utf-8")
+    assert page.count('<div class="citation">') == 1
+    (directory / "99000001.html").write_text(
+        page.replace('<div class="citation">', '<div class="cite">'), encoding="utf-8"
+    )
+    bundle = make_bundle(directory)
+    assert "Jats J; Xml X" in bundle.files["ATTRIBUTION.txt"].decode("utf-8")
+    assert not any("predates" in w for w in bundle.warnings)
+
+
+def _strip_attribution_authors(directory: Path, stem: str) -> None:
+    path = directory / f"{stem}.html"
+    page = path.read_text(encoding="utf-8")
+    stripped = re.sub(r',\s*"attribution_authors":\s*\[[^\]]*\]', "", page)
+    assert stripped != page
+    path.write_text(stripped, encoding="utf-8")
+
+
+def test_older_packets_without_recorded_authors_fall_back_to_the_page_and_say_so(tmp_path: Path) -> None:
+    directory = tmp_path / "p"
+    write_packet(directory, "99000001", authors=None, evidence_authors=("Jats J", "Xml X"))
+    write_packet(directory, "99000002")
+    _strip_attribution_authors(directory, "99000001")
+    _strip_attribution_authors(directory, "99000002")
+    bundle = make_bundle(directory)
+    attribution = bundle.files["ATTRIBUTION.txt"].decode("utf-8")
+    assert "Jats J; Xml X" in attribution and "Doe J; Roe R; Poe P" in attribution
+    predates = [w for w in bundle.warnings if "predates" in w]
+    assert len(predates) == 2 and "99000001" in predates[0] and "attribution_authors" in predates[0]
+
+
+def test_cc_by_packet_with_figures_but_no_resolvable_authors_is_refused(tmp_path: Path) -> None:
+    directory = tmp_path / "p"
+    write_packet(directory, "99000001", authors=None, evidence_authors=())
+    with pytest.raises(BundleError, match=r"99000001\.html.*figure image.*no authors.*credit"):
+        make_bundle(directory)
+
+
+def test_packet_text_cannot_make_authors_look_resolved_when_meta_says_none(tmp_path: Path) -> None:
+    directory = tmp_path / "p"
+    write_packet(directory, "99000001", authors=None, evidence_authors=())
+    page = (directory / "99000001.html").read_text(encoding="utf-8")
+    page = page.replace("(no authors in the draft)", "Fake F; Fake G")
+    (directory / "99000001.html").write_text(page, encoding="utf-8")
+    with pytest.raises(BundleError, match="no authors"):
+        make_bundle(directory)
+
+
+def _inject_image(directory: Path, stem: str) -> None:
+    path = directory / f"{stem}.html"
+    page = path.read_text(encoding="utf-8")
+    block = '<script type="application/json" id="packet-images">'
+    assert f"{block}{{}}</script>" in page
+    image = json.dumps({"Figure 2": {"type": "image/png", "data": "AAAA"}})
+    path.write_text(page.replace(f"{block}{{}}</script>", f"{block}{image}</script>"), encoding="utf-8")
+
+
+@pytest.mark.parametrize("license_", ["cc by-nc", "cc by-nd", "all rights reserved", None])
+def test_packet_that_embeds_images_without_an_embedding_licence_is_refused(
+    tmp_path: Path, license_: str | None
+) -> None:
+    directory = tmp_path / "p"
+    write_packet(directory, "99000001")
+    write_packet(directory, "99000002", license_=license_, with_image=False)
+    _inject_image(directory, "99000002")
+    with pytest.raises(
+        BundleError, match=r"99000002\.html: embeds 1 figure image\(s\) but the licence is .*may not be"
+    ) as e:
+        make_bundle(directory)
+    assert len(e.value.problems) == 1  # the clean packet is not blamed
+    assert str(license_ if license_ else "unknown") in e.value.problems[0]
 
 
 # --- README / ATTRIBUTION / manifest ------------------------------------------------------------------------
@@ -452,7 +536,7 @@ def test_all_problems_are_reported_together(packets: Path) -> None:
     assert len(excinfo.value.problems) == 2
 
 
-def test_degraded_and_non_cc_by_packets_warn_but_build(tmp_path: Path) -> None:
+def test_non_cc_by_packets_warn_once_each_but_build(tmp_path: Path) -> None:
     directory = tmp_path / "p"
     write_packet(directory, "99000001")
     write_packet(directory, "99000002", license_="cc by-nc", with_image=False)
@@ -461,10 +545,30 @@ def test_degraded_and_non_cc_by_packets_warn_but_build(tmp_path: Path) -> None:
     assert len(bundle.manifest["packets"]) == 3
     by_pmid = {pmid: [w for w in bundle.warnings if pmid in w] for pmid in ("99000001", "99000002", "99000003")}
     assert by_pmid["99000001"] == []
-    assert any("not CC BY/CC0" in w for w in by_pmid["99000002"]) and any(
-        "no figure images" in w for w in by_pmid["99000002"]
-    )
-    assert any("unknown" in w for w in by_pmid["99000003"])
+    assert len(by_pmid["99000002"]) == 1 and "not CC BY/CC0" in by_pmid["99000002"][0]
+    assert len(by_pmid["99000003"]) == 1 and "unknown" in by_pmid["99000003"][0]
+
+
+def test_cc_by_packet_citing_figures_without_images_warns(tmp_path: Path) -> None:
+    directory = tmp_path / "p"
+    write_packet(directory, "99000001", with_image=False)
+    warnings = make_bundle(directory).warnings
+    assert len(warnings) == 1 and "99000001" in warnings[0] and "cites figures" in warnings[0]
+    assert "degraded" not in warnings[0]
+
+
+def test_table_only_cc_by_packet_does_not_warn_about_missing_images(tmp_path: Path) -> None:
+    directory = tmp_path / "p"
+    write_packet(directory, "99000001", with_image=False, table_only=True)
+    assert make_bundle(directory).warnings == []
+
+
+def test_evidence_problems_from_the_manifest_are_warned_about(tmp_path: Path) -> None:
+    directory = tmp_path / "p"
+    write_packet(directory, "99000001", problems=("could not download the image for Figure 2 (boom)",))
+    warnings = make_bundle(directory).warnings
+    assert len(warnings) == 1
+    assert "99000001" in warnings[0] and "incomplete" in warnings[0] and "could not download the image" in warnings[0]
 
 
 def test_packets_are_never_modified(packets: Path, tmp_path: Path) -> None:
