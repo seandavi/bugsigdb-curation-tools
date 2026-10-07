@@ -174,6 +174,7 @@ def build_manifest(
         "model_label": meta.model_label,
         "design_label": meta.design_label,
         "license": evidence.license if evidence else None,
+        "evidence_problems": list(evidence.problems) if evidence else [],
         "n_experiments": len(experiments),
         "n_signatures": sum(len(e.get("signatures") or []) for e in experiments),
         "n_taxa": sum(len(s.get("taxa") or []) for e in experiments for s in e.get("signatures") or []),
@@ -697,9 +698,18 @@ class _PacketBuilder:
             "page. Nothing is uploaded.</p></section>"
         )
 
+    def _authors_list(self) -> list[str]:
+        """The authors this packet credits: the draft's, else the article's own (from the evidence fetch), else []."""
+        drafted = self.record.get("authors")
+        if isinstance(drafted, (list, tuple)) and drafted:
+            return [str(a) for a in drafted]
+        if drafted and not isinstance(drafted, (list, tuple)):
+            return [str(drafted)]
+        return [str(a) for a in self.evidence.authors] if self.evidence else []
+
     def _authors(self) -> str:
-        """The draft's authors, else the article's own (from the evidence fetch), else ''."""
-        return _join(self.record.get("authors")) or (_join(list(self.evidence.authors)) if self.evidence else "")
+        """The credited authors as one display string, or ''."""
+        return "; ".join(self._authors_list())
 
     def attribution(self) -> str:
         if not self.embedded or self.evidence is None:
@@ -719,7 +729,10 @@ class _PacketBuilder:
         if not experiments:
             body_sections = ['<section class="card"><p class="na">The draft contains no experiments.</p></section>']
         study = self.study_section(self.attribution())
-        payload = {"meta": _meta_dict(self.meta), "record": self.record}
+        payload = {
+            "meta": {**_meta_dict(self.meta), "attribution_authors": self._authors_list()},
+            "record": self.record,
+        }
         css = (_PACKAGE_DIR / "packet.css").read_text(encoding="utf-8")
         js = (_PACKAGE_DIR / "packet.js").read_text(encoding="utf-8")
         title = f"Review packet — PMID {self.meta.pmid}"

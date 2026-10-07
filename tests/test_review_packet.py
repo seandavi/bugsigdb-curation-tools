@@ -7,6 +7,7 @@ import base64
 import copy
 import json
 import re
+from dataclasses import replace
 from html.parser import HTMLParser
 from typing import Any
 
@@ -128,6 +129,18 @@ def test_packet_embeds_the_draft_and_meta_exactly():
     assert payload["record"] == record
     assert payload["meta"]["draft_sha256"] == canonical_sha256(record)
     assert payload["meta"]["packet_id"] == f"{PMID}-{canonical_sha256(record)[:12]}"
+
+
+def test_packet_meta_records_the_authors_it_credited():
+    drafted = _json_block(_build(), "packet-data")["meta"]
+    assert drafted["attribution_authors"] == load_draft()["authors"]
+    record = load_draft()
+    record.pop("authors")
+    evidence = replace(sample_evidence(), authors=("Jats J", "Xml X"))
+    fallback = _json_block(_build(record=record, evidence=evidence), "packet-data")["meta"]
+    assert fallback["attribution_authors"] == ["Jats J", "Xml X"]
+    nobody = _json_block(_build(record=record), "packet-data")["meta"]
+    assert nobody["attribution_authors"] == []
 
 
 def test_draft_text_cannot_break_out_of_the_page():
@@ -321,7 +334,6 @@ def _record_citing_figures(numbers: range) -> dict[str, Any]:
 
 
 def _evidence_with_figures(numbers: range, size: int) -> PacketEvidence:
-    from dataclasses import replace
 
     base = sample_evidence("cc by")
     template = base.figures[0]
@@ -443,6 +455,16 @@ def test_manifest_sha_matches_canonical_sha_of_record():
     assert manifest["annotation_errors"] == ["artifact_ranking_error"]
     assert manifest["license"] == "cc by"
     assert manifest["built_at"]
+
+
+def test_manifest_records_the_evidence_problems():
+    record = load_draft()
+    meta = make_meta(record)
+    assert build_manifest(record, None, sample_evidence("cc by"), meta)["evidence_problems"] == []
+    degraded = replace(sample_evidence("cc by"), problems=("could not fetch the article's figures",))
+    problems = build_manifest(record, None, degraded, meta)["evidence_problems"]
+    assert problems == ["could not fetch the article's figures"]
+    assert build_manifest(record, None, None, meta)["evidence_problems"] == []
 
 
 def test_sha_changes_when_draft_changes_but_not_key_order():
