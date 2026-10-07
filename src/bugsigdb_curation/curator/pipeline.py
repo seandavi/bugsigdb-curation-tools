@@ -208,7 +208,7 @@ async def _extract_experiment_signatures(
     client: httpx.AsyncClient,
     image_bytes: bytes | None,
     experiment_fields: ExperimentFields,
-    ground_unresolved: bool = False,
+    ground_unresolved: bool = True,
     may_decline: bool = False,
     more_candidates: bool = False,
 ) -> tuple[list[ExtractedSignature], tuple[str, ...]]:
@@ -247,7 +247,7 @@ async def _extract_experiment_signatures(
             groups=groups,
             may_decline=may_decline,
         )
-        if ground_unresolved:  # opt-in: resolve names S6 could not verify an id for (split designs already do)
+        if ground_unresolved:  # default: resolve names S6 could not verify an id for (split designs already do)
             signatures = await ground_unresolved_taxa(
                 signatures,
                 model=model,
@@ -397,7 +397,7 @@ async def curate_async(
     ols: OlsClient | None = None,
     supplements: bool = False,
     html_cache_dir: Path | None = None,
-    ground_unresolved: bool = False,
+    ground_unresolved: bool = True,
 ) -> CurationResult:
     """S0-S9: turn a bare PMID into a validated nested prediction record.
 
@@ -421,7 +421,7 @@ async def curate_async(
     sheet/page); the screen, skipped files, errors and dropped duplicates are recorded in `annotations`.
     With `supplements=False` (the default) none of that runs and the record is unchanged.
 
-    `ground_unresolved=True` (fused-lean only; off by default) resolves taxa whose model-proposed NCBI id could
+    `ground_unresolved=True` (fused-lean only; **on by default**; pass False for the verification-only behaviour) resolves taxa whose model-proposed NCBI id could
     not be verified by NAME against the authority (`reconcile.ground_unresolved`: local DB / live gap-fill, LLM
     disambiguation only for homonyms), so fewer records fail S9's `ncbi_id` requirement. Nothing is guessed.
 
