@@ -43,12 +43,13 @@
 <rect x="32" y="312" width="165" height="72" rx="36.0" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
 <text x="114.5" y="352.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#3b1d8a" text-anchor="middle">PMID</text>
 <rect x="233" y="312" width="165" height="72" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<text x="315.5" y="344.5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#14532d" text-anchor="middle">S0 · resolve</text>
-<text x="315.5" y="359.5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">NCBI idconv → PMCID</text>
+<text x="315.5" y="337.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#14532d" text-anchor="middle">S0 · resolve</text>
+<text x="315.5" y="352.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">idconv → PMCID</text>
+<text x="315.5" y="367.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">(EuropePMC if throttled)</text>
 <rect x="434" y="312" width="165" height="72" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="516.5" y="337.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#14532d" text-anchor="middle">S1 · evidence</text>
 <text x="516.5" y="352.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">text · tables · figures</text>
-<text x="516.5" y="367.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">EuropePMC + PMC</text>
+<text x="516.5" y="367.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">EuropePMC + PMC (cached)</text>
 <rect x="635" y="312" width="165" height="72" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="717.5" y="344.5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#14532d" text-anchor="middle">S2 · study metadata</text>
 <text x="717.5" y="359.5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">title · design · …</text>
@@ -62,8 +63,8 @@
 <text x="315.5" y="485.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">condition · methods</text>
 <rect x="434" y="430" width="165" height="72" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="516.5" y="455.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#14532d" text-anchor="middle">S5a · locate</text>
-<text x="516.5" y="470.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">rank tables / figures</text>
-<text x="516.5" y="485.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">by DA likelihood</text>
+<text x="516.5" y="470.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">rank tables / figures: regex</text>
+<text x="516.5" y="485.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">or decision model p(DA)</text>
 <rect x="635" y="430" width="165" height="72" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="717.5" y="455.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#14532d" text-anchor="middle">S5b/S6 · extract</text>
 <text x="717.5" y="470.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">taxa · direction ·</text>
@@ -73,8 +74,8 @@
 <text x="114.5" y="595.5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">split designs only</text>
 <rect x="233" y="548" width="165" height="72" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="5 4"/>
 <text x="315.5" y="573.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#14532d" text-anchor="middle">S1b · supplements</text>
-<text x="315.5" y="588.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">screen, extract, append</text>
-<text x="315.5" y="603.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">after main-text results</text>
+<text x="315.5" y="588.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">screen → extract → expand</text>
+<text x="315.5" y="603.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">one-vs-rest → append</text>
 <rect x="434" y="548" width="165" height="72" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="516.5" y="580.5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#14532d" text-anchor="middle">S8 · assemble</text>
 <text x="516.5" y="595.5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">nested-dict record</text>
@@ -110,7 +111,7 @@
 <text x="516.5" y="711.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#1e3a8a" text-anchor="middle">Decision model</text>
 <text x="516.5" y="726.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">optional Clef; used by</text>
 <text x="516.5" y="741.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">S5a, S1b, S4 body site</text>
-<text x="850" y="296" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#6b7280" text-anchor="start">C · EVALUATE — the only reader of gold</text>
+<text x="850" y="296" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#6b7280" text-anchor="start">C · EVALUATE (reads gold)</text>
 <rect x="855" y="312" width="315" height="92" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <text x="1012.5" y="347.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#14532d" text-anchor="middle">eval score</text>
 <text x="1012.5" y="362.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">Hungarian experiment match; taxa as NCBI</text>
@@ -119,17 +120,17 @@
 <text x="1012.5" y="462.5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#3b1d8a" text-anchor="middle">scores.jsonl · report.md · report.html</text>
 <text x="1012.5" y="477.5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">cross-tab by gold source type</text>
 <rect x="855" y="548" width="315" height="72" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<text x="1012.5" y="573.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#14532d" text-anchor="middle">review packet</text>
-<text x="1012.5" y="588.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">self-contained HTML; curators judge the</text>
-<text x="1012.5" y="603.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">draft against the paper → verdict JSON</text>
+<text x="1012.5" y="573.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#14532d" text-anchor="middle">review packet · bundle</text>
+<text x="1012.5" y="588.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">one HTML per draft, zipped for curators</text>
+<text x="1012.5" y="603.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="middle">who judge it against the paper → verdict JSON</text>
 <rect x="855" y="652" width="315" height="60" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
 <text x="1012.5" y="678.5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="600" fill="#3b1d8a" text-anchor="middle">review ingest / report</text>
 <text x="1012.5" y="693.5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#6b7280" text-anchor="middle">verdicts filed under data/reviews/&lt;pmid&gt;/</text>
 <path d="M1012.5,404 L1012.5,436" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrowhead)"/>
 <path d="M1012.5,620 L1012.5,652" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrowhead)"/>
 <path d="M910,108 L1130,108 L1130,312" fill="none" stroke="#e5533d" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-<path d="M1000,222 L1000,312" fill="none" stroke="#e5533d" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-<text x="1085" y="296" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#e5533d" text-anchor="middle" font-style="italic">gold</text>
+<path d="M1035,222 L1035,312" fill="none" stroke="#e5533d" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+<text x="1138" y="250" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#e5533d" text-anchor="start" font-style="italic">gold</text>
 <path d="M800,722 L835,722 L835,358 L855,358" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrowhead)"/>
 <path d="M835,584 L855,584" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrowhead)"/>
 <text x="855" y="772" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#6b7280" text-anchor="start" font-style="italic">Prediction records cross the firewall one way:</text>

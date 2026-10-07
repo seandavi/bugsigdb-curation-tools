@@ -508,3 +508,61 @@ estimate scales with encoded image bytes (use size-capped JPEG, not PNG).
 **Next.** Human review of `labels/*.yaml`; follow-up issues only for the GO points (S1b screening wired into the
 supplement lever; deterministic one-vs-rest decomposition behind the arity check; body_site `choice`), and a
 re-test of assignment with ≤ 10-option shortlists and of condition with a wider ontology set.
+
+## L033 — Decision-model levers folded into the curator; retrieval hardening; review packets; five pilot drafts — 2026-10-07
+**Scope.** L032's probe verdicts turned into code (PRs #22-#42), the first batch of five new-paper drafts, and the
+machinery to have humans evaluate them. Anchored to `main` @ `b227bec` (the last code commit of this entry; PRs #22-#42); code reviewed by independent Opus reviewers
+on every large PR (findings and fixes are in the PR threads). Every claim below names its n; most are single runs.
+
+**Levers now in the curator (all opt-in, best-effort, recorded in an `annotations` sidecar; default behaviour unchanged).**
+A1 S5a ranks tables/figures by Clef p(DA artifact) (`--decision-model clef`): top-1 hit a gold-cited artifact in 15/16
+smoke papers vs 11/16 for the regex (clef-flash 12/16). A2 S4 body_site -> UBERON via OLS4 candidates + a Clef choice
+(sidecar only; no schema change). A3 supplement lever (`--supplements`): Europe PMC ZIP -> units -> Clef screen -> extraction;
+A4 deterministic one-vs-rest expansion for units screened `multi_group_one_vs_rest` (>= 3 groups). Also: per-experiment artifact
+search with an escape hatch and a duplicate-signature guard; opt-in `--ground-unresolved`; `pymupdf` (AGPL) replaced by pypdfium2.
+
+**Defects found by looking at real drafts (each fixed and tested).**
+1. *Silent figure loss.* PMC serves recent figures as `.webp` (our URL regex only knew jpg/png/gif) and intermittently
+   answers our client with a captcha page (HTTP 200, no figure links) — both made S5b extract from the legend alone,
+   returning empty or wrong signatures with no warning. This was a large source of run-to-run variance: the same configuration
+   scored F1 0.963 and 0.0 on one study in consecutive runs. Fixed (detect/retry/space/cache; missing images flagged).
+   PMC's challenge fingerprints the client (curl got real pages while httpx got the captcha, HTTP/1.1 and HTTP/2) — we did
+   not try to defeat it; PMC's per-file supplement downloads sit behind a JS proof-of-work (not bypassed). For the five
+   pilot papers the HTML cache was populated with one manual page-load each. Production needs a sanctioned bulk route.
+2. *Group orientation never stated.* BugSigDB's convention (group 0 = reference/control; 3,975 vs 191 experiments where one
+   group looks like a control) was in neither the S4 prompt nor S5b, which also never saw the group names. Direction accuracy
+   ~65% -> ~81% pooled over two smoke runs each (three studies fully flipped before, correct after).
+3. *One artifact copied into every experiment* (identical signatures in two experiments of one paper) -> per-experiment search.
+4. Transient failures that killed whole studies with no retry: Europe PMC fullTextXML 5xx, NCBI idconv 429 (S0 now falls
+   back to Europe PMC), Gemini calls with no timeout (one hung ten minutes), Europe PMC's supplement ZIP (bundling inline
+   figure images was the slow part: `includeInlineImage=false` takes 34620922's ZIP from a >240 s stall to ~3 s).
+5. Supplement dedupe dropped distinct comparisons (5 of 5 drops were false) -> only cross-file, same-groups, Jaccard >= 0.8.
+
+**Numbers (gemini-3.1-flash-lite unless stated; scorer reads gold, curator never does; single runs unless noted).**
+Smoke set, 19 studies, retrieval-hardened code: run 1 micro F1 0.158 / direction 89.7% / figure F1 0.586; run 2 0.185 / 90.0% / 0.671;
+mean per-study |dF1| between the two runs 0.054 (before the fixes: swings of 0.96 <-> 0.0). Per-experiment search without a decision
+model: 0.166, precision 0.83 (was 0.45-0.47: duplicated taxa gone), direction 96%; with `--decision-model clef`: 0.209,
+precision 0.64, recall 0.125, figure F1 0.736 (one run per arm). **Final like-for-like pair on the same code (one run each; `data/runs/final/{fixes_only,full}_score/`, git-ignored):** no decision model: micro F1 0.181 (P 0.778 / R 0.102), macro 0.088, direction 95.7%, figure F1 0.675, supplement-sourced gold F1 0.002, over/under-segmentation 11 / 105. Full pipeline (`--decision-model clef --supplements --ground-unresolved`): **micro F1 0.530 (P 0.593 / R 0.479)**, macro 0.244, direction **70.2%**, figure F1 0.634, supplement-sourced gold F1 **0.590** (R 0.497), main-table gold F1 0.000 (51 taxa), over/under-segmentation 21 / 64. The lever buys recall at a cost: direction for supplement-derived signatures is weak (36/60 on 34620922), over-segmentation doubles, and 37864204 (64 gold experiments) still scores ~0 because its supplement ZIP (~250 MB of mp4) exceeds the size guard. 21850056 fails in both arms (Europe PMC returns HTTP 500 for its PMCID every time). Supplement lever on 34620922 (48 gold experiments): baseline F1 0.000,
+7/48 matched, 41 under-segmented -> F1 0.464 (47/48 matched, live ZIP), 0.586 (local PDF, pre-review-fix), 0.661 (pypdfium2, 48/48
+matched, 3 over-segmented, direction 36/60); one paper, three runs. L027/L030/L031 headline numbers predate the retrieval fixes and
+should be treated as superseded.
+
+**Review packets (evaluation where there is no gold).** `bugsigdb review packet|bundle|ingest|report`: single-file offline HTML
+packets (per-taxon / signature / experiment verdicts beside the cited figure or table), a deterministic zip bundle with index.html,
+ATTRIBUTION.txt and a manifest (refuses figures without a CC BY/CC0 licence or author credit), schema-validated ingest tied to the
+draft's sha256, and a report (taxa precision, direction-flip rate, ...). Reviewer verdicts never mix with the held-out gold.
+
+**Five pilot drafts (UNREVIEWED; not results).** PMIDs 42654743, 42404767, 42729499, 42328067, 42465072 — CC BY, absent from the BugSigDB
+export dated 2026-10-06, chosen to stress different things (single LEfSe figure; skin ANCOM-BC bars with 3 groups; supplement tables;
+table-based ANCOM, non-human host; three-group shotgun LEfSe). Checked by the agent against the source figure: 42654743 (13/13 taxa
+and both directions correct), 42465072 Figure 3 (colours/direction consistent with the draft). Not checked: the other three. One
+experiment (42404767, experiment 1 of 2: urban controls vs urban acne) is empty by design — the figure it was offered reports a different comparison than the segmenter proposed.
+
+**Caveats.** n = 19 smoke studies, one run per arm for most comparisons, one paper for the supplement claims; the Clef routing
+probe's labels are agent-drafted and unreviewed; supplement ZIPs containing large media (37864204) exceed the guard and are
+skipped visibly; the figure path depends on the PMC HTML cache; `bugsigdb.org` itself is behind a Cloudflare challenge, so "not
+already curated" rests on the GitHub export. The repo still has no LICENSE file.
+
+**Next.** Send the bundle to named BugSigDB curators and run one full first review end to end; re-run the decision-probe benchmark
+on the new PDF seam; decide the code licence and whether `--ground-unresolved` becomes the default; a streaming member-skip (or
+`--supplement-dir`) so papers with big media in their supplement can be read.

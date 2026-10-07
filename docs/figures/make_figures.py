@@ -189,15 +189,15 @@ def workflow(theme: str) -> str:
     w, h = 165, 72
     r1, r2, r3, r4 = 312, 430, 548, 690
     s.box(xs[0], r1, w, h, "violet", ["PMID"], round_=True)
-    s.box(xs[1], r1, w, h, "green", ["S0 · resolve", "NCBI idconv → PMCID"], sub_size=10.5)
-    s.box(xs[2], r1, w, h, "green", ["S1 · evidence", "text · tables · figures", "EuropePMC + PMC"], sub_size=10.5)
+    s.box(xs[1], r1, w, h, "green", ["S0 · resolve", "idconv → PMCID", "(EuropePMC if throttled)"], sub_size=10.5)
+    s.box(xs[2], r1, w, h, "green", ["S1 · evidence", "text · tables · figures", "EuropePMC + PMC (cached)"], sub_size=10.5)
     s.box(xs[3], r1, w, h, "green", ["S2 · study metadata", "title · design · …"], sub_size=10.5)
     s.box(xs[0], r2, w, h, "green", ["S3 · segment", "one stub per 2-group", "comparison"], sub_size=10.5)
     s.box(xs[1], r2, w, h, "green", ["S4 · experiment", "groups · body site ·", "condition · methods"], sub_size=10.5)
-    s.box(xs[2], r2, w, h, "green", ["S5a · locate", "rank tables / figures", "by DA likelihood"], sub_size=10)
+    s.box(xs[2], r2, w, h, "green", ["S5a · locate", "rank tables / figures: regex", "or decision model p(DA)"], sub_size=10)
     s.box(xs[3], r2, w, h, "green", ["S5b/S6 · extract", "taxa · direction ·", "NCBI id (verified)"], sub_size=10.5)
     s.box(xs[0], r3, w, h, "green", ["S10 · verify / panel", "split designs only"], dashed=True, sub_size=10.5)
-    s.box(xs[1], r3, w, h, "green", ["S1b · supplements", "screen, extract, append", "after main-text results"], dashed=True, sub_size=10)
+    s.box(xs[1], r3, w, h, "green", ["S1b · supplements", "screen → extract → expand", "one-vs-rest → append"], dashed=True, sub_size=10)
     s.box(xs[2], r3, w, h, "green", ["S8 · assemble", "nested-dict record"], sub_size=10.5)
     s.box(xs[3], r3, w, h, "green", ["S9 · validate", "LinkML schema + CURIEs"], sub_size=10.5)
     s.box(xs[3], r4, w, 64, "violet", ["prediction record", "Study → Exp → Sig"], sub_size=10.5)
@@ -223,18 +223,18 @@ def workflow(theme: str) -> str:
     s.box(xs[2], r4, w, 64, "blue", ["Decision model", "optional Clef; used by", "S5a, S1b, S4 body site"], dashed=True, sub_size=10)
 
     # Scorer side -----------------------------------------------------------
-    s.text(850, 296, "C · EVALUATE — the only reader of gold", size=11.5, weight="700", fill=t["muted"])
+    s.text(850, 296, "C · EVALUATE (reads gold)", size=11.5, weight="700", fill=t["muted"])
     sx, sw = 855, 315
     s.box(sx, 312, sw, 92, "green", ["eval score", "Hungarian experiment match; taxa as NCBI", "taxid sets → P / R / F1 by gold source type"], sub_size=10.5)
     s.box(sx, 436, sw, 60, "violet", ["scores.jsonl · report.md · report.html", "cross-tab by gold source type"], sub_size=10)
-    s.box(sx, 548, sw, 72, "green", ["review packet", "self-contained HTML; curators judge the", "draft against the paper → verdict JSON"], sub_size=10.5)
+    s.box(sx, 548, sw, 72, "green", ["review packet · bundle", "one HTML per draft, zipped for curators", "who judge it against the paper → verdict JSON"], sub_size=10.5)
     s.box(sx, 652, sw, 60, "violet", ["review ingest / report", "verdicts filed under data/reviews/<pmid>/"], sub_size=10)
     s.arrow([(sx + sw / 2, 404), (sx + sw / 2, 436)])
     s.arrow([(sx + sw / 2, 620), (sx + sw / 2, 652)])
     # gold -> scorer (above the divider, down the right edge)
     s.arrow([(910, 108), (1130, 108), (1130, 312)], color=t["coral"][1])
-    s.arrow([(1000, 222), (1000, 312)], color=t["coral"][1])
-    s.text(1085, 296, "gold", size=10.5, fill=t["coral"][1], italic=True, anchor="middle")
+    s.arrow([(1035, 222), (1035, 312)], color=t["coral"][1])
+    s.text(1138, 250, "gold", size=10.5, fill=t["coral"][1], italic=True)
     # prediction -> scorer / packet
     s.arrow([(xs[3] + w, r4 + 32), (835, r4 + 32), (835, 358), (sx, 358)])
     s.arrow([(835, 584), (sx, 584)])
