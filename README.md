@@ -84,19 +84,53 @@ identical for every design; designs differ only in S5b/S6 and S10 (next section)
 
 | Stage | What it does | Notes |
 |-------|--------------|-------|
-| S0 resolve | PMID → PMCID, DOI | NCBI ID Converter |
-| S1 evidence | Fetch the article as sections, tables and figures | EuropePMC `fullTextXML` for text and tables; PMC article HTML → CDN URLs for figure images. Fully scriptable, no browser. |
+| S0 resolve | PMID → PMCID, DOI | NCBI ID Converter, retried on 429/5xx; if it keeps failing, falls back to Europe PMC's search API |
+| S1 evidence | Fetch the article as sections, tables and figures | EuropePMC `fullTextXML` for text and tables (5xx retried); PMC article HTML → CDN URLs for figure images, cached on disk. Fully scriptable, no browser. See [Retrieval](#retrieval-and-its-failure-modes). |
 | S2 study | Title, authors, journal, year, study design | One LLM call |
 | S3 segment | Propose the list of 2-group comparisons ("stubs") the paper reports | One LLM call over the assembled text |
-| S4 experiment | Per stub: groups, sample sizes, host, body site, condition, sequencing, statistics | One LLM call per stub; optional body-site → UBERON mapping |
-| S5a locate | Choose the table or figure holding the stub's DA result | Keyword regex, or a decision-model ranking with `--decision-model` |
-| S5b/S6 extract | Per stub: taxa, direction, NCBI taxon id | Depends on `--design`; ids are *verified* against the taxonomy authority, never trusted from the model |
-| S1b supplements | Read the paper's supplementary files and append their experiments | Opt-in (`--supplements`, needs `--decision-model`) |
+| S4 experiment | Per stub: groups, sample sizes, host, body site, condition, sequencing, statistics | One LLM call per stub; with `--decision-model`, body site → UBERON term, recorded as a sidecar annotation (the schema slot is unchanged) |
+| S5a locate | Rank the tables and figures that may hold the stub's DA result | Keyword regex, or with `--decision-model` a ranking by p(DA artifact) |
+| S5b/S6 extract | Per stub: taxa, direction, NCBI taxon id | Depends on `--design`; ids are *verified* against the taxonomy authority, never trusted from the model. Each experiment tries up to 3 ranked candidate artifacts, not one shared artifact |
+| S1b supplements | Read the paper's supplementary files and append their experiments | Opt-in (`--supplements`, needs `--decision-model`); see [Optional levers](#5-optional-levers) |
 | S10 verify | Adversarial check of extracted taxa and directions | `split-verify` and `split-panel` only |
 | S8 assemble | Build the nested-dict record in the loader's shape | |
 | S9 validate | Check against `schema/bugsigdb.yaml` | Failures are recorded, not hidden |
 
 *Table 2. Curator stages. The record keeps provenance (`design`, `flags`, annotations) that is never fed back into extraction.*
+
+**Group convention.** BugSigDB puts the reference or control in group 0 and the case in
+group 1, and `abundance_in_group_1` is read relative to group 0. S4 is told this, and S5b
+and the NER stage are given the group *names*, because a model that does not know which group
+is "1" flips directions. By our estimate (from run notes, not re-derived for this README) the
+convention holds for about 95% of curated experiments in which a control is identifiable.
+
+**Per-experiment artifact search.** The first version copied one located artifact into
+every experiment of a study. Now each experiment tries up to 3 ranked candidates in turn; the
+prompt carries an explicit escape hatch ("if this does not report that comparison, return no
+taxa") so that a non-matching artifact yields nothing rather than a guess, and a
+duplicate-signature guard drops a signature that merely repeats an earlier experiment's
+(recorded as `duplicate_signatures_dropped`). A candidate that fails does not abort the study.
+
+#### Retrieval and its failure modes
+
+Retrieval was a large and, at first, silent source of both failures and run-to-run
+variance. What the pipeline now does about it:
+
+- **Figures.** PMC serves recent articles' figures as `.webp`, which the original URL
+  pattern missed; the pattern is fixed and the image type is sniffed from the bytes.
+- **PMC's captcha page.** PMC intermittently answers our client with a captcha page
+  (HTTP 200, no figure links). The page is detected and retried with backoff (10, 30, 60,
+  120 s), requests to PMC are spaced, and good pages are cached on disk
+  (`data/curator/pmc_html`, override with `BUGSIGDB_PMC_HTML_CACHE`). If a figure image still
+  cannot be fetched it is flagged (`figure_image_unavailable`) rather than silently
+  extracted from the legend alone.
+- **Retries elsewhere.** Europe PMC `fullTextXML` 5xx and NCBI idconv 429/5xx are retried;
+  every LiteLLM call has a 180 s timeout and 2 retries; MDPI-style JATS author lists are parsed.
+- **What we did not do.** PMC's challenge fingerprints the client: in our tests `curl` received
+  real pages while `httpx` received the captcha, under both HTTP/1.1 and HTTP/2. We did not try
+  to defeat it. PMC's per-file supplement downloads sit behind a JavaScript proof-of-work
+  challenge, also not bypassed, and the old OA `oa.fcgi` endpoint now returns 404. So figure
+  retrieval in production depends on the cache or on a sanctioned bulk route.
 
 Figures are read with a multimodal model: the image and its legend go in together. An
 earlier benchmark ([`benchmarks/figure-extraction/`](benchmarks/figure-extraction/))
@@ -132,21 +166,60 @@ smoke-set scale, which is why the local database exists.
 
 ### 5. Optional levers
 
-- **Decision models** (`--decision-model`). Some judgments are bounded: is this sheet a DA
-  table, which UBERON term matches this body site. A Cloudflare "decision model" (Clef)
-  returns a calibrated probability per option without generating text, at far lower cost
-  than a generative call. An offline probe
-  ([`benchmarks/decision-probe/RESULTS.md`](benchmarks/decision-probe/RESULTS.md))
-  kept the judgments that worked (artifact ranking, supplement-page screening,
-  body-site mapping) and rejected the ones that did not (per-taxon direction, figure
-  type). Needs `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` in `.env`.
-- **Supplements** (`--supplements`). Most DA results are in supplementary files that the
-  main-text pipeline cannot see. The lever fetches the EuropePMC supplement ZIP, splits it
-  into units (one per sheet or PDF page), screens each unit with the decision model, sends
-  the routed units to one extraction call, and expands "one-vs-rest" multi-group tables into
-  one experiment per group in code. Experiments the main text already reports are dropped.
-- **Ground unresolved** (`--ground-unresolved`, `fused-lean` only). Taxa whose model-proposed
-  id could not be verified are re-resolved by name against the NCBI authority.
+Everything here is opt-in and best-effort: with no decision model the pipeline is
+unchanged, and a failed decision call falls back to the default behaviour, is recorded in
+the sidecar, and never aborts a study.
+
+- **Decision models** (`--decision-model {none,clef,clef-flash}`). Some judgments are
+  bounded: is this sheet a DA table, which UBERON term matches this body site. A Cloudflare
+  "decision model" (Clef) returns a calibrated probability per option without generating
+  text, at far lower cost than a generative call. The seam is
+  [`decision.py`](src/bugsigdb_curation/decision.py) (yes/no, choice and score questions, a
+  Clef client, a mock, and a JSONL archive of every call, `--decision-archive`); the judgments
+  live in [`curator/routing.py`](src/bugsigdb_curation/curator/routing.py). Wired so far:
+  - **S5a ranking** of tables and figures by p(DA artifact) instead of the keyword regex.
+    On the smoke papers, `clef`'s top-ranked artifact was one the gold cites in 15 of 16
+    papers, against 11 of 16 for the regex; `clef-flash` managed 12 of 16, so use `clef`
+    (this is an n = 16 check against the gold citations, not a pipeline score).
+  - **S4 body site → UBERON.** OLS4 supplies candidate terms (cached by `--ols-cache`) and a
+    Clef choice picks one. The result goes into the sidecar only; no schema change.
+  - **The supplement lever** and **one-vs-rest expansion** (next bullet).
+
+  An offline probe
+  ([`benchmarks/decision-probe/RESULTS.md`](benchmarks/decision-probe/RESULTS.md)) decided
+  what to wire: GO for supplement page/sheet screening, DA-artifact ranking, body-site
+  ontology and narrow one-vs-rest detection; NO-GO for per-taxon direction, figure type,
+  many-option artifact → experiment assignment, and condition ontology as configured. Needs
+  `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` in `.env`; ignored with `--mock`.
+- **Supplements** (`--supplements`, needs `--decision-model`). Most DA results in the
+  hardest papers sit in supplementary files that the main-text pipeline cannot see. The lever
+  (stage S1b, [`curator/supplement_lever.py`](src/bugsigdb_curation/curator/supplement_lever.py)):
+  1. streams the Europe PMC supplementary ZIP (requested with `includeInlineImage=false`,
+     which is what made it fast) under guards: 60 MB download, 240 s, 200 MB uncompressed,
+     500 members, and a 25 MB per-member cap;
+  2. splits it into units: an xlsx sheet, a csv, a docx, or a PDF page (PDFs go through
+     [`pdf.py`](src/bugsigdb_curation/pdf.py), see [Licensing](#licensing));
+  3. has Clef screen every unit; one with p(`has_da_results`) ≥ 0.5 is routed on;
+  4. runs a generative extraction over the routed units;
+  5. expands units the screen labels `multi_group_one_vs_rest` (three or more distinct groups)
+     deterministically into "G vs all other groups" experiments, in code;
+  6. merges with the main-text experiments and de-duplicates: against the main text at taxon
+     Jaccard ≥ 0.5, against another supplement only when it comes from a *different* file with
+     the same two groups and Jaccard ≥ 0.8.
+
+  Known limits: a ZIP over the guard is skipped, visibly (`supplement_skipped`); for example
+  37864204 ships about 250 MB of mp4 and is not read. Legacy `.xls` and `.doc` are skipped.
+  Supplement experiments get no UBERON mapping yet.
+- **Ground unresolved** (`--ground-unresolved`, `fused-lean` only, off by default). Taxa whose
+  model-proposed id could not be verified are re-resolved by *name* against the NCBI authority
+  (local database or live; an LLM only for homonyms).
+
+**The sidecar.** Decision calls and fallbacks are recorded in `CurationResult.annotations`,
+written beside `--out` as `<out stem>.annotations.json` (for `--smoke`, under
+`<dir>/_annotations/`). Keys include `artifact_ranking`, `experiment_artifacts`,
+`body_site_terms`, `supplement_*`, `figure_image_unavailable`,
+`duplicate_signatures_dropped`, and `*_error` keys for each judgment that fell back. Review
+packets pick the sidecar up automatically.
 
 ### 6. Evaluation
 
