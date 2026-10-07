@@ -696,10 +696,14 @@ To regenerate the README figures: `python docs/figures/make_figures.py` (stdlib 
 Schema: released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
 consistent with BugSigDB.
 
-Code: this repository has **no `LICENSE` file yet**; no licence has been chosen for the code,
-and choosing one is an open decision.
+Code: [MIT](LICENSE) (declared in `pyproject.toml` as `license = "MIT"`).
+
+Data and third-party content: the BugSigDB export the gold is built from is CC BY 4.0 like the schema; the
+review packets embed figures only from articles whose own licence is CC BY or CC0 and credit their authors
+(see [Human review](#7-human-review)). Each dependency keeps its own licence.
 
 PDF reading (supplement pages: text, size, JPEG render) goes through `bugsigdb_curation.pdf`, built on
 [pypdfium2](https://github.com/pypdfium2-team/pypdfium2) (BSD-3-Clause / Apache-2.0) and Pillow (MIT-CMU). It
-replaced PyMuPDF, whose AGPL-3.0 licence (or commercial licence) would have made the whole project copyleft.
+replaced PyMuPDF, whose AGPL-3.0 licence (or commercial licence) would have made the whole project copyleft,
+which is what keeps the code MIT.
 PyMuPDF is no longer a dependency.
