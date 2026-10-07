@@ -562,7 +562,7 @@ def test_fetch_survives_image_download_failure(httpx_mock: HTTPXMock):
 
 def test_fetch_survives_evidence_assembly_failure_but_reports_it(httpx_mock: HTTPXMock):
     httpx_mock.add_response(url=re.compile(re.escape(EUROPEPMC_CORE_SEARCH_URL) + ".*"), json={"resultList": {"result": []}})
-    httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid="PMC9000001"), status_code=503)
+    httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid="PMC9000001"), status_code=503, is_reusable=True)
     evidence = _fetch()
     assert evidence.figures == () and evidence.tables == ()
     assert evidence.degraded and any("figures and tables" in p for p in evidence.problems)
