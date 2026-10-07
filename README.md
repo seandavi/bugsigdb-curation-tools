@@ -430,7 +430,7 @@ many-experiment papers, a model sweep, and human review for papers with no gold.
 | `src/bugsigdb_curation/pdf.py` | PDF text, page size and JPEG rendering on pypdfium2 + Pillow, behind one error type. |
 | `sources/` | Local snapshot of the wiki schema pages the schema was derived from. |
 | `benchmarks/` | `figure-extraction/` (vision benchmark) and `decision-probe/` (decision-model probe; `RESULTS.md` has the tables and verdicts). |
-| `docs/` | `LEDGER.md` (lab notebook), `plans/` (research brief, workflow plan, ontology plan), `workflow.md` (older Mermaid view), `figures/` (README figure generator). |
+| `docs/` | `LEDGER.md` (lab notebook), `plans/` (research brief, workflow plan, ontology plan), `figures/` (README figure generator). |
 | `paper/` | Quarto draft of the methods paper. |
 | `tests/` | pytest suite. Network-marked tests are deselected by default. |
 
