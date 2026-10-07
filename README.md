@@ -185,17 +185,23 @@ holding:
 - `README.txt` (the how-to and the verdict legend, for people who read the zip listing first),
   `ATTRIBUTION.txt` (authors, journal, DOI and licence per study; flags packets whose licence is not
   CC BY/CC0 or whose images were not embedded) and `manifest.json` (every file's sha256 and size, the
-  packets' ids and draft hashes, the build date, the builder commit when the packets agree on it, and `content_sha256` — a hash of
-  the packets that the index footer also shows, so two people can confirm they hold the same bundle).
+  packets' ids and draft hashes, the build date, the builder commit when the packets agree on it, and `content_sha256` — the
+  sha256 of the sorted `path<TAB>sha256` lines of `packets/*.html` and `packets/*.manifest.json` only, which the index footer
+  also shows. It does not cover `index.html`, `README.txt` or `ATTRIBUTION.txt` (the contact address is outside it), so it
+  says the packets match, not that the bundle does; the sha256 of `manifest.json` identifies the whole bundle).
 
 Options: `--name` (default `bugsigdb-review-<date>`), `--contact "name <email>"` (where reviewers send
 their verdict files; shown in the index and README), `--zip/--no-zip` (default `--zip`), `--date YYYY-MM-DD`
 (default today; recorded in the manifest — the only clock reading). The build is offline and
-deterministic: the same packets, name, date and contact give a byte-identical zip (sorted members,
-fixed 2000-01-01 timestamps and permissions). It refuses (exit 2) a packet without a manifest, with a
-`packet_id` or `draft_sha256` that does not match its embedded record, a duplicate PMID, an empty
-directory, or an existing `<name>/` folder; non-CC-BY or image-less packets only warn. It never
-modifies the packets.
+deterministic: the same packets, name, date and contact give byte-identical files, and a
+byte-identical zip on the same Python and zlib build (sorted members, fixed 2000-01-01 timestamps and
+permissions; deflate output can differ between zlib versions, so across machines compare `manifest.json`,
+not the zip). It refuses (exit 2) a packet whose file name is not a numeric PMID, without a manifest, with
+a `packet_id`, `pmid` or `draft_sha256` that does not match its embedded record, that embeds figure images
+without a CC BY/CC0 licence or without any author to credit, an empty directory, or an existing `<name>/`
+folder or `<name>.zip`; image-less or non-CC-BY packets and packets whose evidence fetch had problems only
+warn. The folder and zip are written to temporary names and renamed into place. It never modifies the
+packets.
 
 Caveats: some institutional mail gateways strip or quarantine zips that contain `.html`/`.js` — if a
 reviewer does not receive it, fall back to a shared drive / Box link or a private GitHub release
