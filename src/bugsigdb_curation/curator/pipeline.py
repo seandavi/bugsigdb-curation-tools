@@ -53,7 +53,7 @@ from bugsigdb_curation.curator.evidence import (
 from bugsigdb_curation.curator.experiment import ExperimentFields, extract_experiment
 from bugsigdb_curation.curator.extract import StudyFields, extract_study
 from bugsigdb_curation.curator.locate import LocatedArtifact, locate_artifacts
-from bugsigdb_curation.curator.model import Model
+from bugsigdb_curation.curator.model import Model, ModelError
 from bugsigdb_curation.curator.ner import extract_names
 from bugsigdb_curation.curator.ols import DEFAULT_CACHE_PATH as DEFAULT_OLS_CACHE_PATH
 from bugsigdb_curation.curator.ols import OlsClient
@@ -532,23 +532,39 @@ async def curate_async(
                     source: str | None = candidates[0].provenance if candidates else None
                     tried: list[str] = []
                     duplicates: list[str] = []  # candidates that only repeated an earlier experiment's signatures
+                    errors: list[dict[str, str]] = []
                     for position, artifact in enumerate(candidates):
                         tried.append(artifact.provenance)
-                        image_bytes = await _figure_image_once(
-                            artifact, client=client, cache=figure_images, annotations=annotations
-                        )
-                        found, stage_flags = await _extract_experiment_signatures(
-                            artifact,
-                            design=design,
-                            model=model,
-                            resolver=resolver,
-                            client=client,
-                            image_bytes=image_bytes,
-                            experiment_fields=experiment_fields,
-                            ground_unresolved=ground_unresolved,
-                            may_decline=may_decline,
-                            more_candidates=position + 1 < len(candidates),
-                        )
+                        try:
+                            image_bytes = await _figure_image_once(
+                                artifact, client=client, cache=figure_images, annotations=annotations
+                            )
+                            found, stage_flags = await _extract_experiment_signatures(
+                                artifact,
+                                design=design,
+                                model=model,
+                                resolver=resolver,
+                                client=client,
+                                image_bytes=image_bytes,
+                                experiment_fields=experiment_fields,
+                                ground_unresolved=ground_unresolved,
+                                may_decline=may_decline,
+                                more_candidates=position + 1 < len(candidates),
+                            )
+                        except (ModelError, httpx.HTTPError) as exc:
+                            # Only the first candidate is load-bearing (an error there aborts the study, as it
+                            # always has); a later one is an extra try, so its failure must not cost the study
+                            # an experiment that would otherwise just be left empty.
+                            if position == 0:
+                                raise
+                            logger.bind(stage="S5b").warning(
+                                "later candidate artifact failed; stopping its search",
+                                experiment_index=len(experiments),
+                                artifact=artifact.provenance,
+                                error=repr(exc),
+                            )
+                            errors.append({"artifact": artifact.provenance, "error": repr(exc)})
+                            break
                         flags.extend(stage_flags)
                         if not found:
                             continue
@@ -572,6 +588,7 @@ async def curate_async(
                                 "artifact_tried": tried,
                                 "artifact_used": source if signatures else None,
                                 **({"artifact_duplicate": duplicates} if duplicates else {}),
+                                **({"errors": errors} if errors else {}),
                             }
                         )
 

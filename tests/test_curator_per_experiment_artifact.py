@@ -10,6 +10,7 @@ import asyncio
 import re
 
 import httpx
+import pytest
 import test_curator_pipeline_e2e as e2e
 import test_curator_routing as routing_helpers
 from pytest_httpx import HTTPXMock
@@ -18,7 +19,7 @@ from bugsigdb_curation.curator.artifact_text import group_orientation_text
 from bugsigdb_curation.curator.design import Design
 from bugsigdb_curation.curator.experiment import ExperimentFields
 from bugsigdb_curation.curator.locate import LocatedArtifact, locate_artifact, locate_artifacts
-from bugsigdb_curation.curator.model import DEFAULT_MOCK_RESPONSES, MockModel
+from bugsigdb_curation.curator.model import DEFAULT_MOCK_RESPONSES, MockModel, ModelCallError
 from bugsigdb_curation.curator.ner import build_ner_messages
 from bugsigdb_curation.curator.pipeline import _drop_duplicate_signatures, curate_async
 from bugsigdb_curation.curator.signature import ExtractedSignature, ExtractedTaxon, build_signature_messages
@@ -449,6 +450,54 @@ def test_split_panel_the_last_candidate_is_still_reviewed_when_the_extractor_fou
 
     assert _calls(model, "review_signature") == ["Figure 3"]  # Figure 7 skipped, last candidate Figure 3 reviewed
     assert _sources(result, 0) == {"Figure 3"}
+
+
+def _fails_on_figure_3(error: Exception):
+    """Figure 7 declines experiment 0, then reports TAXA_B; Figure 3 raises `error`."""
+    f7_calls: list[int] = []
+
+    def signature_extract(messages):
+        if _which_figure(messages) == "Figure 3":
+            raise error
+        f7_calls.append(1)
+        return {"taxa": []} if len(f7_calls) == 1 else TAXA_B
+
+    return signature_extract
+
+
+def test_a_failing_later_candidate_is_recorded_and_does_not_abort_the_study(httpx_mock, tmp_path):
+    error = ModelCallError("rate limited")
+    result, _ = _study(httpx_mock, tmp_path, _fails_on_figure_3(error))
+
+    assert "signatures" not in result.record["experiments"][0]
+    assert _sources(result, 1) == {"Figure 7"}
+    assert result.annotations["experiment_artifacts"] == [
+        {
+            "experiment_index": 0,
+            "artifact_tried": ["Figure 7", "Figure 3"],
+            "artifact_used": None,
+            "errors": [{"artifact": "Figure 3", "error": repr(error)}],
+        },
+        {"experiment_index": 1, "artifact_tried": ["Figure 7"], "artifact_used": "Figure 7"},
+    ]
+
+
+def test_an_http_error_on_a_later_candidate_is_absorbed_too(httpx_mock, tmp_path):
+    result, _ = _study(httpx_mock, tmp_path, _fails_on_figure_3(httpx.ConnectError("boom")))
+    assert result.annotations["experiment_artifacts"][0]["errors"][0]["artifact"] == "Figure 3"
+
+
+def test_a_failure_on_the_first_candidate_still_aborts_the_study(httpx_mock, tmp_path):
+    def signature_extract(messages):
+        raise ModelCallError("rate limited")
+
+    with pytest.raises(ModelCallError):
+        _study(httpx_mock, tmp_path, signature_extract)
+
+
+def test_a_programming_error_on_a_later_candidate_still_surfaces(httpx_mock, tmp_path):
+    with pytest.raises(ValueError, match="bug"):
+        _study(httpx_mock, tmp_path, _fails_on_figure_3(ValueError("bug")))
 
 
 # --- the duplicate guard on its own ------------------------------------------------------------
