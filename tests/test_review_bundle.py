@@ -9,6 +9,7 @@ import zipfile
 from dataclasses import replace
 from html.parser import HTMLParser
 from pathlib import Path
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -43,6 +44,7 @@ def write_packet(
     evidence_authors: tuple[str, ...] = (),
     problems: tuple[str, ...] = (),
     table_only: bool = False,
+    edit: Callable[[dict[str, Any]], None] | None = None,
 ) -> None:
     """Build a real packet + manifest for a variant of the fixture draft, the way `review packet` does."""
     record = load_draft()
@@ -50,6 +52,8 @@ def write_packet(
     record["uid"] = pmid
     if title is not None:
         record["title"] = title
+    if edit is not None:
+        edit(record)
     if table_only:
         for experiment in record["experiments"]:
             for signature in experiment["signatures"]:
@@ -331,6 +335,58 @@ def test_attribution_lists_every_study_and_flags_problem_packets(tmp_path: Path)
     assert "CHECK" in blocks["99000002"] and "not CC BY or CC0" in blocks["99000002"]
     assert "CHECK" in blocks["99000003"] and "unknown" in blocks["99000003"]
     assert "CHECK" in blocks["99000004"] and "no figure images" in blocks["99000004"]
+
+
+_FORGED_TITLE = "Real title\nPMID 1\n  Licence: CC BY\n"
+_ANSI = "\x1b[31mred\x1b[0m\x07\x9b2J"
+
+
+def _assert_plain_text(text: str) -> None:
+    assert not [c for c in text if (ord(c) < 0x20 and c != "\n") or 0x7F <= ord(c) <= 0x9F], repr(text)
+
+
+def _hostile_text_bundle(tmp_path: Path) -> Any:
+    def edit(record: dict[str, Any]) -> None:
+        record["journal"] = f"J\n  Licence: CC0 {_ANSI}"
+        record["doi"] = "10.1/x\n  Licence: CC0"
+        record["year"] = "2024\r\nPMID 2"
+
+    directory = tmp_path / "p"
+    write_packet(
+        directory,
+        "99000001",
+        title=_FORGED_TITLE + _ANSI,
+        authors=["Doe\nPMID 3", f"Roe {_ANSI}", "Poe\u2028P"],
+        edit=edit,
+        with_image=False,
+        license_="cc by\n  Licence: CC0",
+    )
+    return build_bundle(directory, name=NAME, date=DATE, contact=f"Sean\nPMID 4 <s@x.org> {_ANSI}")
+
+
+def test_text_files_cannot_be_forged_through_titles_authors_or_the_contact(tmp_path: Path) -> None:
+    bundle = _hostile_text_bundle(tmp_path)
+    attribution = bundle.files["ATTRIBUTION.txt"].decode("utf-8")
+    readme = bundle.files["README.txt"].decode("utf-8")
+    for text in (attribution, readme):
+        _assert_plain_text(text)
+    assert re.findall(r"^PMID .*$", attribution, re.MULTILINE) == ["PMID 99000001"]
+    assert re.findall(r"^\s*Licence:.*$", attribution, re.MULTILINE) == ["  Licence: cc by Licence: CC0"]
+    assert len(re.findall(r"^  Title:", attribution, re.MULTILINE)) == 1
+    assert "Real title PMID 1 Licence: CC BY" in attribution
+    assert "PMID 4" in readme and not re.search(r"^PMID 4", readme, re.MULTILINE)
+    assert not re.search(r"^Sean$", readme, re.MULTILINE)
+
+
+def test_warnings_are_single_plain_lines(tmp_path: Path) -> None:
+    bundle = _hostile_text_bundle(tmp_path)
+    (tmp_path / "p" / "7\nfake\x1b[31m.manifest.json").write_text("{}", encoding="utf-8")
+    bundle = build_bundle(tmp_path / "p", name=NAME, date=DATE, contact=None)
+    assert any("manifest without a packet" in w for w in bundle.warnings)
+    assert bundle.warnings
+    for warning in bundle.warnings:
+        assert "\n" not in warning
+        _assert_plain_text(warning)
 
 
 def test_manifest_lists_files_with_verifiable_hashes(packets: Path) -> None:

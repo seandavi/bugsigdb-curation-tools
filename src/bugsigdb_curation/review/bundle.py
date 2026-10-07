@@ -268,7 +268,7 @@ def _read_studies(packets_dir: Path) -> tuple[list[_Study], list[str]]:
         raise BundleError(problems)
 
     warnings = [
-        f"{m.name}: manifest without a packet (not bundled)"
+        f"{_line(m.name)}: manifest without a packet (not bundled)"
         for m in sorted(packets_dir.glob("*.manifest.json"))
         if not m.with_name(m.name.removesuffix(".manifest.json") + ".html").is_file()
     ]
@@ -435,7 +435,7 @@ Content hash (sha256 of the packets): <code>{_e(content_sha256)}</code></p>
 
 
 def _render_readme(studies: list[_Study], *, name: str, date: str, contact: str | None) -> str:
-    to = contact or "whoever sent you this bundle"
+    to = _line(contact) if contact and _line(contact) else "whoever sent you this bundle"
     return f"""BugSigDB draft review — {name}
 Built {date}; {_count(len(studies), "study")}.
 
@@ -487,25 +487,26 @@ def _render_attribution(studies: list[_Study], *, name: str) -> str:
         )
     ]
     for study in studies:
+        licence = _line(_licence_text(study))
         lines = [
             f"PMID {study.pmid}",
-            f"  Title:   {study.title or '(not stated)'}",
-            f"  Authors: {'; '.join(study.authors) if study.authors else 'not stated'}",
-            f"  Journal: {study.journal or '(not stated)'}",
-            f"  Year:    {study.year or '(not stated)'}",
-            f"  DOI:     {study.doi or '(not stated)'}",
-            f"  Licence: {_licence_text(study)}",
+            f"  Title:   {_line(study.title) or '(not stated)'}",
+            f"  Authors: {_line('; '.join(study.authors)) if study.authors else 'not stated'}",
+            f"  Journal: {_line(study.journal) or '(not stated)'}",
+            f"  Year:    {_line(study.year) or '(not stated)'}",
+            f"  DOI:     {_line(study.doi) or '(not stated)'}",
+            f"  Licence: {licence}",
         ]
         if study.licence_ok and study.n_images:
             lines.append(
-                f"  Figures in this packet are reproduced under the licence {study.license}; credit: the authors above."
+                f"  Figures in this packet are reproduced under the licence {licence}; credit: the authors above."
             )
         else:
             lines.append("  No figures are reproduced in this packet.")
         if study.license is None:
             lines.append("  CHECK: the licence is unknown, so figures were not embedded.")
         elif not study.licence_ok:
-            lines.append(f"  CHECK: the licence ({study.license}) is not CC BY or CC0, so figures were not embedded.")
+            lines.append(f"  CHECK: the licence ({licence}) is not CC BY or CC0, so figures were not embedded.")
         elif not study.n_images and study.cites_figures:
             lines.append(
                 "  CHECK: no figure images were embedded in this packet (reviewers see legends and links only)."
