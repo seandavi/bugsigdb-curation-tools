@@ -649,6 +649,14 @@ def curate_command(
             "main-text ones. Needs --decision-model."
         ),
     ),
+    ground_unresolved: bool = typer.Option(
+        False,
+        "--ground-unresolved/--no-ground-unresolved",
+        help=(
+            "fused-lean only: resolve taxa whose model-proposed NCBI id could not be verified by NAME against the "
+            "NCBI authority (local DB / live; LLM disambiguation only for homonyms), so fewer records fail S9."
+        ),
+    ),
     log_format: LogFormat | None = _LOG_FORMAT_OPTION,
     log_level: str | None = _LOG_LEVEL_OPTION,
 ) -> None:
@@ -712,6 +720,7 @@ def curate_command(
                 decision_archive=decision_archive or out / "decision.jsonl",
                 ols_cache=ols_cache,
                 supplements=supplements,
+                ground_unresolved=ground_unresolved,
             )
         )
         return
@@ -737,6 +746,7 @@ def curate_command(
             or (out.with_suffix(".decision.jsonl") if out is not None else None),
             ols_cache=ols_cache,
             supplements=supplements,
+            ground_unresolved=ground_unresolved,
         )
     )
 
@@ -760,6 +770,7 @@ async def _run_curate_one(
     decision_archive: Path | None = None,
     ols_cache: Path = CURATE_DEFAULT_OLS_CACHE,
     supplements: bool = False,
+    ground_unresolved: bool = False,
 ) -> None:
     try:
         async with open_decision_model(decision_name, archive=decision_archive) as decision_model:
@@ -776,6 +787,7 @@ async def _run_curate_one(
                 decision_model=decision_model,
                 ols_cache_path=ols_cache,
                 supplements=supplements,
+                ground_unresolved=ground_unresolved,
             )
     except Exception as exc:  # noqa: BLE001 -- surface any stage failure as a clean CLI error, not a traceback
         error_console.print(f"[red]Error curating PMID {pmid}:[/red] {escape(str(exc))}")
@@ -816,6 +828,7 @@ async def _run_curate_smoke(
     decision_archive: Path | None = None,
     ols_cache: Path = CURATE_DEFAULT_OLS_CACHE,
     supplements: bool = False,
+    ground_unresolved: bool = False,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     ids = smoke_study_ids()
@@ -866,6 +879,7 @@ async def _run_curate_smoke(
                     decision_model=decision_model,
                     ols=ols,
                     supplements=supplements,
+                    ground_unresolved=ground_unresolved,
                 )
             except Exception as exc:  # noqa: BLE001 -- one bad study must not abort the whole batch
                 n_errors += 1

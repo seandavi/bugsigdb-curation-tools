@@ -18,8 +18,9 @@ from pytest_httpx import HTTPXMock
 
 from bugsigdb_curation.curator.model import MockModel
 from bugsigdb_curation.curator.ner import NamedTaxon
-from bugsigdb_curation.curator.reconcile import reconcile_names, resolve_one_name
+from bugsigdb_curation.curator.reconcile import ground_unresolved, reconcile_names, resolve_one_name
 from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL
+from bugsigdb_curation.curator.signature import ExtractedSignature, ExtractedTaxon
 from bugsigdb_curation.curator.taxonomy import NCBI_ESEARCH_URL, NcbiTaxonomyResolver
 from bugsigdb_curation.taxonomy.build import build_taxonomy_db
 from bugsigdb_curation.taxonomy.db import TaxonomyDB
@@ -274,3 +275,90 @@ def test_reconcile_names_dispatches_disambiguation_only_for_the_ambiguous_name(t
     taxa_by_name = {t.taxon_name: t.ncbi_id for sig in signatures for t in sig.taxa}
     assert taxa_by_name["Bacteroides fragilis"] == TAXID_BACTEROIDES_FRAGILIS
     assert taxa_by_name["Morganella"] == TAXID_MORGANELLA_A
+
+
+# --- ground_unresolved (fused-lean taxa whose proposed id could not be verified) ---------------------
+
+
+def _sig(direction, *taxa):
+    return ExtractedSignature(direction, tuple(ExtractedTaxon(name, direction, tax_id) for name, tax_id in taxa))
+
+
+def test_ground_unresolved_resolves_only_taxa_without_an_id_by_name(taxonomy_db: TaxonomyDB):
+    resolver = _resolver(taxonomy_db)
+    model = MockModel()  # never called: no homonym here
+    signatures = [_sig("increased", ("Bacteroides fragilis", None), ("Already verified", 999999))]
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await ground_unresolved(signatures, model=model, resolver=resolver, client=client, source_context="")
+
+    (out,) = _run(run())
+    ids = {t.taxon_name: t.ncbi_id for t in out.taxa}
+    assert ids == {"Bacteroides fragilis": TAXID_BACTEROIDES_FRAGILIS, "Already verified": 999999}  # untouched
+    assert out.direction == "increased" and model.calls == []
+
+
+def test_ground_unresolved_never_guesses_a_name_the_authority_cannot_resolve(taxonomy_db: TaxonomyDB, httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url=f"{NCBI_ESEARCH_URL}?db=taxonomy&term=nonexistentia+madeuppii&retmode=json&tool=bugsigdb-curation&email={DEFAULT_EMAIL.replace('@', '%40')}",
+        json={"esearchresult": {"idlist": []}},
+    )
+    resolver = _resolver(taxonomy_db)
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await ground_unresolved(
+                [_sig("decreased", ("Nonexistentia madeuppii", None))],
+                model=MockModel(), resolver=resolver, client=client, source_context="",
+            )
+
+    (out,) = _run(run())
+    assert [t.ncbi_id for t in out.taxa] == [None]
+
+
+def test_ground_unresolved_disambiguates_a_homonym_via_the_model_and_dedupes(taxonomy_db: TaxonomyDB):
+    resolver = _resolver(taxonomy_db)
+    model = MockModel(responses={"taxon_disambiguate": {"chosen_tax_id": TAXID_MORGANELLA_B}})
+    signatures = [_sig("increased", ("Morganella", None), ("morganella", TAXID_MORGANELLA_B))]  # same taxon twice
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await ground_unresolved(signatures, model=model, resolver=resolver, client=client, source_context="x")
+
+    (out,) = _run(run())
+    assert [(t.taxon_name, t.ncbi_id) for t in out.taxa] == [("Morganella", TAXID_MORGANELLA_B)]  # deduped after grounding
+    assert len(model.calls) == 1
+
+
+def test_curate_async_grounds_unresolved_taxa_only_when_asked(httpx_mock: HTTPXMock, tmp_path):
+    import test_curator_pipeline_e2e as e2e
+
+    from bugsigdb_curation.curator.pipeline import curate_async
+
+    no_ids = {"taxa": [{"name": "Faecalibacterium prausnitzii", "direction": "decreased", "proposed_ncbi_id": None}]}
+
+    def run(ground: bool, tag: str):
+        e2e._mock_idconv(httpx_mock)
+        e2e._mock_fulltext(httpx_mock)
+
+        async def go():
+            async with httpx.AsyncClient() as client:
+                return await curate_async(
+                    e2e.PMID,
+                    model=MockModel(responses={"signature_extract": no_ids}),
+                    client=client,
+                    resolver=NcbiTaxonomyResolver(cache={"faecalibacterium prausnitzii": 853}, cache_path=None, db=None),
+                    taxonomy_cache_path=tmp_path / f"t-{tag}.json",
+                    html_cache_dir=tmp_path / f"h-{tag}",
+                    ground_unresolved=ground,
+                )
+
+        return _run(go())
+
+    def ids(result):
+        return [t.get("ncbi_id") for e in result.record["experiments"] for s in e["signatures"] for t in s["taxa"]]
+
+    assert ids(run(False, "off")) == [None]  # default: an unverifiable (here: absent) proposal stays unresolved
+    on = run(True, "on")
+    assert ids(on) == [853] and on.valid, on.problems  # grounded by name, and the record now passes S9
