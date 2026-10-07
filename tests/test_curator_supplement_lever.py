@@ -1299,7 +1299,7 @@ def test_a_name_resolution_failure_skips_only_that_unit_and_is_recorded(httpx_mo
 
 
 def test_a_fetch_failure_reason_reaches_the_skipped_annotation(httpx_mock):
-    _mock_zip(httpx_mock, status_code=503, content=b"")
+    _mock_zip(httpx_mock, status_code=503, content=b"", is_reusable=True)  # persistent: retried, then reported
     annotations: dict = {}
 
     async def run():
