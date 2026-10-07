@@ -830,14 +830,14 @@ async def resolve_comparison(
     return fields, signatures, unit.provenance
 
 
-def _taxon_keys(signature: ExtractedSignature) -> frozenset[str]:
+def taxon_keys(signature: ExtractedSignature) -> frozenset[str]:
     """A signature's taxa as comparable keys: the NCBI id when resolved (so synonyms agree), else the normalized name."""
     return frozenset(
         f"ncbi:{t.ncbi_id}" if t.ncbi_id is not None else normalize_taxon_name(t.taxon_name) for t in signature.taxa
     )
 
 
-def _overlap(a: frozenset[str], b: frozenset[str]) -> float:
+def taxon_overlap(a: frozenset[str], b: frozenset[str]) -> float:
     """Jaccard overlap of two taxon sets, or 0.0 when either has fewer than :data:`DUPLICATE_MIN_TAXA` taxa."""
     if min(len(a), len(b)) < DUPLICATE_MIN_TAXA:
         return 0.0
@@ -880,7 +880,7 @@ def drop_duplicate_experiments(
     experiment went (``experiment_dropped``). A kept experiment keeps its original `ExperimentFields` object.
     """
     pool: list[tuple[dict[str, Any], str, frozenset[str]]] = [
-        ({"main_experiment_index": index}, sig.direction, _taxon_keys(sig))
+        ({"main_experiment_index": index}, sig.direction, taxon_keys(sig))
         for index, (_, sigs, _) in enumerate(main)
         for sig in sigs
     ]
@@ -890,14 +890,14 @@ def drop_duplicate_experiments(
         remaining: list[ExtractedSignature] = []
         entries: list[dict[str, Any]] = []
         for sig in signatures:
-            keys = _taxon_keys(sig)
+            keys = taxon_keys(sig)
             match = next(
                 (
                     (where, jaccard)
                     for where, direction, pooled in pool
                     if direction == sig.direction
                     and _comparable(where, source, fields)
-                    and (jaccard := _overlap(keys, pooled))
+                    and (jaccard := taxon_overlap(keys, pooled))
                     >= (SUPPLEMENT_DUPLICATE_JACCARD if "supplement" in where else DUPLICATE_JACCARD)
                 ),
                 None,
@@ -926,7 +926,7 @@ def drop_duplicate_experiments(
             "_file": _source_file(source),
             "_groups": _group_pair(fields),
         }
-        pool += [(origin, sig.direction, _taxon_keys(sig)) for sig in remaining]
+        pool += [(origin, sig.direction, taxon_keys(sig)) for sig in remaining]
     return kept, dropped
 
 

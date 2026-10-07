@@ -64,7 +64,7 @@ from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL, resolve
 from bugsigdb_curation.curator.routing import DECISION_CALL_ERRORS, map_body_sites, rank_artifacts
 from bugsigdb_curation.curator.segment import segment_experiments
 from bugsigdb_curation.curator.signature import ExtractedSignature, extract_signatures
-from bugsigdb_curation.curator.supplement_lever import DUPLICATE_MIN_TAXA, _taxon_keys, supplement_experiments
+from bugsigdb_curation.curator.supplement_lever import DUPLICATE_MIN_TAXA, supplement_experiments, taxon_keys
 from bugsigdb_curation.curator.taxonomy import DEFAULT_CACHE_PATH, NcbiTaxonomyResolver
 from bugsigdb_curation.curator.verify import verify_signatures
 from bugsigdb_curation.decision import DecisionModel
@@ -314,7 +314,7 @@ def _drop_duplicate_signatures(
 ) -> tuple[list[_MainExperiment], list[dict[str, Any]]]:
     """Drop a later experiment's signature that copies an earlier one read from the SAME artifact.
 
-    Duplicate = same direction and an identical taxon-key set (`supplement_lever._taxon_keys`) of at least
+    Duplicate = same direction and an identical taxon-key set (`supplement_lever.taxon_keys`) of at least
     `DUPLICATE_MIN_TAXA` taxa, from the same source artifact. The experiment itself is kept (it is a real
     comparison the paper may describe; one without signatures is honest). Returns the new experiment list
     and one `{"experiment_index", "source", "direction", "same_as_experiment_index"}` record per drop.
@@ -325,7 +325,7 @@ def _drop_duplicate_signatures(
     for index, (fields, signatures, source) in enumerate(experiments):
         kept: list[ExtractedSignature] = []
         for signature in signatures:
-            keys = _taxon_keys(signature)
+            keys = taxon_keys(signature)
             earlier = next(
                 (
                     i
