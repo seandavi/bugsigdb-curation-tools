@@ -17,11 +17,12 @@ from pytest_httpx import HTTPXMock
 
 from bugsigdb_curation.curator.artifact_text import group_orientation_text
 from bugsigdb_curation.curator.design import Design
+from bugsigdb_curation.curator.evidence import EvidenceFigure
 from bugsigdb_curation.curator.experiment import ExperimentFields
 from bugsigdb_curation.curator.locate import LocatedArtifact, locate_artifact, locate_artifacts
 from bugsigdb_curation.curator.model import DEFAULT_MOCK_RESPONSES, MockModel, ModelCallError
 from bugsigdb_curation.curator.ner import build_ner_messages
-from bugsigdb_curation.curator.pipeline import _drop_duplicate_signatures, curate_async
+from bugsigdb_curation.curator.pipeline import _drop_duplicate_signatures, _figure_image_once, curate_async
 from bugsigdb_curation.curator.signature import ExtractedSignature, ExtractedTaxon, build_signature_messages
 from bugsigdb_curation.decision import MockDecisionModel, NoulAnswer
 from bugsigdb_curation.retrieval import EUROPEPMC_FULLTEXT_URL, PMC_ARTICLE_URL
@@ -162,12 +163,14 @@ def _study(
     decision_model=_ranker,
     design=Design.fused_lean,
     stages: dict | None = None,
+    esearch_ids: tuple[str, ...] = (),
     **curate_kwargs,
 ):
     """Run curate_async over the two-figure paper with `n_experiments` stubs; returns (result, model).
 
     The split designs take their extractor responses from `stages` (`signature_ner`, `review_signature`, ...);
-    unknown taxon names stay unresolved (every esearch comes back empty).
+    taxon names resolve through a mocked esearch that returns `esearch_ids` (none by default, so they stay
+    unresolved); it is only registered for the split designs and `ground_unresolved=True`.
     """
     e2e._mock_idconv(httpx_mock)
     httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid=e2e.PMCID), text=TWO_FIG_XML)
@@ -182,10 +185,10 @@ def _study(
         is_optional=True,
         is_reusable=True,
     )
-    if design is not Design.fused_lean:
+    if design is not Design.fused_lean or curate_kwargs.get("ground_unresolved"):
         httpx_mock.add_response(
             url=re.compile(r"https://eutils\.ncbi\.nlm\.nih\.gov/entrez/eutils/esearch.*"),
-            json={"esearchresult": {"idlist": []}},
+            json={"esearchresult": {"idlist": list(esearch_ids)}},
             is_optional=True,
             is_reusable=True,
         )
@@ -498,6 +501,89 @@ def test_a_failure_on_the_first_candidate_still_aborts_the_study(httpx_mock, tmp
 def test_a_programming_error_on_a_later_candidate_still_surfaces(httpx_mock, tmp_path):
     with pytest.raises(ValueError, match="bug"):
         _study(httpx_mock, tmp_path, _fails_on_figure_3(ValueError("bug")))
+
+
+def test_a_fused_lean_fallback_candidate_has_its_unresolved_taxa_grounded(httpx_mock, tmp_path):
+    """ground_unresolved applies to the candidate that is actually used, after an earlier one declined."""
+    f7_calls: list[int] = []
+
+    def signature_extract(messages):
+        if _which_figure(messages) == "Figure 3":
+            return TAXA_A
+        f7_calls.append(1)
+        return {"taxa": []} if len(f7_calls) == 1 else TAXA_B
+
+    result, _ = _study(httpx_mock, tmp_path, signature_extract, ground_unresolved=True, esearch_ids=("853",))
+
+    assert result.annotations["experiment_artifacts"][0] == {
+        "experiment_index": 0,
+        "artifact_tried": ["Figure 7", "Figure 3"],
+        "artifact_used": "Figure 3",
+    }
+    taxa = result.record["experiments"][0]["signatures"][0]["taxa"]
+    assert {t["ncbi_id"] for t in taxa} == {853} and len(taxa) == 3
+    assert result.valid, result.problems
+
+
+def test_split_design_flags_name_the_experiment_and_artifact_they_came_from(httpx_mock, tmp_path):
+    """The reviewer drops every extractor taxon (none re-grounds): once per candidate, each flag attributed."""
+    stages = {
+        "signature_ner": TAXA_A,
+        "review_signature": {"taxa": []},
+        "review_ground_check": {"results": []},
+    }
+    result, _ = _study(httpx_mock, tmp_path, None, design=Design.split_panel, stages=stages, n_experiments=1)
+
+    assert len(result.flags) == 6
+    assert sum(f.startswith("exp 0 / Figure 7: panel dropped ") for f in result.flags) == 3
+    assert sum(f.startswith("exp 0 / Figure 3: panel dropped ") for f in result.flags) == 3
+
+
+def _located_figure(number: str, label: str, blob_url: str | None) -> LocatedArtifact:
+    figure = EvidenceFigure(
+        figure_id=f"F{label}", number=number, label=label, legend="x", graphic_filename=None, blob_url=blob_url
+    )
+    return LocatedArtifact(kind="figure", figure=figure)
+
+
+def test_figures_sharing_a_provenance_string_each_get_their_own_cached_image(httpx_mock):
+    """'Figure 2A' and 'Figure 2' both read 'Figure 2' (provenance keeps the first integer): keyed by blob URL."""
+    blob_a, blob_b = "https://cdn.example/a.jpg", "https://cdn.example/b.jpg"
+    httpx_mock.add_response(url=blob_a, content=PNG + b"A")
+    httpx_mock.add_response(url=blob_b, content=PNG + b"B")
+    first, second = _located_figure("2", "Figure 2.", blob_a), _located_figure("2", "Figure 2A.", blob_b)
+    assert first.provenance == second.provenance
+
+    async def run():
+        cache: dict = {}
+        annotations: dict = {}
+        async with httpx.AsyncClient() as client:
+            images = [
+                await _figure_image_once(a, client=client, cache=cache, annotations=annotations)
+                for a in (first, second, first)
+            ]
+        return images, annotations
+
+    images, annotations = asyncio.run(run())
+    assert images == [PNG + b"A", PNG + b"B", PNG + b"A"]
+    assert "figure_image_unavailable" not in annotations
+    assert [str(r.url) for r in httpx_mock.get_requests()] == [blob_a, blob_b]  # `first` cached on its repeat
+
+
+def test_figures_without_a_blob_url_are_cached_per_figure_not_per_provenance():
+    first, second = _located_figure("2", "Figure 2.", None), _located_figure("2", "Figure 2A.", None)
+
+    async def run():
+        cache: dict = {}
+        annotations: dict = {}
+        async with httpx.AsyncClient() as client:
+            for artifact in (first, second):
+                await _figure_image_once(artifact, client=client, cache=cache, annotations=annotations)
+        return cache, annotations
+
+    cache, annotations = asyncio.run(run())
+    assert len(cache) == 2
+    assert annotations["figure_image_unavailable"] == ["Figure 2", "Figure 2"]
 
 
 # --- the duplicate guard on its own ------------------------------------------------------------

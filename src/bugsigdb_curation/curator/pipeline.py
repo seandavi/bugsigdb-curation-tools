@@ -47,6 +47,7 @@ from bugsigdb_curation.curator.assemble import assemble_record
 from bugsigdb_curation.curator.design import DEFAULT_DESIGN, Design
 from bugsigdb_curation.curator.evidence import (
     EvidenceBundle,
+    EvidenceFigure,
     assemble_evidence,
     fetch_figure_image,
 )
@@ -103,7 +104,9 @@ class CurationResult:
     split-panel A2 stages emit for anything dropped or left unresolved after
     their bounded repair loop exhausted (e.g. a taxon that never re-grounded,
     a direction that never converged) -- empty for `fused-lean`, which has no
-    semantic A2 stage to flag anything.
+    semantic A2 stage to flag anything. Each is prefixed ``exp <i> / <artifact>: `` -- the experiment
+    and candidate artifact whose extraction it came from (a candidate that was tried may not be the one
+    used).
     """
 
     pmid: str
@@ -283,10 +286,13 @@ async def _figure_image_once(
     artifact: LocatedArtifact,
     *,
     client: httpx.AsyncClient,
-    cache: dict[str, bytes | None],
+    cache: dict[str | EvidenceFigure, bytes | None],
     annotations: dict[str, Any],
 ) -> bytes | None:
-    """The image of a figure artifact, downloaded at most once per study (`cache` is keyed by provenance).
+    """The image of a figure artifact, downloaded at most once per study.
+
+    `cache` is keyed by the figure's blob URL, or by the (frozen) figure itself when it has none: provenance
+    strings collide ("Figure 2", "Figure 2A" and "Figure S2" all read "Figure 2").
 
     A figure with no image means S5b extracts from the legend alone -- often empty or wrong -- so say so
     loudly in the log and append its provenance to `annotations["figure_image_unavailable"]` (a list)
@@ -294,7 +300,7 @@ async def _figure_image_once(
     """
     if artifact.kind != "figure" or artifact.figure is None:
         return None
-    key = artifact.provenance
+    key = artifact.figure.blob_url or artifact.figure
     if key in cache:
         return cache[key]
     image: bytes | None = None
@@ -304,9 +310,9 @@ async def _figure_image_once(
         logger.bind(stage="S5b").warning("figure image download failed", error=repr(exc))
     if image is None:
         logger.bind(stage="S5b").warning(
-            "figure image unavailable; extracting from the legend alone", artifact=key
+            "figure image unavailable; extracting from the legend alone", artifact=artifact.provenance
         )
-        annotations.setdefault("figure_image_unavailable", []).append(key)
+        annotations.setdefault("figure_image_unavailable", []).append(artifact.provenance)
     cache[key] = image
     return image
 
@@ -501,7 +507,7 @@ async def curate_async(
                         {"artifact": a.provenance, "kind": a.kind, "p_da": a.p_da} for a in ranked
                     ]
                 candidates = locate_artifacts(bundle, ranked)
-                figure_images: dict[str, bytes | None] = {}  # each candidate figure's image: once per study
+                figure_images: dict[str | EvidenceFigure, bytes | None] = {}  # each candidate figure's image: once per study
                 # Something to fall back to (another experiment or candidate artifact) is what makes a decline useful.
                 may_decline = len(stubs) > 1 or len(candidates) > 1
 
@@ -565,7 +571,9 @@ async def curate_async(
                             )
                             errors.append({"artifact": artifact.provenance, "error": repr(exc)})
                             break
-                        flags.extend(stage_flags)
+                        flags.extend(
+                            f"exp {len(experiments)} / {artifact.provenance}: {flag}" for flag in stage_flags
+                        )
                         if not found:
                             continue
                         repeats_earlier = all(
