@@ -47,13 +47,14 @@ from bugsigdb_curation.curator.assemble import assemble_record
 from bugsigdb_curation.curator.design import DEFAULT_DESIGN, Design
 from bugsigdb_curation.curator.evidence import (
     EvidenceBundle,
+    EvidenceFigure,
     assemble_evidence,
     fetch_figure_image,
 )
 from bugsigdb_curation.curator.experiment import ExperimentFields, extract_experiment
 from bugsigdb_curation.curator.extract import StudyFields, extract_study
-from bugsigdb_curation.curator.locate import LocatedArtifact, locate_artifact
-from bugsigdb_curation.curator.model import Model
+from bugsigdb_curation.curator.locate import LocatedArtifact, locate_artifacts
+from bugsigdb_curation.curator.model import Model, ModelError
 from bugsigdb_curation.curator.ner import extract_names
 from bugsigdb_curation.curator.ols import DEFAULT_CACHE_PATH as DEFAULT_OLS_CACHE_PATH
 from bugsigdb_curation.curator.ols import OlsClient
@@ -64,7 +65,12 @@ from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL, resolve
 from bugsigdb_curation.curator.routing import DECISION_CALL_ERRORS, map_body_sites, rank_artifacts
 from bugsigdb_curation.curator.segment import segment_experiments
 from bugsigdb_curation.curator.signature import ExtractedSignature, extract_signatures
-from bugsigdb_curation.curator.supplement_lever import supplement_experiments
+from bugsigdb_curation.curator.supplement_lever import (
+    SUPPLEMENT_DUPLICATE_JACCARD,
+    supplement_experiments,
+    taxon_keys,
+    taxon_overlap,
+)
 from bugsigdb_curation.curator.taxonomy import DEFAULT_CACHE_PATH, NcbiTaxonomyResolver
 from bugsigdb_curation.curator.verify import verify_signatures
 from bugsigdb_curation.decision import DecisionModel
@@ -98,7 +104,9 @@ class CurationResult:
     split-panel A2 stages emit for anything dropped or left unresolved after
     their bounded repair loop exhausted (e.g. a taxon that never re-grounded,
     a direction that never converged) -- empty for `fused-lean`, which has no
-    semantic A2 stage to flag anything.
+    semantic A2 stage to flag anything. Each is prefixed ``exp <i> / <artifact>: `` -- the experiment
+    and candidate artifact whose extraction it came from (a candidate that was tried may not be the one
+    used).
     """
 
     pmid: str
@@ -201,12 +209,20 @@ async def _extract_experiment_signatures(
     image_bytes: bytes | None,
     experiment_fields: ExperimentFields,
     ground_unresolved: bool = False,
+    may_decline: bool = False,
+    more_candidates: bool = False,
 ) -> tuple[list[ExtractedSignature], tuple[str, ...]]:
     """S5b/S6 + S10, dispatched by `design` -- the only per-design branch in
     the whole pipeline (see module docstring). Returns `(signatures, flags)`;
     `flags` is always empty for `fused-lean` (no semantic A2 stage to flag
     anything -- S9's structural validation runs unconditionally afterward,
     same as before this dispatch existed).
+
+    `may_decline` puts the "return no taxa if this artifact does not report the comparison" escape hatch
+    into the extractor (and reviewer) prompts -- set only when something else can be tried instead.
+    `more_candidates` says a later candidate artifact exists: a split design whose extractor found nothing
+    here then returns `([], ())` without calling the reviewer/verifier, so the decline really falls through
+    (a reviewer re-reading the artifact on its own would find taxa and end the candidate search).
 
     `design` is coerced to a real `Design` member up front: `Design` is a
     `str` subclass so a plain string (e.g. a caller passing
@@ -223,7 +239,13 @@ async def _extract_experiment_signatures(
     groups = (experiment_fields.group_0_name, experiment_fields.group_1_name)
     if design is Design.fused_lean:
         signatures = await extract_signatures(
-            bundle_artifact, model=model, resolver=resolver, client=client, image_bytes=image_bytes, groups=groups
+            bundle_artifact,
+            model=model,
+            resolver=resolver,
+            client=client,
+            image_bytes=image_bytes,
+            groups=groups,
+            may_decline=may_decline,
         )
         if ground_unresolved:  # opt-in: resolve names S6 could not verify an id for (split designs already do)
             signatures = await ground_unresolved_taxa(
@@ -236,10 +258,12 @@ async def _extract_experiment_signatures(
         return signatures, ()
 
     source_context = _build_source_context(experiment_fields, bundle_artifact)
-    names = extract_names(bundle_artifact, model=model, image_bytes=image_bytes, groups=groups)
+    names = extract_names(bundle_artifact, model=model, image_bytes=image_bytes, groups=groups, may_decline=may_decline)
     signatures = await reconcile_names(
         names, model=model, resolver=resolver, client=client, source_context=source_context
     )
+    if not signatures and more_candidates:
+        return [], ()
 
     if design is Design.split_verify:
         return verify_signatures(signatures, artifact=bundle_artifact, model=model, image_bytes=image_bytes)
@@ -253,7 +277,106 @@ async def _extract_experiment_signatures(
         client=client,
         source_context=source_context,
         image_bytes=image_bytes,
+        groups=groups,
+        may_decline=may_decline,
     )
+
+
+async def _figure_image_once(
+    artifact: LocatedArtifact,
+    *,
+    client: httpx.AsyncClient,
+    cache: dict[str | EvidenceFigure, bytes | None],
+    annotations: dict[str, Any],
+) -> bytes | None:
+    """The image of a figure artifact, downloaded at most once per study.
+
+    `cache` is keyed by the figure's blob URL, or by the (frozen) figure itself when it has none: provenance
+    strings collide ("Figure 2", "Figure 2A" and "Figure S2" all read "Figure 2").
+
+    A figure with no image means S5b extracts from the legend alone -- often empty or wrong -- so say so
+    loudly in the log and append its provenance to `annotations["figure_image_unavailable"]` (a list)
+    rather than failing silently. A CDN hiccup must not abort the study. Tables have no image (None).
+    """
+    if artifact.kind != "figure" or artifact.figure is None:
+        return None
+    key = artifact.figure.blob_url or artifact.figure
+    if key in cache:
+        return cache[key]
+    image: bytes | None = None
+    try:
+        image = await fetch_figure_image(artifact.figure, client=client)
+    except httpx.HTTPError as exc:
+        logger.bind(stage="S5b").warning("figure image download failed", error=repr(exc))
+    if image is None:
+        logger.bind(stage="S5b").warning(
+            "figure image unavailable; extracting from the legend alone", artifact=artifact.provenance
+        )
+        annotations.setdefault("figure_image_unavailable", []).append(artifact.provenance)
+    cache[key] = image
+    return image
+
+
+_MainExperiment = tuple[ExperimentFields, list[ExtractedSignature], str | None]
+
+
+_SeenSignature = tuple[int, str, str, frozenset[str]]  # (experiment index, source, direction, taxon keys)
+
+
+def _earlier_duplicate(signature: ExtractedSignature, source: str | None, seen: list[_SeenSignature]) -> int | None:
+    """The index of the earlier experiment whose signature `signature` copies, or None.
+
+    A copy is the same source artifact, the same direction and a taxon-key set (`taxon_keys`) overlapping at
+    `SUPPLEMENT_DUPLICATE_JACCARD` or more, both sets having at least `DUPLICATE_MIN_TAXA` taxa (`taxon_overlap`).
+    """
+    if source is None:
+        return None
+    keys = taxon_keys(signature)
+    return next(
+        (
+            index
+            for index, seen_source, direction, seen_keys in seen
+            if seen_source == source
+            and direction == signature.direction
+            and taxon_overlap(keys, seen_keys) >= SUPPLEMENT_DUPLICATE_JACCARD
+        ),
+        None,
+    )
+
+
+def _drop_duplicate_signatures(
+    experiments: list[_MainExperiment],
+) -> tuple[list[_MainExperiment], list[dict[str, Any]]]:
+    """Drop a later experiment's signature that copies an earlier one read from the SAME artifact.
+
+    Duplicate = see `_earlier_duplicate` (near-copies count). The experiment itself is kept (it is a real
+    comparison the paper may describe; one without signatures is honest). Returns the new experiment list
+    and one `{"experiment_index", "source", "direction", "same_as_experiment_index"}` record per drop.
+    This is the backstop: the candidate loop already treats an all-duplicate candidate as a decline and tries
+    the next one, so a drop here means there was no later candidate left to try.
+    """
+    seen: list[_SeenSignature] = []
+    dropped: list[dict[str, Any]] = []
+    kept_experiments: list[_MainExperiment] = []
+    for index, (fields, signatures, source) in enumerate(experiments):
+        kept: list[ExtractedSignature] = []
+        for signature in signatures:
+            earlier = _earlier_duplicate(signature, source, seen)
+            if earlier is not None:
+                dropped.append(
+                    {
+                        "experiment_index": index,
+                        "source": source,
+                        "direction": signature.direction,
+                        "same_as_experiment_index": earlier,
+                    }
+                )
+                continue
+            kept.append(signature)
+            if source is not None:
+                seen.append((index, source, signature.direction, taxon_keys(signature)))
+        kept_experiments.append((fields, kept, source))
+    return kept_experiments, dropped
 
 
 async def curate_async(
@@ -286,6 +409,11 @@ async def curate_async(
     `OlsClient` across studies and then owns saving its cache). Every judgment is best-effort -- a failed decision
     call is logged and the stage falls back to its no-decision-model
     behaviour -- and with `decision_model=None` the pipeline is unchanged.
+
+    With a decision model each experiment tries the top-ranked artifacts (`locate_artifacts`) in rank order
+    and takes the first that yields taxa (S5b may decline an artifact that does not report the comparison);
+    the tries are recorded in `annotations["experiment_artifacts"]`, and a later experiment's signature that
+    copies an earlier one from the same artifact is dropped (`annotations["duplicate_signatures_dropped"]`).
 
     `supplements=True` (needs `decision_model`, else `ValueError`) also reads the paper's supplementary files
     (`curator.supplement_lever`): the decision model screens each sheet/page, the units that pass are extracted
@@ -378,23 +506,14 @@ async def curate_async(
                     annotations["artifact_ranking"] = [
                         {"artifact": a.provenance, "kind": a.kind, "p_da": a.p_da} for a in ranked
                     ]
-                artifact = locate_artifact(bundle, ranked)
-                # Fetched once for the whole study (it was re-fetched per experiment before). A figure
-                # artifact with no image means S5b extracts from the legend alone -- often empty or wrong --
-                # so say so loudly in the log and in the annotations rather than failing silently.
-                image_bytes = None
-                if artifact is not None and artifact.kind == "figure" and artifact.figure is not None:
-                    try:
-                        image_bytes = await fetch_figure_image(artifact.figure, client=client)
-                    except httpx.HTTPError as exc:  # a CDN hiccup must not abort the study
-                        logger.bind(stage="S5b").warning("figure image download failed", error=repr(exc))
-                    if image_bytes is None:
-                        logger.bind(stage="S5b").warning(
-                            "figure image unavailable; extracting from the legend alone", artifact=artifact.provenance
-                        )
-                        annotations["figure_image_unavailable"] = artifact.provenance
+                candidates = locate_artifacts(bundle, ranked)
+                figure_images: dict[str | EvidenceFigure, bytes | None] = {}  # each candidate figure's image: once per study
+                # Something to fall back to (another experiment or candidate artifact) is what makes a decline useful.
+                may_decline = len(stubs) > 1 or len(candidates) > 1
 
-                experiments: list[tuple[ExperimentFields, list[ExtractedSignature], str | None]] = []
+                experiments: list[_MainExperiment] = []
+                accepted: list[_SeenSignature] = []  # signatures already taken for earlier experiments
+                experiment_artifacts: list[dict[str, Any]] = []
                 flags: list[str] = []
                 body_site_terms: list[dict[str, Any]] = []
                 # NOTE: no per-experiment error isolation -- one bad ExperimentStub
@@ -413,26 +532,90 @@ async def curate_async(
                             annotations,
                         )
 
+                    # Try the candidate artifacts in rank order; the first that yields taxa serves this
+                    # experiment (a paper's comparisons are often reported by different artifacts).
                     signatures: list[ExtractedSignature] = []
-                    source: str | None = None
-                    if artifact is not None:
-                        signatures, stage_flags = await _extract_experiment_signatures(
-                            artifact,
-                            design=design,
-                            model=model,
-                            resolver=resolver,
-                            client=client,
-                            image_bytes=image_bytes,
-                            experiment_fields=experiment_fields,
-                            ground_unresolved=ground_unresolved,
+                    source: str | None = candidates[0].provenance if candidates else None
+                    tried: list[str] = []
+                    duplicates: list[str] = []  # candidates that only repeated an earlier experiment's signatures
+                    errors: list[dict[str, str]] = []
+                    for position, artifact in enumerate(candidates):
+                        tried.append(artifact.provenance)
+                        try:
+                            image_bytes = await _figure_image_once(
+                                artifact, client=client, cache=figure_images, annotations=annotations
+                            )
+                            found, stage_flags = await _extract_experiment_signatures(
+                                artifact,
+                                design=design,
+                                model=model,
+                                resolver=resolver,
+                                client=client,
+                                image_bytes=image_bytes,
+                                experiment_fields=experiment_fields,
+                                ground_unresolved=ground_unresolved,
+                                may_decline=may_decline,
+                                more_candidates=position + 1 < len(candidates),
+                            )
+                        except (ModelError, httpx.HTTPError) as exc:
+                            # Only the first candidate is load-bearing (an error there aborts the study, as it
+                            # always has); a later one is an extra try, so its failure must not cost the study
+                            # an experiment that would otherwise just be left empty.
+                            if position == 0:
+                                raise
+                            logger.bind(stage="S5b").warning(
+                                "later candidate artifact failed; stopping its search",
+                                experiment_index=len(experiments),
+                                artifact=artifact.provenance,
+                                error=repr(exc),
+                            )
+                            errors.append({"artifact": artifact.provenance, "error": repr(exc)})
+                            break
+                        flags.extend(
+                            f"exp {len(experiments)} / {artifact.provenance}: {flag}" for flag in stage_flags
                         )
-                        flags.extend(stage_flags)
-                        source = artifact.provenance
+                        if not found:
+                            continue
+                        repeats_earlier = all(
+                            _earlier_duplicate(sig, artifact.provenance, accepted) is not None for sig in found
+                        )
+                        if repeats_earlier and position + 1 < len(candidates):
+                            # A copy of what an earlier experiment took from this artifact: the model did not
+                            # decline, but this artifact is not where THIS comparison is reported -- try the next.
+                            duplicates.append(artifact.provenance)
+                            continue
+                        signatures, source = found, artifact.provenance
+                        break
+                    for sig in signatures:
+                        if source is not None and _earlier_duplicate(sig, source, accepted) is None:
+                            accepted.append((len(experiments), source, sig.direction, taxon_keys(sig)))
+                    if ranked:
+                        experiment_artifacts.append(
+                            {
+                                "experiment_index": len(experiments),
+                                "artifact_tried": tried,
+                                "artifact_used": source if signatures else None,
+                                **({"artifact_duplicate": duplicates} if duplicates else {}),
+                                **({"errors": errors} if errors else {}),
+                            }
+                        )
 
                     experiments.append((experiment_fields, signatures, source))
 
                 if body_site_terms:
                     annotations["body_site_terms"] = body_site_terms
+
+                experiments, duplicates_dropped = _drop_duplicate_signatures(experiments)
+                if duplicates_dropped:
+                    annotations["duplicate_signatures_dropped"] = duplicates_dropped
+                for entry in experiment_artifacts:
+                    # An artifact whose every signature the backstop dropped was tried, not used.
+                    used = entry["artifact_used"]
+                    if used is not None and not experiments[entry["experiment_index"]][1]:
+                        entry["artifact_used"] = None
+                        entry["artifact_duplicate"] = [*entry.get("artifact_duplicate", []), used]
+                if experiment_artifacts:
+                    annotations["experiment_artifacts"] = experiment_artifacts
 
                 if supplements:
                     assert decision_model is not None  # checked at entry

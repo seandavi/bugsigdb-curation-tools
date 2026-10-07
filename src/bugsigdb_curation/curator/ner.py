@@ -64,10 +64,15 @@ def build_ner_messages(
     *,
     image_bytes: bytes | None = None,
     groups: tuple[str | None, str | None] | None = None,
+    may_decline: bool = False,
 ) -> list[dict]:
-    """Build S5b-NER's names-only prompt: table text, or figure legend + image (+ the group names)."""
+    """Build S5b-NER's names-only prompt: table text, or figure legend + image (+ the group names).
+
+    `may_decline` adds the "return no taxa if this artifact does not report the comparison" escape hatch
+    to the group block (see `group_orientation_text`); it has no effect without `groups`.
+    """
     artifact_kind, artifact_content = artifact_kind_and_text(artifact)
-    orientation = group_orientation_text(*groups) if groups else ""
+    orientation = group_orientation_text(*groups, may_decline=may_decline) if groups else ""
     text = _PROMPT_TEMPLATE.format(
         artifact_kind=artifact_kind, artifact_content=artifact_content, orientation=orientation
     )
@@ -84,6 +89,7 @@ def extract_names(
     image_bytes: bytes | None = None,
     stage: str = DEFAULT_NER_STAGE,
     groups: tuple[str | None, str | None] | None = None,
+    may_decline: bool = False,
 ) -> list[NamedTaxon]:
     """S5b-NER: one model call, names + direction only (no id).
 
@@ -91,7 +97,7 @@ def extract_names(
     panel` overrides it (`"review_signature"`) to reuse this exact prompt
     shape for the independent reviewer's fresh-context re-derivation.
     """
-    messages = build_ner_messages(artifact, image_bytes=image_bytes, groups=groups)
+    messages = build_ner_messages(artifact, image_bytes=image_bytes, groups=groups, may_decline=may_decline)
     response = model.complete(stage=stage, messages=messages)
     raw_taxa = response.get("taxa", []) or []
 

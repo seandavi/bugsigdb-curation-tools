@@ -33,7 +33,7 @@ def artifact_kind_and_text(artifact: LocatedArtifact) -> tuple[str, str]:
     raise ValueError(f"LocatedArtifact of kind {artifact.kind!r} is missing its payload")
 
 
-def group_orientation_text(group_0: str | None, group_1: str | None) -> str:
+def group_orientation_text(group_0: str | None, group_1: str | None, *, may_decline: bool = False) -> str:
     """The prompt block that pins down which group is which, or "" when either name is unknown.
 
     BugSigDB's convention (it holds for ~95% of curated experiments where one group is
@@ -41,9 +41,20 @@ def group_orientation_text(group_0: str | None, group_1: str | None) -> str:
     case/exposed/treated group, and every signature reports taxa INCREASED or DECREASED in Group 1
     relative to Group 0. Without the names the model has to guess which group "Group 1" is, which
     flips directions wholesale (L031).
+
+    `may_decline` adds the escape hatch: return no taxa when the artifact does not report this
+    comparison. Offer it only when the caller has somewhere to fall back to (another experiment or
+    candidate artifact): otherwise a decline just empties the experiment, and S4's group names often
+    differ from the artifact's own labels (HC vs "Healthy controls").
     """
     if not (group_0 and group_0.strip() and group_1 and group_1.strip()):
         return ""
+    escape_hatch = (
+        "If this table or figure does NOT report a comparison between these two groups, return "
+        '{"taxa": []} -- do not fill in taxa from a different comparison.\n'
+        if may_decline
+        else ""
+    )
     return (
         "The two compared groups are:\n"
         f"- Group 0 (the reference / control / baseline group): {group_0.strip()}\n"
@@ -51,5 +62,6 @@ def group_orientation_text(group_0: str | None, group_1: str | None) -> str:
         "Report each taxon's direction relative to these groups: INCREASED means more abundant in "
         "Group 1 than in Group 0; DECREASED means less abundant in Group 1 than in Group 0. In a "
         "figure, use the legend to decide which colour or side belongs to which group -- never "
-        "assume the left/top/first-listed group is Group 1.\n\n"
+        "assume the left/top/first-listed group is Group 1.\n"
+        f"{escape_hatch}\n"
     )

@@ -368,7 +368,7 @@ def test_figure_image_is_fetched_once_per_study_not_once_per_experiment(httpx_mo
 def test_a_failed_image_download_degrades_instead_of_aborting_and_is_flagged(httpx_mock: HTTPXMock, tmp_path):
     _mock_ols_none(httpx_mock)
     result, _ = _e2e_study(httpx_mock, tmp_path, image_status=500)
-    assert result.annotations["figure_image_unavailable"].startswith("Figure")
+    assert result.annotations["figure_image_unavailable"] == ["Figure 1"]  # a list, flagged once per figure
     assert result.record["experiments"]  # the study still produced a record
 
 

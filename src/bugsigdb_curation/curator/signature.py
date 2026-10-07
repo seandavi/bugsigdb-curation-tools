@@ -95,11 +95,13 @@ def build_signature_messages(
     *,
     image_bytes: bytes | None = None,
     groups: tuple[str | None, str | None] | None = None,
+    may_decline: bool = False,
 ) -> list[dict]:
     """Build S5b's fused-extract prompt: table text, or figure legend + image.
 
     `groups` is S4's `(group_0_name, group_1_name)`; when both are known the prompt names them and
-    pins down what INCREASED/DECREASED is relative to (see `group_orientation_text`).
+    pins down what INCREASED/DECREASED is relative to (see `group_orientation_text`); `may_decline` adds
+    its "return no taxa if this artifact does not report the comparison" escape hatch.
     """
     if artifact.kind == "table" and artifact.table is not None:
         artifact_kind = "table"
@@ -110,7 +112,7 @@ def build_signature_messages(
     else:
         raise ValueError(f"LocatedArtifact of kind {artifact.kind!r} is missing its payload")
 
-    orientation = group_orientation_text(*groups) if groups else ""
+    orientation = group_orientation_text(*groups, may_decline=may_decline) if groups else ""
     text = _PROMPT_TEMPLATE.format(
         artifact_kind=artifact_kind, artifact_content=artifact_content, orientation=orientation
     )
@@ -128,13 +130,14 @@ async def extract_signatures(
     client: httpx.AsyncClient,
     image_bytes: bytes | None = None,
     groups: tuple[str | None, str | None] | None = None,
+    may_decline: bool = False,
 ) -> list[ExtractedSignature]:
     """S5b (fused extract) + S6 (verify): one model call, per-taxon id verification.
 
     Groups the model's flat taxon list by direction into <=2
     `ExtractedSignature`s (schema shape: one signature per direction).
     """
-    messages = build_signature_messages(artifact, image_bytes=image_bytes, groups=groups)
+    messages = build_signature_messages(artifact, image_bytes=image_bytes, groups=groups, may_decline=may_decline)
     # NOTE: model.complete() is sync and blocks the event loop here (and in
     # the other stage modules' model calls). Fine for Architecture-A's
     # single-worker loop; only matters once Architecture-B runs experiments
