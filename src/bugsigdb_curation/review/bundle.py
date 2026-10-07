@@ -36,6 +36,8 @@ MAX_CARD_AUTHORS = 6
 
 _NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 _CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+_PMCID_RE = re.compile(r"PMC[0-9]+")
+_DOI_RE = re.compile(r"10\.[0-9]{4,9}/\S+")  # only a well-formed DOI becomes a link: never a scheme or `..` segments
 _PMID_RE = re.compile(r"[0-9]+")  # ASCII digits only: the file stem becomes zip member names and hrefs
 _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 _PACKET_DATA_RE = re.compile(r'<script type="application/json" id="packet-data">(.*?)</script>', re.DOTALL)
@@ -374,9 +376,9 @@ def _card(study: _Study) -> str:
     links = []
     if _is_pmid(study.pmid):
         links.append(f'<a href="https://pubmed.ncbi.nlm.nih.gov/{_e(study.pmid)}/">PMID {_e(study.pmid)}</a>')
-    if study.pmcid:
+    if study.pmcid and _PMCID_RE.fullmatch(study.pmcid):
         links.append(f'<a href="https://pmc.ncbi.nlm.nih.gov/articles/{_e(quote(study.pmcid))}/">{_e(study.pmcid)}</a>')
-    if study.doi:
+    if _DOI_RE.fullmatch(study.doi) and not {".", ".."} & set(study.doi.split("/")):
         links.append(f'<a href="https://doi.org/{_e(quote(study.doi, safe="/()"))}">DOI</a>')
     venue = " · ".join(x for x in (study.journal, study.year) if x)
     licence_class = "" if study.licence_ok else ' class="flag"'

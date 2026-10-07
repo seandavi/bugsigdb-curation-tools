@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import os
 import re
+import subprocess
+import sys
 import zipfile
 from collections.abc import Callable
 from dataclasses import replace
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import pytest
 import typer
@@ -255,6 +260,56 @@ def test_index_card_links_licence_size_and_packet_id(packets: Path) -> None:
     assert (f"{size / 1024:.0f} KB" if size < 1024 * 1024 else f"{size / 1024 / 1024:.1f} MB") in html
 
 
+_SAFE_HREF = re.compile(
+    r"https://pubmed\.ncbi\.nlm\.nih\.gov/\d+/"
+    r"|https://pmc\.ncbi\.nlm\.nih\.gov/articles/PMC\d+/"
+    r"|https://doi\.org/10\.\d{4,9}/[^\s]+"
+    r"|packets/\d+\.html"
+)
+
+
+def _assert_links_are_safe(bundle: Any) -> list[str]:
+    hrefs = [value for _tag, _attr, value in parse_index(bundle).refs]
+    for href in hrefs:
+        assert _SAFE_HREF.fullmatch(href), href
+        parsed = urlparse(href)
+        assert parsed.scheme in ("https", "") and not parsed.query and not parsed.fragment, href
+        assert ".." not in parsed.path.split("/") and "." not in parsed.path.split("/"), href
+    return hrefs
+
+
+@pytest.mark.parametrize(
+    "doi",
+    [
+        "javascript:alert(1)",
+        "../..",
+        "10.1000/../../x",
+        "10.1000/x?y#z",
+        "//evil.example/10.1000/x",
+        'https://evil.example/"><svg onload=alert(1)>',
+        "10.1000/a b\nc",
+    ],
+)
+def test_hostile_doi_never_changes_the_link_scheme_or_path(tmp_path: Path, doi: str) -> None:
+    directory = tmp_path / "p"
+    write_packet(directory, "99000001", with_image=False, edit=lambda record: record.update(doi=doi))
+    _assert_links_are_safe(make_bundle(directory))
+
+
+@pytest.mark.parametrize("pmcid", ["../x", "PMC1/../../x", "javascript:alert(1)", "PMC1?x#y", "pmc1", "PMC\u00b2"])
+def test_hostile_pmcid_never_changes_the_link_scheme_or_path(packets: Path, pmcid: str) -> None:
+    _edit_manifest(packets, "99000001", pmcid=pmcid)
+    hrefs = _assert_links_are_safe(make_bundle(packets))
+    assert not any("pmc.ncbi" in h and "99000001" in h for h in hrefs)
+
+
+def test_well_formed_doi_with_reserved_characters_is_encoded_not_dropped(tmp_path: Path) -> None:
+    directory = tmp_path / "p"
+    write_packet(directory, "99000001", with_image=False, edit=lambda record: record.update(doi="10.1000/a(b)?c#d"))
+    hrefs = _assert_links_are_safe(make_bundle(directory))
+    assert "https://doi.org/10.1000/a(b)%3Fc%23d" in hrefs
+
+
 def test_index_truncates_long_author_lists(tmp_path: Path) -> None:
     directory = tmp_path / "p"
     write_packet(directory, "99000001", authors=[f"Author{i} A" for i in range(12)])
@@ -482,6 +537,56 @@ def test_zip_is_deterministic(packets: Path) -> None:
         hashlib.sha256(zip_bytes(make_bundle(packets))).digest()
         == hashlib.sha256(zip_bytes(make_bundle(packets))).digest()
     )
+
+
+_EXPECTED_MEMBERS = [
+    f"{NAME}/{path}"
+    for path in (
+        "ATTRIBUTION.txt",
+        "README.txt",
+        "index.html",
+        "manifest.json",
+        "packets/99000001.html",
+        "packets/99000001.manifest.json",
+        "packets/99000002.html",
+        "packets/99000002.manifest.json",
+        "packets/99000003.html",
+        "packets/99000003.manifest.json",
+    )
+]
+
+
+def test_zip_members_are_explicitly_ordered_and_stamped(packets: Path) -> None:
+    with zipfile.ZipFile(io.BytesIO(zip_bytes(make_bundle(packets)))) as zf:
+        infos = zf.infolist()
+    assert [i.filename for i in infos] == _EXPECTED_MEMBERS
+    for info in infos:
+        assert info.create_system == 3
+        assert info.external_attr == 0o100644 << 16
+        assert info.date_time == (2000, 1, 1, 0, 0, 0)
+        assert info.compress_type == zipfile.ZIP_DEFLATED
+        assert info.extra == b"" and info.comment == b"" and info.flag_bits == 0
+
+
+def test_zip_is_identical_across_processes_and_hash_seeds(packets: Path) -> None:
+    script = (
+        "import hashlib, sys\n"
+        "from pathlib import Path\n"
+        "from bugsigdb_curation.review.bundle import build_bundle, zip_bytes\n"
+        f"b = build_bundle(Path(sys.argv[1]), name={NAME!r}, date={DATE!r}, contact={CONTACT!r})\n"
+        "print(hashlib.sha256(zip_bytes(b)).hexdigest())\n"
+    )
+
+    def digest(seed: str) -> str:
+        env = {**os.environ, "PYTHONHASHSEED": seed}
+        run = subprocess.run(
+            [sys.executable, "-c", script, str(packets)], env=env, capture_output=True, text=True, check=False
+        )
+        assert run.returncode == 0, run.stderr
+        return run.stdout.strip()
+
+    expected = hashlib.sha256(zip_bytes(make_bundle(packets))).hexdigest()
+    assert digest("1") == digest("2") == expected
 
 
 def test_zip_layout_single_top_folder_and_safe_members(packets: Path, tmp_path: Path) -> None:
