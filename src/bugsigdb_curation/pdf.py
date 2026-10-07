@@ -51,7 +51,7 @@ def _guarded(fn: Callable[_P, _T]) -> Callable[_P, _T]:
 def _normalise_text(raw: str) -> str:
     """pdfium's text uses CRLF line ends and keeps trailing spaces; return plain ``\\n``-separated lines."""
     lines = (line.rstrip() for line in raw.replace("\r\n", "\n").replace("\r", "\n").split("\n"))
-    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip("\n")
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
 
 
 class PdfDoc:

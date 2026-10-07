@@ -26,6 +26,22 @@ def text_pages() -> bytes:
     return doc.tobytes()
 
 
+def text_and_drawing() -> bytes:
+    """Two A4 pages: > 200 chars of text, then a text-free drawing."""
+    doc = pymupdf.open()
+    doc.new_page().insert_textbox(pymupdf.Rect(40, 40, 550, 800), LONG_TEXT, fontsize=9)
+    doc.new_page().draw_rect(pymupdf.Rect(50, 50, 300, 300), color=(0, 0, 1), fill=(1, 0, 0))
+    return doc.tobytes()
+
+
+def three_text_pages() -> bytes:
+    """Three A4 pages, each with > 200 chars of text."""
+    doc = pymupdf.open()
+    for _ in range(3):
+        doc.new_page().insert_textbox(pymupdf.Rect(40, 40, 550, 800), LONG_TEXT, fontsize=9)
+    return doc.tobytes()
+
+
 def dense_text() -> bytes:
     """One A4 page with ~20k characters of 3 pt text (longer than the lever's per-page text cap)."""
     doc = pymupdf.open()
@@ -66,6 +82,8 @@ def encrypted() -> bytes:
 if __name__ == "__main__":
     for name, build in {
         "text_pages": text_pages,
+        "text_and_drawing": text_and_drawing,
+        "three_text_pages": three_text_pages,
         "dense_text": dense_text,
         "poster": poster,
         "noisy": noisy,
