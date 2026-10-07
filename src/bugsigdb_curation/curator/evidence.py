@@ -46,6 +46,50 @@ from bugsigdb_curation.retrieval import (
     parse_fulltext_tables,
 )
 
+# --- Europe PMC fullTextXML fetch: retry transient failures ---------------------------------------------
+#
+# Europe PMC intermittently answers 502/503/504 (and occasionally stalls) for a perfectly good PMCID; one such
+# blip used to fail a whole study (3 of 5 drafts in one batch). A 404 means "no full text" and is NOT retried.
+
+FULLTEXT_ATTEMPTS = 4
+#: Waits before retry 1, 2, 3 (seconds; +-20% jitter applied).
+FULLTEXT_BACKOFF = (2.0, 6.0, 15.0)
+_TRANSIENT_STATUSES = frozenset({429, 500, 502, 503, 504})
+
+
+async def fetch_fulltext_xml_with_retry(
+    client: httpx.AsyncClient,
+    pmcid: str,
+    *,
+    attempts: int | None = None,
+    backoff: tuple[float, ...] | None = None,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+) -> str:
+    """`fetch_fulltext_xml` with bounded retries on transient failures (429/5xx and transport errors).
+
+    Any other HTTP status -- notably 404 -- raises immediately, as before. When the retries run out the last error
+    is re-raised, so a persistently broken record (Europe PMC 500s forever on some PMCIDs) still fails loudly.
+    """
+    attempts = FULLTEXT_ATTEMPTS if attempts is None else attempts
+    backoff = FULLTEXT_BACKOFF if backoff is None else backoff
+    log = logger.bind(stage="S1", pmcid=pmcid)
+    for attempt in range(1, attempts + 1):
+        try:
+            return await fetch_fulltext_xml(client, pmcid)
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code not in _TRANSIENT_STATUSES or attempt == attempts:
+                raise
+            reason = f"HTTP {exc.response.status_code}"
+        except httpx.TransportError as exc:
+            if attempt == attempts:
+                raise
+            reason = type(exc).__name__
+        wait = backoff[min(attempt - 1, len(backoff) - 1)] * random.uniform(0.8, 1.2)
+        log.info("Europe PMC fullTextXML failed; retrying", reason=reason, attempt=attempt, wait_s=round(wait, 1))
+        await sleep(wait)
+    raise AssertionError("unreachable")  # pragma: no cover
+
+
 # --- PMC article-HTML fetch: challenge-aware, throttled, cached ---------------------------------------
 #
 # PMC's article HTML is the only source of figure *image* URLs, and PMC intermittently answers a
@@ -327,7 +371,7 @@ async def assemble_evidence(
     gracefully to "no image evidence for this figure", not a crash).
     """
     try:
-        xml_text: str | None = await fetch_fulltext_xml(client, pmcid)
+        xml_text: str | None = await fetch_fulltext_xml_with_retry(client, pmcid)
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 404:
             xml_text = None

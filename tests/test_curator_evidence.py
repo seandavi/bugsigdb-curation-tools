@@ -155,7 +155,8 @@ def test_assemble_evidence_degrades_gracefully_when_fulltext_404s(httpx_mock: HT
 def test_assemble_evidence_propagates_non_404_fulltext_error(httpx_mock: HTTPXMock):
     """A genuine unexpected error (e.g. a 500) fetching fullTextXML must
     still surface -- only "not found" degrades gracefully."""
-    httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid="PMC1234567"), status_code=500)
+    # persistent (the fetch retries a 500 a few times first, so the mock must outlast the retries)
+    httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid="PMC1234567"), status_code=500, is_reusable=True)
 
     async def run() -> EvidenceBundle:
         async with httpx.AsyncClient() as client:
@@ -376,3 +377,65 @@ def _mock_ols_none(httpx_mock: HTTPXMock) -> None:
     import re
 
     httpx_mock.add_response(url=re.compile(r"https://www\.ebi\.ac\.uk/ols4/api/search.*"), json={"response": {"docs": []}}, is_optional=True, is_reusable=True)
+
+
+# --- Europe PMC fullTextXML: transient failures are retried ---------------------------------------------------
+
+from bugsigdb_curation.curator.evidence import fetch_fulltext_xml_with_retry  # noqa: E402
+
+XML_URL = EUROPEPMC_FULLTEXT_URL.format(pmcid="PMC1234567")
+
+
+def _fetch_xml(**kw):
+    sleeps, sleep = _no_sleep_recorder()
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await fetch_fulltext_xml_with_retry(client, "PMC1234567", sleep=sleep, **kw)
+
+    return run, sleeps
+
+
+def test_fulltext_502_then_success_is_retried_with_backoff(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(url=XML_URL, status_code=502)
+    httpx_mock.add_response(url=XML_URL, status_code=503)
+    httpx_mock.add_response(url=XML_URL, text="<article/>")
+    run, sleeps = _fetch_xml(backoff=(2.0, 6.0))
+    assert asyncio.run(run()) == "<article/>"
+    assert len(sleeps) == 2 and 1.6 <= sleeps[0] <= 2.4 and 4.8 <= sleeps[1] <= 7.2
+    assert len(httpx_mock.get_requests()) == 3
+
+
+def test_fulltext_transport_error_is_retried(httpx_mock: HTTPXMock):
+    httpx_mock.add_exception(httpx.ReadTimeout("slow"), url=XML_URL)
+    httpx_mock.add_response(url=XML_URL, text="<article/>")
+    run, _ = _fetch_xml()
+    assert asyncio.run(run()) == "<article/>"
+
+
+def test_fulltext_404_and_other_4xx_are_not_retried(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(url=XML_URL, status_code=404)
+    run, sleeps = _fetch_xml()
+    with pytest.raises(httpx.HTTPStatusError):
+        asyncio.run(run())
+    assert sleeps == [] and len(httpx_mock.get_requests()) == 1
+
+
+def test_fulltext_persistent_failure_raises_after_the_attempts(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(url=XML_URL, status_code=500, is_reusable=True)
+    run, sleeps = _fetch_xml(attempts=3, backoff=(1.0,))
+    with pytest.raises(httpx.HTTPStatusError) as err:
+        asyncio.run(run())
+    assert err.value.response.status_code == 500 and len(httpx_mock.get_requests()) == 3 and len(sleeps) == 2
+
+
+def test_assemble_evidence_survives_a_transient_fulltext_502(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(url=XML_URL, status_code=502)
+    httpx_mock.add_response(url=XML_URL, text=XML_FIXTURE)
+    httpx_mock.add_response(url=PMC_ARTICLE_URL.format(pmcid="PMC1234567"), text=HTML_FIXTURE)
+
+    async def run() -> EvidenceBundle:
+        async with httpx.AsyncClient() as client:
+            return await assemble_evidence("21850056", "PMC1234567", client=client)
+
+    assert asyncio.run(run()).metadata.title == "A CRC microbiome study"  # the blip no longer costs the study
