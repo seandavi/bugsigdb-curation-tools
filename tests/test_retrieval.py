@@ -146,6 +146,38 @@ def test_parse_article_metadata_extracts_bibliographic_fields():
     assert meta.authors == ("Jane A Smith", "John Doe")
 
 
+def _jats(contrib_groups: str) -> str:
+    return (
+        '<article><front><article-meta><title-group><article-title>T</article-title></title-group>'
+        f"{contrib_groups}</article-meta></front><body/></article>"
+    )
+
+
+def _person(given: str, surname: str, attrs: str = "") -> str:
+    return f"<contrib{attrs}><name><surname>{surname}</surname><given-names>{given}</given-names></name></contrib>"
+
+
+def test_authors_in_a_content_type_author_group_without_contrib_type_are_found():
+    # MDPI's convention: plain <contrib>s in <contrib-group content-type="author">; editors sit in their own group
+    xml = _jats(
+        '<contrib-group content-type="author">' + _person("Zi-Jie", "Chen") + _person("Gang", "Liu") + "</contrib-group>"
+        '<contrib-group content-type="editor">' + _person("Ed", "Itor") + "</contrib-group>"
+    )
+    assert parse_article_metadata(xml).authors == ("Zi-Jie Chen", "Gang Liu")
+
+
+def test_author_detection_never_counts_typed_non_authors_or_other_groups():
+    xml = _jats(
+        "<contrib-group>"
+        + _person("Ann", "Author", ' contrib-type="author"')
+        + _person("Bo", "Editor", ' contrib-type="editor"')
+        + _person("Cy", "Untyped")  # untyped in an untyped group: treated as an author
+        + "</contrib-group>"
+        '<contrib-group content-type="reviewer">' + _person("Rev", "Iewer") + "</contrib-group>"
+    )
+    assert parse_article_metadata(xml).authors == ("Ann Author", "Cy Untyped")
+
+
 def test_parse_article_metadata_returns_all_none_when_no_article_meta():
     meta = parse_article_metadata(NO_BODY_XML)
     assert meta.title is None
