@@ -201,12 +201,16 @@ async def _extract_experiment_signatures(
     image_bytes: bytes | None,
     experiment_fields: ExperimentFields,
     ground_unresolved: bool = False,
+    may_decline: bool = False,
 ) -> tuple[list[ExtractedSignature], tuple[str, ...]]:
     """S5b/S6 + S10, dispatched by `design` -- the only per-design branch in
     the whole pipeline (see module docstring). Returns `(signatures, flags)`;
     `flags` is always empty for `fused-lean` (no semantic A2 stage to flag
     anything -- S9's structural validation runs unconditionally afterward,
     same as before this dispatch existed).
+
+    `may_decline` puts the "return no taxa if this artifact does not report the comparison" escape hatch
+    into the extractor (and reviewer) prompts -- set only when something else can be tried instead.
 
     `design` is coerced to a real `Design` member up front: `Design` is a
     `str` subclass so a plain string (e.g. a caller passing
@@ -223,7 +227,13 @@ async def _extract_experiment_signatures(
     groups = (experiment_fields.group_0_name, experiment_fields.group_1_name)
     if design is Design.fused_lean:
         signatures = await extract_signatures(
-            bundle_artifact, model=model, resolver=resolver, client=client, image_bytes=image_bytes, groups=groups
+            bundle_artifact,
+            model=model,
+            resolver=resolver,
+            client=client,
+            image_bytes=image_bytes,
+            groups=groups,
+            may_decline=may_decline,
         )
         if ground_unresolved:  # opt-in: resolve names S6 could not verify an id for (split designs already do)
             signatures = await ground_unresolved_taxa(
@@ -236,7 +246,7 @@ async def _extract_experiment_signatures(
         return signatures, ()
 
     source_context = _build_source_context(experiment_fields, bundle_artifact)
-    names = extract_names(bundle_artifact, model=model, image_bytes=image_bytes, groups=groups)
+    names = extract_names(bundle_artifact, model=model, image_bytes=image_bytes, groups=groups, may_decline=may_decline)
     signatures = await reconcile_names(
         names, model=model, resolver=resolver, client=client, source_context=source_context
     )
@@ -253,6 +263,8 @@ async def _extract_experiment_signatures(
         client=client,
         source_context=source_context,
         image_bytes=image_bytes,
+        groups=groups,
+        may_decline=may_decline,
     )
 
 
@@ -462,6 +474,8 @@ async def curate_async(
                     ]
                 candidates = locate_artifacts(bundle, ranked)
                 figure_images: dict[str, bytes | None] = {}  # each candidate figure's image: once per study
+                # Something to fall back to (another experiment or candidate artifact) is what makes a decline useful.
+                may_decline = len(stubs) > 1 or len(candidates) > 1
 
                 experiments: list[_MainExperiment] = []
                 experiment_artifacts: list[dict[str, Any]] = []
@@ -502,6 +516,7 @@ async def curate_async(
                             image_bytes=image_bytes,
                             experiment_fields=experiment_fields,
                             ground_unresolved=ground_unresolved,
+                            may_decline=may_decline,
                         )
                         flags.extend(stage_flags)
                         if found:

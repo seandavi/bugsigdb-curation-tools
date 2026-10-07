@@ -67,8 +67,15 @@ async def review_signatures(
     source_context: str,
     max_repair_rounds: int = DEFAULT_MAX_REPAIR_ROUNDS,
     image_bytes: bytes | None = None,
+    groups: tuple[str | None, str | None] | None = None,
+    may_decline: bool = False,
 ) -> tuple[list[ExtractedSignature], tuple[str, ...]]:
     """S10 (split-panel): independent reviewer + arbitration + recall path.
+
+    `groups` / `may_decline` are forwarded to the reviewer's own `extract_names` call, so it judges the
+    artifact against the same two groups (and has the same escape hatch) as the extractor did; without
+    them a declined artifact would be re-read by the reviewer on its own and its taxa accepted through
+    the recall path.
 
     `image_bytes` (a figure artifact's decoded image, or None for a table)
     is forwarded to the reviewer's own re-derivation call, the grounding
@@ -81,7 +88,14 @@ async def review_signatures(
     written into the schema record).
     """
     _, source_text = artifact_kind_and_text(artifact)
-    reviewer_names = extract_names(artifact, model=model, stage=REVIEW_SIGNATURE_STAGE, image_bytes=image_bytes)
+    reviewer_names = extract_names(
+        artifact,
+        model=model,
+        stage=REVIEW_SIGNATURE_STAGE,
+        image_bytes=image_bytes,
+        groups=groups,
+        may_decline=may_decline,
+    )
 
     # CURATOR: keyed by normalized name -> a *list* of (entry, direction)
     # pairs, not a single entry. A taxon can legitimately appear in BOTH

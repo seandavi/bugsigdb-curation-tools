@@ -80,23 +80,37 @@ def _text(messages) -> str:
 _ARTIFACT = LocatedArtifact(kind="table", table=_table("1", "LEfSe taxa"))
 
 
-def test_orientation_text_has_the_escape_hatch_when_names_are_known():
-    text = group_orientation_text("HC", "ATB")
+def test_orientation_text_has_the_escape_hatch_only_when_may_decline():
+    text = group_orientation_text("HC", "ATB", may_decline=True)
     assert _ESCAPE_HATCH in text
     assert '{"taxa": []}' in text
     assert "do not fill in taxa from a different comparison" in text
+    assert _ESCAPE_HATCH not in group_orientation_text("HC", "ATB")
+
+
+def test_orientation_text_without_the_escape_hatch_is_the_pre_escape_hatch_prompt():
+    assert group_orientation_text("HC", "ATB") == (
+        "The two compared groups are:\n"
+        "- Group 0 (the reference / control / baseline group): HC\n"
+        "- Group 1 (the case / exposed / treated group): ATB\n"
+        "Report each taxon's direction relative to these groups: INCREASED means more abundant in "
+        "Group 1 than in Group 0; DECREASED means less abundant in Group 1 than in Group 0. In a "
+        "figure, use the legend to decide which colour or side belongs to which group -- never "
+        "assume the left/top/first-listed group is Group 1.\n\n"
+    )
 
 
 def test_orientation_text_has_no_escape_hatch_without_names():
-    assert group_orientation_text(None, "ATB") == ""
+    assert group_orientation_text(None, "ATB", may_decline=True) == ""
 
 
-def test_signature_and_ner_prompts_carry_the_escape_hatch_iff_names_are_known():
+def test_signature_and_ner_prompts_carry_the_escape_hatch_iff_names_are_known_and_may_decline():
     groups = ("Healthy controls", "Active TB")
     for build in (build_signature_messages, build_ner_messages):
-        assert _ESCAPE_HATCH in _text(build(_ARTIFACT, groups=groups))
-        assert _ESCAPE_HATCH not in _text(build(_ARTIFACT))
-        assert _ESCAPE_HATCH not in _text(build(_ARTIFACT, groups=(None, "x")))
+        assert _ESCAPE_HATCH in _text(build(_ARTIFACT, groups=groups, may_decline=True))
+        assert _ESCAPE_HATCH not in _text(build(_ARTIFACT, groups=groups))
+        assert _ESCAPE_HATCH not in _text(build(_ARTIFACT, may_decline=True))
+        assert _ESCAPE_HATCH not in _text(build(_ARTIFACT, groups=(None, "x"), may_decline=True))
 
 
 # --- pipeline: per-experiment artifact search --------------------------------------------------
@@ -264,6 +278,30 @@ def test_a_single_experiment_paper_uses_the_top_artifact_and_records_it(httpx_mo
         {"experiment_index": 0, "artifact_tried": ["Figure 7"], "artifact_used": "Figure 7"}
     ]
     assert "duplicate_signatures_dropped" not in result.annotations
+
+
+def _extract_prompts(model) -> list[str]:
+    return [c["messages"][0]["content"][0]["text"] for c in model.calls if c["stage"] == "signature_extract"]
+
+
+def test_the_escape_hatch_is_offered_when_there_are_several_candidates_even_for_one_experiment(httpx_mock, tmp_path):
+    _, model = _study(httpx_mock, tmp_path, TAXA_A, n_experiments=1)  # Figure 7 and Figure 3 are both candidates
+    assert all(_ESCAPE_HATCH in p for p in _extract_prompts(model))
+
+
+def test_the_escape_hatch_is_offered_when_there_are_several_experiments_even_for_one_candidate(httpx_mock, tmp_path):
+    e2e._mock_taxonomy(httpx_mock)
+    _, model = _study(httpx_mock, tmp_path, DEFAULT_MOCK_RESPONSES["signature_extract"], decision_model=None)
+    assert len(_extract_prompts(model)) == 2 and all(_ESCAPE_HATCH in p for p in _extract_prompts(model))
+
+
+def test_the_escape_hatch_is_withheld_for_one_experiment_and_one_candidate(httpx_mock, tmp_path):
+    e2e._mock_taxonomy(httpx_mock)
+    _, model = _study(
+        httpx_mock, tmp_path, DEFAULT_MOCK_RESPONSES["signature_extract"], n_experiments=1, decision_model=None
+    )
+    prompts = _extract_prompts(model)
+    assert len(prompts) == 1 and _ESCAPE_HATCH not in prompts[0] and "Group 0" in prompts[0]
 
 
 # --- the duplicate guard on its own ------------------------------------------------------------
