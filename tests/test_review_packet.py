@@ -652,3 +652,18 @@ def test_evidence_cache_round_trips_authors_and_reads_older_caches_without_them(
     payload.pop("authors")  # a cache written before the field existed
     (tmp_path / "evidence.json").write_text(json.dumps(payload))
     assert load_evidence(tmp_path).authors == ()
+
+
+# --- the packet header's DOI link is as strict as the bundle's ----------------------------------------------
+
+
+@pytest.mark.parametrize("doi", ["javascript:alert(1)", "../..", "10.1038/../../x", "10.1/short", "10.1038/x y", "//evil.example/x"])
+def test_a_malformed_doi_is_shown_but_never_linked(doi):
+    page = _build(record=dict(load_draft(), doi=doi))
+    assert "doi.org" not in page.split('id="packet-data"')[0]
+    assert "<span>DOI " in page
+
+
+def test_a_well_formed_doi_is_linked_with_an_encoded_path():
+    page = _build(record=dict(load_draft(), doi="10.1038/s41598-021-99379-6"))
+    assert 'href="https://doi.org/10.1038/s41598-021-99379-6"' in page

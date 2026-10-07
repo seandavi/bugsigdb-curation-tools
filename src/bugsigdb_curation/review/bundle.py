@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from bugsigdb_curation.review.packet import cited_artifact, license_allows_embedding, study_pmid
+from bugsigdb_curation.review.packet import _DOI_RE, cited_artifact, license_allows_embedding, study_pmid
 from bugsigdb_curation.review.verdicts import canonical_sha256
 
 #: Authors shown on an index card before "et al." (ATTRIBUTION.txt always lists every author).
@@ -37,7 +37,6 @@ MAX_CARD_AUTHORS = 6
 _NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 _CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 _PMCID_RE = re.compile(r"PMC[0-9]+")
-_DOI_RE = re.compile(r"10\.[0-9]{4,9}/\S+")  # only a well-formed DOI becomes a link: never a scheme or `..` segments
 _PMID_RE = re.compile(r"[0-9]+")  # ASCII digits only: the file stem becomes zip member names and hrefs
 _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 _PACKET_DATA_RE = re.compile(r'<script type="application/json" id="packet-data">(.*?)</script>', re.DOTALL)

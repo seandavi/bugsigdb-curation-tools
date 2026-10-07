@@ -28,6 +28,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 from loguru import logger
@@ -50,6 +51,8 @@ EUROPEPMC_CORE_SEARCH_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/se
 _PACKAGE_DIR = Path(__file__).parent
 _EMBEDDABLE_LICENSE_RE = re.compile(r"(cc[ -]by|cc0)([ -][0-9]\.[0-9])?")
 _TABLE_SOURCE_RE = re.compile(r"\s*table\s*#?\s*(\d+)", re.IGNORECASE)
+#: Only a well-formed DOI becomes a link: never a scheme, `..` segments, or a query/fragment smuggled in.
+_DOI_RE = re.compile(r"10\.[0-9]{4,9}/\S+")
 _HEADER_KEYS = ("uid", "pmid", "doi", "title", "authors", "journal", "year", "citation_mode", "experiments")
 _EXPERIMENT_FIELDS = (
     ("host_species", "Host species"),
@@ -433,7 +436,11 @@ class _PacketBuilder:
         if self.pmcid:
             links.append(f'<a href="{_e(_pmc_url(self.pmcid))}">{_e(self.pmcid)} (full text)</a>')
         if r.get("doi"):
-            links.append(f'<a href="https://doi.org/{_e(r["doi"])}">DOI {_e(r["doi"])}</a>')
+            doi = str(r["doi"])
+            if _DOI_RE.fullmatch(doi) and not {".", ".."} & set(doi.split("/")):
+                links.append(f'<a href="https://doi.org/{_e(quote(doi, safe="/()"))}">DOI {_e(doi)}</a>')
+            else:  # a malformed DOI (from a draft) is shown, never made into a link that could point elsewhere
+                links.append(f"<span>DOI {_e(doi)}</span>")
         journal_year = " · ".join(str(x) for x in (r.get("journal"), r.get("year")) if x)
         authors = self._authors()
         license_ = self.evidence.license if self.evidence else None
