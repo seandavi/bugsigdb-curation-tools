@@ -18,7 +18,13 @@ from rich.console import Console
 from rich.markup import escape
 
 from bugsigdb_curation.pmc_map import PmcMapError
-from bugsigdb_curation.review.bundle import BundleError, build_bundle, write_bundle_tree, zip_bytes
+from bugsigdb_curation.review.bundle import (
+    BundleError,
+    build_bundle,
+    refuse_existing_outputs,
+    write_bundle_tree,
+    write_bundle_zip,
+)
 from bugsigdb_curation.review.packet import (
     PacketEvidence,
     build_manifest,
@@ -176,18 +182,17 @@ def bundle_command(
     built_on = date or date_type.today().isoformat()
     try:
         bundle = build_bundle(packets, name=name or f"bugsigdb-review-{built_on}", date=built_on, contact=contact)
+        refuse_existing_outputs(bundle, out, with_zip=zip_)
         root = write_bundle_tree(bundle, out)
+        for warning in bundle.warnings:
+            error_console.print(f"[yellow]Warning:[/yellow] {escape(warning)}")
+        console.print(f"[green]Wrote[/green] {root} ({len(bundle.manifest['packets'])} packet(s))")
+        if zip_:
+            console.print(f"[green]Wrote[/green] {write_bundle_zip(bundle, out)}")
     except BundleError as exc:
         for problem in exc.problems:
             error_console.print(f"[red]Error:[/red] {escape(problem)}")
         raise typer.Exit(code=2) from None
-    for warning in bundle.warnings:
-        error_console.print(f"[yellow]Warning:[/yellow] {escape(warning)}")
-    console.print(f"[green]Wrote[/green] {root} ({len(bundle.manifest['packets'])} packet(s))")
-    if zip_:
-        zip_path = out / f"{bundle.name}.zip"
-        zip_path.write_bytes(zip_bytes(bundle))
-        console.print(f"[green]Wrote[/green] {zip_path}")
 
 
 @review_app.command("ingest")

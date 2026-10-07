@@ -12,7 +12,10 @@ import hashlib
 import html
 import io
 import json
+import os
 import re
+import shutil
+import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from datetime import date as date_type
@@ -578,16 +581,53 @@ def build_bundle(packets_dir: Path, *, name: str, date: str, contact: str | None
     return Bundle(name=name, files=files, manifest=manifest, warnings=warnings)
 
 
+def refuse_existing_outputs(bundle: Bundle, out_dir: Path, *, with_zip: bool) -> None:
+    """Raise `BundleError` if the folder (or, with `with_zip`, the zip) the bundle would be written to exists."""
+    taken = [
+        p for p in (out_dir / bundle.name, out_dir / f"{bundle.name}.zip" if with_zip else None) if p and p.exists()
+    ]
+    if taken:
+        raise BundleError([f"{p} already exists; remove it or choose another --name" for p in taken])
+
+
 def write_bundle_tree(bundle: Bundle, out_dir: Path) -> Path:
-    """Write the bundle folder `out_dir/<name>/`; refuses to touch one that already exists."""
+    """Write the bundle folder `out_dir/<name>/`; refuses to touch one that already exists.
+
+    The files go into a temporary folder inside `out_dir` that is renamed into place at the end, so a failure
+    never leaves a half-written bundle folder behind.
+    """
     root = out_dir / bundle.name
-    if root.exists():
-        raise BundleError([f"{root} already exists; remove it or choose another --name"])
-    for path, data in bundle.files.items():
-        target = root / path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(data)
+    refuse_existing_outputs(bundle, out_dir, with_zip=False)
+    staging: Path | None = None
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        staging = Path(tempfile.mkdtemp(prefix=f".{bundle.name}.", suffix=".tmp", dir=out_dir))
+        for path, data in bundle.files.items():
+            target = staging / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+        os.replace(staging, root)
+    except OSError as exc:
+        if staging is not None:
+            shutil.rmtree(staging, ignore_errors=True)
+        raise BundleError([f"could not write {root}: {exc.strerror or exc}"]) from exc
     return root
+
+
+def write_bundle_zip(bundle: Bundle, out_dir: Path) -> Path:
+    """Write `out_dir/<name>.zip` (via a temporary file renamed into place); refuses to touch an existing one."""
+    zip_path = out_dir / f"{bundle.name}.zip"
+    if zip_path.exists():
+        raise BundleError([f"{zip_path} already exists; remove it or choose another --name"])
+    staging = out_dir / f".{bundle.name}.zip.tmp"
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        staging.write_bytes(zip_bytes(bundle))
+        os.replace(staging, zip_path)
+    except OSError as exc:
+        staging.unlink(missing_ok=True)
+        raise BundleError([f"could not write {zip_path}: {exc.strerror or exc}"]) from exc
+    return zip_path
 
 
 def zip_bytes(bundle: Bundle) -> bytes:

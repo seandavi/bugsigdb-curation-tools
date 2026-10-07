@@ -6,10 +6,10 @@ import hashlib
 import json
 import re
 import zipfile
+from collections.abc import Callable
 from dataclasses import replace
 from html.parser import HTMLParser
 from pathlib import Path
-from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -18,7 +18,15 @@ from review_support import load_annotations, load_draft, sample_evidence
 from typer.testing import CliRunner
 
 from bugsigdb_curation.cli import app
-from bugsigdb_curation.review.bundle import BundleError, build_bundle, write_bundle_tree, zip_bytes
+from bugsigdb_curation.review import bundle as bundle_module
+from bugsigdb_curation.review.bundle import (
+    BundleError,
+    build_bundle,
+    refuse_existing_outputs,
+    write_bundle_tree,
+    write_bundle_zip,
+    zip_bytes,
+)
 from bugsigdb_curation.review.packet import build_manifest, build_packet, make_meta
 
 runner = CliRunner()
@@ -633,6 +641,60 @@ def test_packets_are_never_modified(packets: Path, tmp_path: Path) -> None:
     assert {p.name: p.read_bytes() for p in packets.iterdir()} == before
 
 
+# --- writing: atomic, never overwriting ---------------------------------------------------------------------
+
+
+def test_tree_is_staged_inside_out_and_renamed_into_place(packets: Path, tmp_path: Path, monkeypatch: Any) -> None:
+    out = tmp_path / "out"
+    renames: list[tuple[Path, Path]] = []
+    real_replace = bundle_module.os.replace
+
+    def spy(src: Any, dst: Any) -> None:
+        renames.append((Path(src), Path(dst)))
+        real_replace(src, dst)
+
+    monkeypatch.setattr(bundle_module.os, "replace", spy)
+    root = write_bundle_tree(make_bundle(packets), out)
+    assert root == out / NAME and (root / "index.html").is_file()
+    assert [(src.parent, dst) for src, dst in renames] == [(out, out / NAME)]
+    assert [p.name for p in out.iterdir()] == [NAME]
+
+
+def test_failed_tree_write_leaves_no_partial_folder_or_temp(packets: Path, tmp_path: Path, monkeypatch: Any) -> None:
+    out = tmp_path / "out"
+
+    def boom(*_args: Any, **_kwargs: Any) -> None:
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(bundle_module.os, "replace", boom)
+    with pytest.raises(BundleError, match="No space left"):
+        write_bundle_tree(make_bundle(packets), out)
+    assert list(out.iterdir()) == []
+
+
+def test_zip_is_written_via_a_temp_file_and_refuses_an_existing_zip(packets: Path, tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    bundle = make_bundle(packets)
+    path = write_bundle_zip(bundle, out)
+    assert path == out / f"{NAME}.zip" and path.read_bytes() == zip_bytes(bundle)
+    assert [p.name for p in out.iterdir()] == [path.name]
+    with pytest.raises(BundleError, match=r"\.zip already exists"):
+        write_bundle_zip(bundle, out)
+    with pytest.raises(BundleError, match=r"\.zip already exists"):
+        refuse_existing_outputs(bundle, out, with_zip=True)
+    refuse_existing_outputs(bundle, out, with_zip=False)
+
+
+def test_failed_zip_write_leaves_no_temp_and_no_zip(packets: Path, tmp_path: Path, monkeypatch: Any) -> None:
+    out = tmp_path / "out"
+    monkeypatch.setattr(
+        bundle_module.os, "replace", lambda *_a: (_ for _ in ()).throw(OSError(13, "Permission denied"))
+    )
+    with pytest.raises(BundleError, match="Permission denied"):
+        write_bundle_zip(make_bundle(packets), out)
+    assert list(out.iterdir()) == []
+
+
 # --- CLI ----------------------------------------------------------------------------------------------------
 
 
@@ -699,3 +761,22 @@ def test_cli_prints_warnings(tmp_path: Path) -> None:
     result = _invoke("--packets", str(directory), "--out", str(tmp_path / "o"), "--date", DATE, "--no-zip")
     assert result.exit_code == 0, result.output
     assert "99000001" in " ".join(result.output.split()) and "not CC BY/CC0" in " ".join(result.output.split())
+
+
+def test_cli_refuses_an_existing_zip_before_writing_the_folder(packets: Path, tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / f"{NAME}.zip").write_bytes(b"precious")
+    result = _invoke("--packets", str(packets), "--out", str(out), "--date", DATE)
+    assert result.exit_code == 2
+    assert "already exists" in " ".join(result.output.split())
+    assert (out / f"{NAME}.zip").read_bytes() == b"precious" and not (out / NAME).exists()
+
+
+def test_cli_reports_unwritable_output_cleanly(packets: Path, tmp_path: Path) -> None:
+    blocker = tmp_path / "file"
+    blocker.write_text("not a directory", encoding="utf-8")
+    result = _invoke("--packets", str(packets), "--out", str(blocker / "out"), "--date", DATE)
+    assert result.exit_code == 2
+    assert "Traceback" not in result.output and "Wrote" not in result.output
+    assert result.exception is None or isinstance(result.exception, SystemExit)
