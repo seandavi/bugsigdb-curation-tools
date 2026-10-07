@@ -369,9 +369,13 @@ fan-out for many-experiment papers, a model sweep, and human review for papers w
 |------|----------|
 | `schema/bugsigdb.yaml` | The LinkML schema. 6 classes, 63 slots, 12 controlled-vocabulary enums. |
 | `schema/review_verdict.schema.json` | JSON Schema for reviewer verdict files. |
-| `src/bugsigdb_curation/` | The `bugsigdb` CLI. `curator/` (pipeline stages), `eval/` (gold join and scorer), `taxonomy/` (DuckDB backend), `review/` (packets and verdicts), plus loader, split, export, validate. |
+| `src/bugsigdb_curation/` | The `bugsigdb` CLI. `curator/` (pipeline stages), `eval/` (gold join and scorer), `taxonomy/` (DuckDB backend), `review/` (packets, bundles, verdicts), plus loader, split, export, validate. |
+| `src/bugsigdb_curation/decision.py` | The decision-model seam: question types, `ClefDecisionModel`, `MockDecisionModel`, JSONL call archive. |
+| `src/bugsigdb_curation/curator/routing.py`, `ols.py` | The judgments routed through the decision model (artifact ranking, body-site mapping) and the OLS4 term search behind the latter. |
+| `src/bugsigdb_curation/curator/supplement_lever.py` | Stage S1b: unit screening, extraction, one-vs-rest expansion, de-duplication. Its fetch side is `supplements.py`. |
+| `src/bugsigdb_curation/pdf.py` | PDF text, page size and JPEG rendering on pypdfium2 + Pillow, behind one error type. |
 | `sources/` | Local snapshot of the wiki schema pages the schema was derived from. |
-| `benchmarks/` | `figure-extraction/` (vision benchmark) and `decision-probe/` (decision-model probe). |
+| `benchmarks/` | `figure-extraction/` (vision benchmark) and `decision-probe/` (decision-model probe; `RESULTS.md` has the tables and verdicts). |
 | `docs/` | `LEDGER.md` (lab notebook), `plans/` (research brief, workflow plan, ontology plan), `workflow.md` (older Mermaid view), `figures/` (README figure generator). |
 | `paper/` | Quarto draft of the methods paper. |
 | `tests/` | pytest suite. Network-marked tests are deselected by default. |
@@ -506,12 +510,30 @@ uv run bugsigdb curate --smoke -o preds/                             # the curat
 uv run bugsigdb curate --pmid 34620922 --decision-model clef --supplements -o pred.json
 ```
 
-A model key for LiteLLM's `gemini/` provider (`GOOGLE_API_KEY` or `GEMINI_API_KEY`) goes
-in `.env`; an optional `NCBI_API_KEY` raises the NCBI rate limit. When the run produces
-sidecar annotations (decision-model calls, body-site → UBERON), they are written to
-`<out>.annotations.json` next to the prediction. `--taxonomy-db` / `--taxonomy-release`
-choose the local taxonomy database (below); without one the curator falls back to live
-NCBI.
+Flags (`uv run bugsigdb curate --help` lists all of them):
+
+| Flag | Meaning |
+|------|---------|
+| `--pmid TEXT` / `--smoke` | Curate one PMID, or every study in the curator's smoke set (`--smoke` requires `--out` as a directory). |
+| `--model TEXT` | LiteLLM model id for the real backend (default `gemini/gemini-3.1-flash-lite`). |
+| `--mock` | Deterministic offline model, no API key (the paper is still fetched). |
+| `--design [fused-lean\|split-verify\|split-panel]` | Stage design (default `fused-lean`). |
+| `--decision-model [none\|clef\|clef-flash]` | Route S5a artifact ranking and the S4 body site → UBERON mapping through a Cloudflare decision model (default `none`; needs the Cloudflare keys in `.env`; ignored with `--mock`). |
+| `--decision-archive PATH` | JSONL record of every decision-model call (default: `<out>.decision.jsonl`, or `decision.jsonl` in the `--smoke` directory). |
+| `--ols-cache PATH` | EBI OLS4 term-search cache for the UBERON mapping (default `data/curator/ols_cache.json`; used only with `--decision-model`). |
+| `--supplements / --no-supplements` | Also read the supplementary files: the decision model screens each sheet or page and the routed ones are extracted and appended after the main-text experiments (needs `--decision-model`). |
+| `--ground-unresolved / --no-ground-unresolved` | `fused-lean` only: resolve taxa whose model-proposed NCBI id could not be verified by name against the NCBI authority. |
+| `--taxonomy-db PATH`, `--taxonomy-release TEXT`, `--taxonomy-cache PATH` | Local taxonomy database (tried before live NCBI), its release label, and the curator's own resolver cache. |
+| `--out/-o PATH`, `--format [yaml\|json]`, `--email TEXT`, `--config TEXT` | Output path, serialisation (single `--pmid` only), NCBI contact email, and an informational source-config label. |
+| `--log-format [console\|json]`, `--log-level TEXT` | Structured-log sink and level. |
+
+Keys go in `.env`: a LiteLLM `gemini/` key (`GOOGLE_API_KEY` or `GEMINI_API_KEY`) for the
+curator model; `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` for decision models; an
+optional `NCBI_API_KEY` raises the NCBI rate limit. When the run produces sidecar
+annotations (decision-model calls, body-site → UBERON, fallbacks), they are written to
+`<out stem>.annotations.json` next to the prediction (for `--smoke`, `<dir>/_annotations/`).
+`--taxonomy-db` / `--taxonomy-release` choose the local taxonomy database (below); without one
+the curator falls back to live NCBI.
 
 ### Taxonomy backend (`bugsigdb taxonomy`)
 
@@ -628,16 +650,36 @@ uv run bugsigdb eval score --pred preds/ --out report/ --smoke   # 6. score agai
 uv run pytest                                            # offline test suite
 ```
 
+Keys, in `.env`: `GOOGLE_API_KEY` for the curator model; `CLOUDFLARE_ACCOUNT_ID` and
+`CLOUDFLARE_API_TOKEN` to use decision models; `NCBI_API_KEY` (optional). To run the optional
+levers, add flags to step 5:
+
+```bash
+uv run bugsigdb curate --smoke -o preds/ --decision-model clef                  # S5a ranking + body-site sidecar
+uv run bugsigdb curate --pmid 34620922 --decision-model clef --supplements -o pred.json   # + supplement lever
+```
+
+Local caches, all under the git-ignored `data/`: `data/curator/pmc_html/` (PMC article pages;
+`BUGSIGDB_PMC_HTML_CACHE` overrides), `data/curator/ols_cache.json`,
+`data/curator/ncbi_taxonomy_cache.json`, plus run outputs and `data/reviews/`. Because PMC
+serves a captcha to our client intermittently (see
+[Retrieval](#retrieval-and-its-failure-modes)), a run's figure coverage depends on this cache,
+and a re-run with a warm cache is not the same experiment as a cold one.
+
 `data/` is git-ignored: it holds the export, gold tables, run outputs and reviewer
 verdicts (which contain reviewer names and emails). Each run's results in
 [`docs/LEDGER.md`](docs/LEDGER.md) are anchored to a commit and the pinned taxonomy release.
 To regenerate the README figures: `python docs/figures/make_figures.py` (stdlib only).
 
-## License
+## Licensing
 
-Schema released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
+Schema: released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
 consistent with BugSigDB.
+
+Code: this repository has **no `LICENSE` file yet**; no licence has been chosen for the code,
+and choosing one is an open decision.
 
 PDF reading (supplement pages: text, size, JPEG render) goes through `bugsigdb_curation.pdf`, built on
 [pypdfium2](https://github.com/pypdfium2-team/pypdfium2) (BSD-3-Clause / Apache-2.0) and Pillow (MIT-CMU). It
 replaced PyMuPDF, whose AGPL-3.0 licence (or commercial licence) would have made the whole project copyleft.
+PyMuPDF is no longer a dependency.
