@@ -300,11 +300,14 @@ two runs; there are no confidence intervals. The ledger is the record of each ru
 | After them: webp figures, captcha handling, group convention | 2 | 0.158, 0.185 | 0.447, 0.474 | 89.7%, 90.0% | 0.586, 0.671 |
 | Per-experiment artifact search, no decision model | 1 | 0.166 | 0.829 | 96.0% | 0.612 |
 | Per-experiment artifact search + `clef` decision model | 1 | 0.209 | 0.636 | 90.3% | 0.736 |
+| **Final code**, no decision model (L033) | 1 | 0.181 | 0.778 | 95.7% | 0.675 |
+| **Final code, full pipeline**: `clef` + `--supplements` + `--ground-unresolved` (L033) | 1 | **0.530** | 0.593 | 70.2% | 0.634 |
 
 *Table 4. Smoke-set taxa-set metrics (micro-averaged), by configuration. Row 1 is from L030;
-rows 2–4 are from local score reports under the git-ignored `data/runs/`, for which L033 is
-the ledger entry. The studies are the same, the code is not, so adjacent rows show a
-direction and are not a controlled ablation.*
+rows 2–6 are from local score reports under the git-ignored `data/runs/`, recorded in
+[L033](docs/LEDGER.md). The studies are the same, the code is not, so adjacent rows show a
+direction and are not a controlled ablation; the last two rows are the like-for-like pair
+(same final code, with and without the levers).*
 
 What the numbers say, and what they do not:
 
@@ -312,10 +315,15 @@ What the numbers say, and what they do not:
   silently missing for recent PMC articles (the `.webp` and captcha problems under
   [Retrieval](#retrieval-and-its-failure-modes)), which probably depressed them. Treat
   the first row as a "before" reference and not as a measure of the design.
-- **Recall is still the bottleneck.** About 77% of the smoke set's gold taxa are in
-  supplements the main-text pipeline cannot reach (L027: 1,056 supplement-sourced gold taxa,
-  against 260 from figures and 51 from main tables), and micro recall in Table 4 stays between
-  0.08 and 0.13.
+- **Recall was the bottleneck, and the supplement lever is what moves it.** About 77% of the
+  smoke set's gold taxa are in supplements the main-text pipeline cannot reach (L027: 1,056
+  supplement-sourced gold taxa, against 260 from figures and 51 from main tables). On the final
+  code, micro recall goes from 0.10 (no decision model) to 0.48 with the full pipeline, and
+  F1 on supplement-sourced gold from 0.002 to 0.590 (one run each). The cost is visible in the
+  same table: direction accuracy falls from 95.7% to 70.2% (supplement-derived signatures are
+  right about 60% of the time on 34620922), over-segmentation rises from 11 to 21, and
+  main-table gold (51 taxa) scored 0 in this run. 37864204 (64 gold experiments) still scores
+  about 0 because its supplement ZIP, with roughly 250 MB of video, exceeds the size guard.
 - **Direction orientation.** Stating the group convention and passing group names to the
   extractors raised direction accuracy from about 65% to about 81%, pooled over two runs each
   (per run: 68% and 60% before, 86% and 75% after). The later rows range from 90% to 96%.
@@ -344,9 +352,14 @@ What the numbers say, and what they do not:
   direction, figure type, many-option artifact → experiment assignment and condition
   ontology (as configured) did not meet their gates.
 
-The reading so far is that the low headline F1 is mostly a *retrieval* problem, not a
-reasoning problem. Remaining levers, in rough order: reliable figure and supplement retrieval,
-fan-out for many-experiment papers, a model sweep, and human review for papers with no gold.
+The reading so far is that the low headline F1 was mostly a *retrieval* problem, not a
+reasoning problem: reaching the evidence moved micro F1 from about 0.13 to 0.53 on one run of
+the smoke set with the same cheap model. What now limits the score is direction for
+supplement-derived signatures, over-segmentation, large-media supplements, and (for any claim
+about accuracy on new papers) the absence of human verdicts. Remaining levers, in rough order:
+direction handling for pairwise supplement tables, a streaming or manual path for supplements
+that exceed the ZIP guard, fan-out for many-experiment papers, a model sweep, and human review
+for papers with no gold.
 
 ### Known limitations
 
