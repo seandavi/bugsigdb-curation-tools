@@ -200,8 +200,9 @@ aborts a study.
   hardest papers sit in supplementary files that the main-text pipeline cannot see. The lever
   (stage S1b, [`curator/supplement_lever.py`](src/bugsigdb_curation/curator/supplement_lever.py)):
   1. streams the Europe PMC supplementary ZIP (requested with `includeInlineImage=false`,
-     which is what made it fast) under guards: 60 MB download, 240 s, 200 MB uncompressed,
-     500 members, and a 25 MB per-member cap;
+     which is what made it fast) to a temp file under guards: 1 GiB download, 25 minutes,
+     200 MB uncompressed (kept members only), 500 members, and a 25 MB per-member cap. Members
+     are read one at a time and video, EPS and nested ZIPs are never read;
   2. splits it into units: an xlsx sheet, a csv, a docx, or a PDF page (PDFs go through
      [`pdf.py`](src/bugsigdb_curation/pdf.py), see [Licensing](#licensing));
   3. has Clef screen every unit; one with p(`has_da_results`) ≥ 0.5 is routed on;
@@ -212,8 +213,10 @@ aborts a study.
      Jaccard ≥ 0.5, against another supplement only when it comes from a *different* file with
      the same two groups and Jaccard ≥ 0.8.
 
-  Known limits: a ZIP over the guard is skipped, visibly (`supplement_skipped`); for example
-  37864204 ships about 250 MB of mp4 and is not read. Legacy `.xls` and `.doc` are skipped.
+  Known limits: a ZIP over the guard is skipped, visibly (`supplement_skipped`). Europe PMC
+  builds the ZIP on request and it cannot be fetched member by member, so a paper with big
+  media is slow: 37864204 (about 260 MB of mp4) took about 11 minutes in an earlier
+  measurement. Legacy `.xls` and `.doc` are skipped.
   Supplement experiments get no UBERON mapping yet.
 - **Ground unresolved** (`--ground-unresolved`, `fused-lean` only, **on by default**;
   `--no-ground-unresolved` restores the verification-only behaviour). Taxa whose model-proposed
@@ -329,8 +332,9 @@ What the numbers say, and what they do not:
   F1 on supplement-sourced gold from 0.002 to 0.590 (one run each). The cost is visible in the
   same table: direction accuracy falls from 95.7% to 70.2% (supplement-derived signatures are
   right about 60% of the time on 34620922), over-segmentation rises from 11 to 21, and
-  main-table gold (51 taxa) scored 0 in this run. 37864204 (64 gold experiments) still scores
-  about 0 because its supplement ZIP, with roughly 250 MB of video, exceeds the size guard.
+  main-table gold (51 taxa) scored 0 in this run. 37864204 (64 gold experiments) still scored
+  about 0 in that run because its supplement ZIP, with roughly 250 MB of video, exceeded the
+  then 60 MB size guard (now 1 GiB; not re-scored yet).
 - **Direction orientation.** Stating the group convention and passing group names to the
   extractors raised direction accuracy from about 65% to about 81%, pooled over two runs each
   (per run: 68% and 60% before, 86% and 75% after). The later rows range from 90% to 96%.
@@ -374,8 +378,10 @@ for papers with no gold.
   intermittently; in production it needs the on-disk cache or a sanctioned bulk route. PMC's
   supplement downloads (JavaScript proof-of-work) are not reachable by this client at all, so
   `--supplements` uses Europe PMC's ZIP instead.
-- **The supplement ZIP guard skips large archives.** A ZIP with big media, such as 37864204's
-  roughly 250 MB of mp4, exceeds the guard and is skipped (visibly, as `supplement_skipped`).
+- **Large supplement ZIPs are slow.** Europe PMC builds the ZIP on request and serves it at
+  about 400 KB/s, so a paper with big media, such as 37864204's roughly 260 MB of mp4, takes
+  about 11 minutes. The download is capped at 1 GiB and 25 minutes; past either, the ZIP is
+  skipped (visibly, as `supplement_skipped`).
   `.xls` and `.doc` files are not read, and supplement experiments get no UBERON term.
 - **Small samples.** The smoke set has 19 studies, one or two runs per configuration, and one
   model tier. The supplement result is one paper. The decision-model probe is two large papers
