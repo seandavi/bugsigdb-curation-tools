@@ -123,3 +123,6 @@ def _isolated_pmc_html_cache(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: 
     monkeypatch.setattr(evidence, "PMC_LIMITER", evidence.PmcRequestLimiter(min_interval=0.0))
     monkeypatch.setattr(evidence, "PMC_HTML_BACKOFF", (0.0, 0.0, 0.0, 0.0))
     monkeypatch.setattr(evidence, "FULLTEXT_BACKOFF", (0.0, 0.0, 0.0))
+    from bugsigdb_curation import pmc_map
+
+    monkeypatch.setattr(pmc_map, "IDCONV_BACKOFF", (0.0, 0.0, 0.0))  # no real sleeps when idconv is retried

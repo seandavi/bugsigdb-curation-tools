@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import random
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -177,8 +179,49 @@ def parse_idconv_response(response_json: dict[str, Any]) -> list[ConversionRecor
     return records
 
 
+#: Attempts (and waits between them, seconds, +-20% jitter) for a transient idconv failure. Resolved at call time
+#: so tests can zero them. idconv rate-limits by IP (a 429 hit 18 of 19 studies when two batch runs overlapped).
+IDCONV_ATTEMPTS = 4
+IDCONV_BACKOFF = (2.0, 6.0, 15.0)
+_IDCONV_TRANSIENT = frozenset({429, 500, 502, 503, 504})
+_RETRY_AFTER_MAX_SECONDS = 30.0
+
+
+async def _get_with_retry(
+    client: httpx.AsyncClient,
+    params: dict,
+    *,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+) -> httpx.Response:
+    """GET idconv, retrying 429/5xx and transport errors with backoff (a `Retry-After` on a 429 wins, capped).
+
+    Returns the last response once the attempts run out (so the caller's usual status handling reports it);
+    re-raises the last transport error. Any other status -- notably the 400s idconv uses for real errors -- is
+    returned immediately.
+    """
+    attempts, backoff = IDCONV_ATTEMPTS, IDCONV_BACKOFF
+    for attempt in range(1, attempts + 1):
+        try:
+            response = await client.get(IDCONV_URL, params=params)
+        except httpx.TransportError:
+            if attempt == attempts:
+                raise
+            wait = backoff[min(attempt - 1, len(backoff) - 1)]
+        else:
+            if response.status_code not in _IDCONV_TRANSIENT or attempt == attempts:
+                return response
+            wait = backoff[min(attempt - 1, len(backoff) - 1)]
+            if response.status_code == 429:
+                try:
+                    wait = min(float(response.headers["Retry-After"]), _RETRY_AFTER_MAX_SECONDS)
+                except (KeyError, ValueError):
+                    pass
+        await sleep(wait * random.uniform(0.8, 1.2))
+    raise AssertionError("unreachable")  # pragma: no cover
+
+
 async def fetch_batch(client: httpx.AsyncClient, pmids: list[str], *, email: str) -> list[ConversionRecord]:
-    """Fetch and parse idconv results for a single batch (<= 200 PMIDs).
+    """Fetch and parse idconv results for a single batch (<= 200 PMIDs), retrying transient failures.
 
     The real idconv API signals errors (e.g. "too many identifiers") with
     an HTTP 4xx status rather than a 200 with a top-level `status: "error"`
@@ -186,7 +229,7 @@ async def fetch_batch(client: httpx.AsyncClient, pmids: list[str], *, email: str
     real message) before `.json()` is called for the success path.
     """
     params = build_request_params(pmids, email=email)
-    response = await client.get(IDCONV_URL, params=params)
+    response = await _get_with_retry(client, params)
     try:
         response.raise_for_status()
     except httpx.HTTPStatusError as exc:
