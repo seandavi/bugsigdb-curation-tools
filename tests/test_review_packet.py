@@ -590,3 +590,43 @@ def test_non_finite_numbers_in_a_draft_fail_at_build_time(bad):
         canonical_sha256(record)
     with pytest.raises(ValueError, match="NaN or Infinity"):
         build_packet(record, {}, None, sample_meta())
+
+
+# --- authors: the draft's, else the article's own (CC BY attribution must name the authors) ------------------
+
+
+def test_attribution_falls_back_to_the_articles_authors_when_the_draft_has_none():
+    record = {k: v for k, v in load_draft().items() if k != "authors"}
+    evidence = sample_evidence("cc by")
+    evidence = PacketEvidence(
+        pmcid=evidence.pmcid, license="cc by", authors=("Zi-Jie Chen", "Gang Liu"),
+        figures=evidence.figures, tables=evidence.tables, images=evidence.images,
+    )
+    page = _build(record=record, evidence=evidence)
+    assert "Figures shown in this packet are reproduced from: Zi-Jie Chen; Gang Liu." in page
+    assert "(no authors in the draft)" not in page and "Zi-Jie Chen; Gang Liu" in page.split("Figures shown")[0]
+
+
+def test_the_drafts_own_authors_win_and_unknown_authors_are_said_so():
+    record = dict(load_draft(), authors=["Draft Author"])
+    evidence = sample_evidence("cc by")
+    with_both = PacketEvidence(
+        pmcid=evidence.pmcid, license="cc by", authors=("Other Person",),
+        figures=evidence.figures, tables=evidence.tables, images=evidence.images,
+    )
+    assert "reproduced from: Draft Author." in _build(record=record, evidence=with_both)
+    nobody = {k: v for k, v in load_draft().items() if k != "authors"}
+    assert "reproduced from: authors not stated." in _build(record=nobody, evidence=sample_evidence("cc by"))
+
+
+def test_evidence_cache_round_trips_authors_and_reads_older_caches_without_them(tmp_path):
+    from bugsigdb_curation.review.packet import load_evidence, save_evidence
+
+    evidence = sample_evidence("cc by")
+    evidence = PacketEvidence(pmcid=evidence.pmcid, license="cc by", authors=("A B", "C D"), figures=evidence.figures)
+    save_evidence(evidence, tmp_path)
+    assert load_evidence(tmp_path).authors == ("A B", "C D")
+    payload = json.loads((tmp_path / "evidence.json").read_text())
+    payload.pop("authors")  # a cache written before the field existed
+    (tmp_path / "evidence.json").write_text(json.dumps(payload))
+    assert load_evidence(tmp_path).authors == ()

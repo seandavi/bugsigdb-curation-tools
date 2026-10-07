@@ -335,6 +335,23 @@ class ArticleMetadata:
     doi: str | None
 
 
+def _author_contribs(meta: ET.Element) -> list[ET.Element]:
+    """The `<contrib>` elements that are authors, across the JATS conventions publishers use.
+
+    Most mark each author `contrib-type="author"`; MDPI instead wraps plain `<contrib>`s in
+    `<contrib-group content-type="author">` (so three of five recent articles came back with no authors).
+    A contrib typed as something else (editor, ...) never counts, nor does one in an editor/other group.
+    """
+    found: list[ET.Element] = []
+    for group in meta.iter("contrib-group"):
+        group_type = group.get("content-type")
+        for contrib in group.findall("contrib"):
+            contrib_type = contrib.get("contrib-type")
+            if contrib_type == "author" or (contrib_type is None and group_type in (None, "author")):
+                found.append(contrib)
+    return found
+
+
 def parse_article_metadata(xml_text: str) -> ArticleMetadata:
     """Parse `<article-meta>` bibliographic fields out of a fullTextXML document."""
     root = ET.fromstring(xml_text)
@@ -356,7 +373,7 @@ def parse_article_metadata(xml_text: str) -> ArticleMetadata:
             break
 
     authors: list[str] = []
-    for contrib in meta.findall('.//contrib-group/contrib[@contrib-type="author"]'):
+    for contrib in _author_contribs(meta):
         name_el = contrib.find("name")
         if name_el is None:
             continue
