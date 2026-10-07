@@ -52,7 +52,7 @@ from bugsigdb_curation.curator.evidence import (
 )
 from bugsigdb_curation.curator.experiment import ExperimentFields, extract_experiment
 from bugsigdb_curation.curator.extract import StudyFields, extract_study
-from bugsigdb_curation.curator.locate import LocatedArtifact, locate_artifact
+from bugsigdb_curation.curator.locate import LocatedArtifact, locate_artifacts
 from bugsigdb_curation.curator.model import Model
 from bugsigdb_curation.curator.ner import extract_names
 from bugsigdb_curation.curator.ols import DEFAULT_CACHE_PATH as DEFAULT_OLS_CACHE_PATH
@@ -64,7 +64,7 @@ from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL, resolve
 from bugsigdb_curation.curator.routing import DECISION_CALL_ERRORS, map_body_sites, rank_artifacts
 from bugsigdb_curation.curator.segment import segment_experiments
 from bugsigdb_curation.curator.signature import ExtractedSignature, extract_signatures
-from bugsigdb_curation.curator.supplement_lever import supplement_experiments
+from bugsigdb_curation.curator.supplement_lever import DUPLICATE_MIN_TAXA, _taxon_keys, supplement_experiments
 from bugsigdb_curation.curator.taxonomy import DEFAULT_CACHE_PATH, NcbiTaxonomyResolver
 from bugsigdb_curation.curator.verify import verify_signatures
 from bugsigdb_curation.decision import DecisionModel
@@ -256,6 +256,83 @@ async def _extract_experiment_signatures(
     )
 
 
+async def _figure_image_once(
+    artifact: LocatedArtifact,
+    *,
+    client: httpx.AsyncClient,
+    cache: dict[str, bytes | None],
+    annotations: dict[str, Any],
+) -> bytes | None:
+    """The image of a figure artifact, downloaded at most once per study (`cache` is keyed by provenance).
+
+    A figure with no image means S5b extracts from the legend alone -- often empty or wrong -- so say so
+    loudly in the log and append its provenance to `annotations["figure_image_unavailable"]` (a list)
+    rather than failing silently. A CDN hiccup must not abort the study. Tables have no image (None).
+    """
+    if artifact.kind != "figure" or artifact.figure is None:
+        return None
+    key = artifact.provenance
+    if key in cache:
+        return cache[key]
+    image: bytes | None = None
+    try:
+        image = await fetch_figure_image(artifact.figure, client=client)
+    except httpx.HTTPError as exc:
+        logger.bind(stage="S5b").warning("figure image download failed", error=repr(exc))
+    if image is None:
+        logger.bind(stage="S5b").warning(
+            "figure image unavailable; extracting from the legend alone", artifact=key
+        )
+        annotations.setdefault("figure_image_unavailable", []).append(key)
+    cache[key] = image
+    return image
+
+
+_MainExperiment = tuple[ExperimentFields, list[ExtractedSignature], str | None]
+
+
+def _drop_duplicate_signatures(
+    experiments: list[_MainExperiment],
+) -> tuple[list[_MainExperiment], list[dict[str, Any]]]:
+    """Drop a later experiment's signature that copies an earlier one read from the SAME artifact.
+
+    Duplicate = same direction and an identical taxon-key set (`supplement_lever._taxon_keys`) of at least
+    `DUPLICATE_MIN_TAXA` taxa, from the same source artifact. The experiment itself is kept (it is a real
+    comparison the paper may describe; one without signatures is honest). Returns the new experiment list
+    and one `{"experiment_index", "source", "direction", "same_as_experiment_index"}` record per drop.
+    """
+    seen: list[tuple[int, str, str, frozenset[str]]] = []  # (experiment index, source, direction, taxon keys)
+    dropped: list[dict[str, Any]] = []
+    kept_experiments: list[_MainExperiment] = []
+    for index, (fields, signatures, source) in enumerate(experiments):
+        kept: list[ExtractedSignature] = []
+        for signature in signatures:
+            keys = _taxon_keys(signature)
+            earlier = next(
+                (
+                    i
+                    for i, src, direction, earlier_keys in seen
+                    if source is not None and src == source and direction == signature.direction and earlier_keys == keys
+                ),
+                None,
+            )
+            if len(keys) >= DUPLICATE_MIN_TAXA and earlier is not None:
+                dropped.append(
+                    {
+                        "experiment_index": index,
+                        "source": source,
+                        "direction": signature.direction,
+                        "same_as_experiment_index": earlier,
+                    }
+                )
+                continue
+            kept.append(signature)
+            if source is not None:
+                seen.append((index, source, signature.direction, keys))
+        kept_experiments.append((fields, kept, source))
+    return kept_experiments, dropped
+
+
 async def curate_async(
     pmid: str,
     *,
@@ -286,6 +363,11 @@ async def curate_async(
     `OlsClient` across studies and then owns saving its cache). Every judgment is best-effort -- a failed decision
     call is logged and the stage falls back to its no-decision-model
     behaviour -- and with `decision_model=None` the pipeline is unchanged.
+
+    With a decision model each experiment tries the top-ranked artifacts (`locate_artifacts`) in rank order
+    and takes the first that yields taxa (S5b may decline an artifact that does not report the comparison);
+    the tries are recorded in `annotations["experiment_artifacts"]`, and a later experiment's signature that
+    copies an earlier one from the same artifact is dropped (`annotations["duplicate_signatures_dropped"]`).
 
     `supplements=True` (needs `decision_model`, else `ValueError`) also reads the paper's supplementary files
     (`curator.supplement_lever`): the decision model screens each sheet/page, the units that pass are extracted
@@ -378,23 +460,11 @@ async def curate_async(
                     annotations["artifact_ranking"] = [
                         {"artifact": a.provenance, "kind": a.kind, "p_da": a.p_da} for a in ranked
                     ]
-                artifact = locate_artifact(bundle, ranked)
-                # Fetched once for the whole study (it was re-fetched per experiment before). A figure
-                # artifact with no image means S5b extracts from the legend alone -- often empty or wrong --
-                # so say so loudly in the log and in the annotations rather than failing silently.
-                image_bytes = None
-                if artifact is not None and artifact.kind == "figure" and artifact.figure is not None:
-                    try:
-                        image_bytes = await fetch_figure_image(artifact.figure, client=client)
-                    except httpx.HTTPError as exc:  # a CDN hiccup must not abort the study
-                        logger.bind(stage="S5b").warning("figure image download failed", error=repr(exc))
-                    if image_bytes is None:
-                        logger.bind(stage="S5b").warning(
-                            "figure image unavailable; extracting from the legend alone", artifact=artifact.provenance
-                        )
-                        annotations["figure_image_unavailable"] = artifact.provenance
+                candidates = locate_artifacts(bundle, ranked)
+                figure_images: dict[str, bytes | None] = {}  # each candidate figure's image: once per study
 
-                experiments: list[tuple[ExperimentFields, list[ExtractedSignature], str | None]] = []
+                experiments: list[_MainExperiment] = []
+                experiment_artifacts: list[dict[str, Any]] = []
                 flags: list[str] = []
                 body_site_terms: list[dict[str, Any]] = []
                 # NOTE: no per-experiment error isolation -- one bad ExperimentStub
@@ -413,10 +483,17 @@ async def curate_async(
                             annotations,
                         )
 
+                    # Try the candidate artifacts in rank order; the first that yields taxa serves this
+                    # experiment (a paper's comparisons are often reported by different artifacts).
                     signatures: list[ExtractedSignature] = []
-                    source: str | None = None
-                    if artifact is not None:
-                        signatures, stage_flags = await _extract_experiment_signatures(
+                    source: str | None = candidates[0].provenance if candidates else None
+                    tried: list[str] = []
+                    for artifact in candidates:
+                        tried.append(artifact.provenance)
+                        image_bytes = await _figure_image_once(
+                            artifact, client=client, cache=figure_images, annotations=annotations
+                        )
+                        found, stage_flags = await _extract_experiment_signatures(
                             artifact,
                             design=design,
                             model=model,
@@ -427,12 +504,28 @@ async def curate_async(
                             ground_unresolved=ground_unresolved,
                         )
                         flags.extend(stage_flags)
-                        source = artifact.provenance
+                        if found:
+                            signatures, source = found, artifact.provenance
+                            break
+                    if ranked:
+                        experiment_artifacts.append(
+                            {
+                                "experiment_index": len(experiments),
+                                "artifact_tried": tried,
+                                "artifact_used": source if signatures else None,
+                            }
+                        )
 
                     experiments.append((experiment_fields, signatures, source))
 
                 if body_site_terms:
                     annotations["body_site_terms"] = body_site_terms
+                if experiment_artifacts:
+                    annotations["experiment_artifacts"] = experiment_artifacts
+
+                experiments, duplicates_dropped = _drop_duplicate_signatures(experiments)
+                if duplicates_dropped:
+                    annotations["duplicate_signatures_dropped"] = duplicates_dropped
 
                 if supplements:
                     assert decision_model is not None  # checked at entry

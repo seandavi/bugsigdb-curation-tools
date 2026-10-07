@@ -6,12 +6,23 @@ paper with several comparisons got the same taxa copied into each experiment.
 
 from __future__ import annotations
 
+import asyncio
+import re
+
+import httpx
+import test_curator_pipeline_e2e as e2e
 import test_curator_routing as routing_helpers
+from pytest_httpx import HTTPXMock
 
 from bugsigdb_curation.curator.artifact_text import group_orientation_text
+from bugsigdb_curation.curator.experiment import ExperimentFields
 from bugsigdb_curation.curator.locate import LocatedArtifact, locate_artifact, locate_artifacts
+from bugsigdb_curation.curator.model import DEFAULT_MOCK_RESPONSES, MockModel
 from bugsigdb_curation.curator.ner import build_ner_messages
-from bugsigdb_curation.curator.signature import build_signature_messages
+from bugsigdb_curation.curator.pipeline import _drop_duplicate_signatures, curate_async
+from bugsigdb_curation.curator.signature import ExtractedSignature, ExtractedTaxon, build_signature_messages
+from bugsigdb_curation.decision import MockDecisionModel, NoulAnswer
+from bugsigdb_curation.retrieval import EUROPEPMC_FULLTEXT_URL, PMC_ARTICLE_URL
 
 _table = routing_helpers._table
 _figure = routing_helpers._figure
@@ -86,3 +97,231 @@ def test_signature_and_ner_prompts_carry_the_escape_hatch_iff_names_are_known():
         assert _ESCAPE_HATCH in _text(build(_ARTIFACT, groups=groups))
         assert _ESCAPE_HATCH not in _text(build(_ARTIFACT))
         assert _ESCAPE_HATCH not in _text(build(_ARTIFACT, groups=(None, "x")))
+
+
+# --- pipeline: per-experiment artifact search --------------------------------------------------
+
+BLOB_3 = "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/a1/1/b2/fig3.jpg"
+BLOB_7 = "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/a1/1/b2/fig7.jpg"
+TWO_FIG_XML = e2e.XML_FIXTURE.replace(
+    "</body>",
+    '<fig id="F3"><label>Figure 3.</label><caption><p>Taxa differing in the antibiotic comparison.</p></caption>'
+    '<graphic xlink:href="fig3.jpg"/></fig>'
+    '<fig id="F7"><label>Figure 7.</label><caption><p>Taxa differing in the diet comparison.</p></caption>'
+    '<graphic xlink:href="fig7.jpg"/></fig></body>',
+)
+PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 16
+
+
+def _taxa(*names: str, direction: str = "increased") -> dict:
+    return {"taxa": [{"name": n, "direction": direction, "proposed_ncbi_id": None} for n in names]}
+
+
+TAXA_A = _taxa("Alistipes onderdonkii", "Bilophila wadsworthia", "Dorea longicatena")
+TAXA_B = _taxa("Roseburia hominis", "Blautia obeum", "Ruminococcus bromii")
+
+
+def _ranker():
+    """Figure 7 narrowly outranks Figure 3 (as in PMID 42404767); the table is not a DA artifact."""
+    p_by_legend = {"diet comparison": 0.981, "antibiotic comparison": 0.98}
+
+    def answers(state, questions):
+        text = state["caption_or_legend"]
+        return {"is_da_artifact": NoulAnswer(next((p for k, p in p_by_legend.items() if k in text), 0.1))}
+
+    return MockDecisionModel({"s5a_locate": answers})
+
+
+def _which_figure(messages) -> str:
+    text = messages[0]["content"][0]["text"]
+    return "Figure 7" if "Figure legend (Figure 7)" in text else "Figure 3" if "Figure legend (Figure 3)" in text else "other"
+
+
+def _study(httpx_mock: HTTPXMock, tmp_path, signature_extract, *, n_experiments=2, decision_model=_ranker):
+    """Run curate_async over the two-figure paper with `n_experiments` stubs; returns (result, model)."""
+    e2e._mock_idconv(httpx_mock)
+    httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid=e2e.PMCID), text=TWO_FIG_XML)
+    httpx_mock.add_response(
+        url=PMC_ARTICLE_URL.format(pmcid=e2e.PMCID), text=f'<html><img src="{BLOB_3}"><img src="{BLOB_7}"></html>'
+    )
+    for blob in (BLOB_3, BLOB_7):
+        httpx_mock.add_response(url=blob, content=PNG, is_reusable=True, is_optional=True)
+    httpx_mock.add_response(
+        url=re.compile(r"https://www\.ebi\.ac\.uk/ols4/api/search.*"),
+        json={"response": {"docs": []}},
+        is_optional=True,
+        is_reusable=True,
+    )
+    segment = {"experiments": [{"index": i, "description": f"comparison {i}"} for i in range(n_experiments)]}
+    model = MockModel(responses={"segment": segment, "signature_extract": signature_extract})
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return await curate_async(
+                e2e.PMID,
+                model=model,
+                client=client,
+                decision_model=decision_model() if decision_model else None,
+                taxonomy_cache_path=tmp_path / "t.json",
+                ols_cache_path=tmp_path / "o.json",
+                html_cache_dir=tmp_path / "h",
+            )
+
+    return asyncio.run(run()), model
+
+
+def _sources(result, experiment: int) -> set[str]:
+    return {s["source"] for s in result.record["experiments"][experiment].get("signatures", [])}
+
+
+def _taxon_names(result, experiment: int) -> set[str]:
+    return {t["taxon_name"] for s in result.record["experiments"][experiment].get("signatures", []) for t in s["taxa"]}
+
+
+def test_a_declined_artifact_falls_through_to_the_next_candidate_per_experiment(httpx_mock, tmp_path):
+    """Experiment 0's comparison is in Figure 3: Figure 7 (ranked first) declines it, Figure 3 supplies it."""
+    seen_f7: list[int] = []
+
+    def signature_extract(messages):
+        figure = _which_figure(messages)
+        if figure == "Figure 7":
+            seen_f7.append(1)
+            return {"taxa": []} if len(seen_f7) == 1 else TAXA_B  # declines experiment 0, reports experiment 1
+        return TAXA_A
+
+    result, model = _study(httpx_mock, tmp_path, signature_extract)
+
+    assert result.annotations["experiment_artifacts"] == [
+        {"experiment_index": 0, "artifact_tried": ["Figure 7", "Figure 3"], "artifact_used": "Figure 3"},
+        {"experiment_index": 1, "artifact_tried": ["Figure 7"], "artifact_used": "Figure 7"},
+    ]
+    assert _sources(result, 0) == {"Figure 3"} and _taxon_names(result, 0) == {t["name"] for t in TAXA_A["taxa"]}
+    assert _sources(result, 1) == {"Figure 7"} and _taxon_names(result, 1) == {t["name"] for t in TAXA_B["taxa"]}
+    assert "duplicate_signatures_dropped" not in result.annotations
+    # The prompts told the model it may decline (the groups are known from S4).
+    prompts = [c["messages"][0]["content"][0]["text"] for c in model.calls if c["stage"] == "signature_extract"]
+    assert len(prompts) == 3 and all(_ESCAPE_HATCH in p for p in prompts)
+
+
+def test_each_candidate_figure_image_is_fetched_once_per_study(httpx_mock, tmp_path):
+    def signature_extract(messages):
+        return {"taxa": []} if _which_figure(messages) == "Figure 7" else TAXA_A
+
+    _study(httpx_mock, tmp_path, signature_extract)  # Figure 7 is tried for BOTH experiments, Figure 3 for both
+    urls = [str(r.url) for r in httpx_mock.get_requests()]
+    assert urls.count(BLOB_7) == 1 and urls.count(BLOB_3) == 1
+
+
+def test_an_experiment_no_candidate_reports_gets_no_signatures_but_is_kept(httpx_mock, tmp_path):
+    result, _ = _study(httpx_mock, tmp_path, {"taxa": []})
+    assert len(result.record["experiments"]) == 2
+    assert all("signatures" not in e for e in result.record["experiments"])
+    assert [e["artifact_used"] for e in result.annotations["experiment_artifacts"]] == [None, None]
+    assert all(e["artifact_tried"] == ["Figure 7", "Figure 3"] for e in result.annotations["experiment_artifacts"])
+
+
+def test_identical_signatures_from_one_artifact_are_deduplicated_but_the_experiment_is_kept(httpx_mock, tmp_path):
+    result, _ = _study(httpx_mock, tmp_path, TAXA_A)  # Figure 7 yields the same taxa for both experiments
+
+    assert _taxon_names(result, 0) == {t["name"] for t in TAXA_A["taxa"]}
+    assert len(result.record["experiments"]) == 2
+    assert "signatures" not in result.record["experiments"][1]
+    assert result.annotations["duplicate_signatures_dropped"] == [
+        {"experiment_index": 1, "source": "Figure 7", "direction": "increased", "same_as_experiment_index": 0}
+    ]
+
+
+def test_the_same_taxa_from_different_artifacts_are_not_deduplicated(httpx_mock, tmp_path):
+    calls_f7: list[int] = []
+
+    def signature_extract(messages):
+        if _which_figure(messages) == "Figure 3":
+            return TAXA_A
+        calls_f7.append(1)
+        return {"taxa": []} if len(calls_f7) == 1 else TAXA_A  # experiment 0: Figure 7 declines; experiment 1 reports
+
+    result, _ = _study(httpx_mock, tmp_path, signature_extract)
+    assert _sources(result, 0) == {"Figure 3"} and _sources(result, 1) == {"Figure 7"}
+    assert "duplicate_signatures_dropped" not in result.annotations
+
+
+def test_without_a_decision_model_one_candidate_is_tried_and_nothing_is_recorded(httpx_mock, tmp_path):
+    e2e._mock_taxonomy(httpx_mock)
+    result, model = _study(httpx_mock, tmp_path, DEFAULT_MOCK_RESPONSES["signature_extract"], decision_model=None)
+
+    # The two default taxa (< 3, so never a duplicate) reach both experiments, from the one regex-chosen table.
+    assert [_sources(result, i) for i in (0, 1)] == [{"Table 2"}, {"Table 2"}]
+    assert sum(c["stage"] == "signature_extract" for c in model.calls) == 2
+    assert result.annotations == {}
+
+
+def test_a_single_experiment_paper_uses_the_top_artifact_and_records_it(httpx_mock, tmp_path):
+    result, model = _study(httpx_mock, tmp_path, TAXA_A, n_experiments=1)
+
+    assert sum(c["stage"] == "signature_extract" for c in model.calls) == 1
+    assert _sources(result, 0) == {"Figure 7"}
+    assert result.annotations["experiment_artifacts"] == [
+        {"experiment_index": 0, "artifact_tried": ["Figure 7"], "artifact_used": "Figure 7"}
+    ]
+    assert "duplicate_signatures_dropped" not in result.annotations
+
+
+# --- the duplicate guard on its own ------------------------------------------------------------
+
+
+def _sig(direction: str, *taxa: tuple[str, int | None]) -> ExtractedSignature:
+    return ExtractedSignature(
+        direction=direction, taxa=tuple(ExtractedTaxon(taxon_name=n, direction=direction, ncbi_id=i) for n, i in taxa)
+    )
+
+
+_FIELDS = ExperimentFields(
+    host_species="Homo sapiens", body_site=(), condition=(), group_0_name="a", group_1_name="b",
+    sequencing_type=None, statistical_test=(), mht_correction=None,
+)
+_THREE = (("A a", None), ("B b", None), ("C c", None))
+
+
+def _guard(*experiments: tuple[list[ExtractedSignature], str | None]):
+    return _drop_duplicate_signatures([(_FIELDS, sigs, source) for sigs, source in experiments])
+
+
+def test_guard_drops_a_later_exact_copy_from_the_same_source_and_keeps_both_experiments():
+    kept, dropped = _guard(([_sig("increased", *_THREE)], "Figure 7"), ([_sig("increased", *_THREE)], "Figure 7"))
+    assert [len(sigs) for _, sigs, _ in kept] == [1, 0]
+    assert dropped == [
+        {"experiment_index": 1, "source": "Figure 7", "direction": "increased", "same_as_experiment_index": 0}
+    ]
+
+
+def test_guard_matches_on_ncbi_id_when_resolved_else_normalised_name():
+    first = _sig("increased", ("Escherichia coli", 562), ("Bacteroides", 816), ("clostridium  butyricum", None))
+    second = _sig("increased", ("E. coli", 562), ("Bacteroides fragilis group", 816), ("Clostridium butyricum", None))
+    _, dropped = _guard(([first], "Table 1"), ([second], "Table 1"))
+    assert len(dropped) == 1
+
+
+def test_guard_leaves_different_taxa_other_directions_other_sources_and_small_sets_alone():
+    base = _sig("increased", *_THREE)
+    different = _sig("increased", ("A a", None), ("B b", None), ("D d", None))
+    kept, dropped = _guard(
+        ([base], "Figure 7"),
+        ([different], "Figure 7"),  # one taxon differs
+        ([_sig("decreased", *_THREE)], "Figure 7"),  # other direction
+        ([base], "Figure 3"),  # other source
+        ([_sig("increased", *_THREE[:2])], "Figure 7"),  # too small to call a duplicate...
+        ([_sig("increased", *_THREE[:2])], "Figure 7"),  # ...even when repeated
+    )
+    assert dropped == [] and [len(sigs) for _, sigs, _ in kept] == [1] * 6
+
+
+def test_guard_compares_each_signature_and_ignores_experiments_with_no_source():
+    both = [_sig("increased", *_THREE), _sig("decreased", ("X x", None), ("Y y", None), ("Z z", None))]
+    kept, dropped = _guard(
+        (both, "Figure 7"),
+        ([both[0], _sig("decreased", ("X x", None), ("Y y", None), ("W w", None))], "Figure 7"),
+        ([both[0]], None),
+    )
+    assert [d["direction"] for d in dropped] == ["increased"] and dropped[0]["experiment_index"] == 1
+    assert [s.direction for s in kept[1][1]] == ["decreased"]
+    assert len(kept[2][1]) == 1
