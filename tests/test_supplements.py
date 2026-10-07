@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
+import time
 import zipfile
 import zlib
 from typing import BinaryIO
@@ -314,7 +315,7 @@ def test_fetch_supplement_zip_returns_none_on_non_zip_content_type(httpx_mock: H
 
 def test_fetch_supplement_zip_returns_none_on_non_404_http_error(httpx_mock: HTTPXMock):
     httpx_mock.add_response(
-        url=EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid="PMC2222222"), status_code=500
+        url=EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid="PMC2222222"), status_code=500, is_reusable=True
     )
 
     async def run() -> BinaryIO | None:
@@ -388,7 +389,8 @@ def test_fetch_supplement_zip_lets_the_overall_deadline_govern_not_the_clients_s
             return await fetch_supplement_zip("PMC3333336", client=client, timeout=75.0)
 
     assert _read_and_close(asyncio.run(run())) == b"zip"
-    assert httpx_mock.get_requests()[0].extensions["timeout"]["read"] == 75.0
+    # the per-request timeout is the deadline REMAINING for this attempt (retries share one deadline)
+    assert 70.0 < httpx_mock.get_requests()[0].extensions["timeout"]["read"] <= 75.0
 
 
 def test_fetch_supplement_zip_default_guards_are_1gib_and_25_minutes():
@@ -419,7 +421,7 @@ def test_fetch_supplement_zip_says_why_nothing_came_back(httpx_mock: HTTPXMock):
     httpx_mock.add_response(url=url(pmcid="PMC1"), status_code=404)
     assert _fetch_reason(httpx_mock, "PMC1") == "no supplementary files (HTTP 404)"
 
-    httpx_mock.add_response(url=url(pmcid="PMC2"), status_code=503)
+    httpx_mock.add_response(url=url(pmcid="PMC2"), status_code=503, is_reusable=True)  # persistent: retried, then reported
     assert _fetch_reason(httpx_mock, "PMC2") == "fetch failed: HTTP 503"
 
     httpx_mock.add_response(url=url(pmcid="PMC3"), content=b"<html>", headers={"Content-Type": "text/html"})
@@ -444,7 +446,9 @@ def test_fetch_supplement_zip_reports_a_timeout_and_a_transport_error(httpx_mock
     httpx_mock.add_callback(slow, url=EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid="PMC6"))
     assert _fetch_reason(httpx_mock, "PMC6", timeout=0.05) == "download timed out after 0.05 s"
 
-    httpx_mock.add_exception(httpx.ConnectError("no route"), url=EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid="PMC7"))
+    httpx_mock.add_exception(
+        httpx.ConnectError("no route"), url=EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid="PMC7"), is_reusable=True
+    )
     assert _fetch_reason(httpx_mock, "PMC7").startswith("fetch failed: ConnectError")
 
 
@@ -621,7 +625,7 @@ def test_fetch_supplement_zip_removes_the_spool_after_a_mid_stream_error(httpx_m
 
     async def run() -> BinaryIO | None:
         async with httpx.AsyncClient() as client:
-            return await fetch_supplement_zip("PMC9000005", client=client, skipped=skipped)
+            return await fetch_supplement_zip("PMC9000005", client=client, skipped=skipped, attempts=1)
 
     assert asyncio.run(run()) is None
     assert skipped[0][1].startswith("fetch failed: ReadError")
@@ -850,3 +854,85 @@ def test_supplement_to_model_document_non_pdf_returns_none():
     for media_type in ("xlsx", "csv", "tsv", "docx", "image", "other"):
         f = SupplementFile(filename=f"s.{media_type}", media_type=media_type, raw_bytes=b"data")
         assert supplement_to_model_document(f) is None
+
+
+# --- transient ZIP failures are retried, within ONE shared deadline; everything else is final ------------------
+
+ZIP_URL = EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid="PMC1234567")
+
+
+def _fetch_with_sleeps(**kwargs):
+    sleeps: list[float] = []
+
+    async def sleep(s: float) -> None:
+        sleeps.append(s)
+
+    skipped: list[tuple[str, str]] = []
+
+    async def run() -> BinaryIO | None:
+        async with httpx.AsyncClient() as client:
+            return await fetch_supplement_zip("PMC1234567", client=client, skipped=skipped, sleep=sleep, **kwargs)
+
+    return run, sleeps, skipped
+
+
+def test_a_500_then_success_is_retried_and_the_zip_is_returned(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(url=ZIP_URL, status_code=500)
+    httpx_mock.add_response(url=ZIP_URL, content=b"zip", headers={"Content-Type": "application/zip"})
+    run, sleeps, skipped = _fetch_with_sleeps()
+    assert _read_and_close(asyncio.run(run())) == b"zip"
+    assert len(httpx_mock.get_requests()) == 2 and len(sleeps) == 1 and skipped == []
+
+
+def test_429_and_a_transport_error_are_retried_too(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(url=ZIP_URL, status_code=429)
+    httpx_mock.add_exception(httpx.ReadTimeout("slow"), url=ZIP_URL)
+    httpx_mock.add_response(url=ZIP_URL, content=b"zip", headers={"Content-Type": "application/zip"})
+    run, sleeps, _ = _fetch_with_sleeps()
+    assert _read_and_close(asyncio.run(run())) == b"zip"
+    assert len(httpx_mock.get_requests()) == 3 and len(sleeps) == 2
+
+
+def test_attempts_are_bounded_and_the_last_reason_is_reported(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(url=ZIP_URL, status_code=502, is_reusable=True)
+    run, sleeps, skipped = _fetch_with_sleeps(attempts=3)
+    assert asyncio.run(run()) is None
+    assert len(httpx_mock.get_requests()) == 3 and len(sleeps) == 2
+    assert skipped == [("(supplementary files zip)", "fetch failed: HTTP 502")]
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        {"status_code": 404},
+        {"status_code": 403},
+        {"content": b"<html>", "headers": {"Content-Type": "text/html"}},
+        {"content": b"x" * 5000, "headers": {"Content-Type": "application/zip"}},
+    ],
+    ids=["404", "403", "not-a-zip", "over-cap"],
+)
+def test_final_outcomes_are_never_retried(httpx_mock: HTTPXMock, response):
+    httpx_mock.add_response(url=ZIP_URL, **response)
+    run, sleeps, skipped = _fetch_with_sleeps(max_bytes=1000)
+    assert asyncio.run(run()) is None
+    assert len(httpx_mock.get_requests()) == 1 and sleeps == [] and len(skipped) == 1
+
+
+def test_retries_share_one_deadline_instead_of_multiplying_it(httpx_mock: HTTPXMock):
+    async def slow_500(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(0.3)
+        return httpx.Response(500)
+
+    httpx_mock.add_callback(slow_500, url=ZIP_URL, is_reusable=True)
+    run, sleeps, skipped = _fetch_with_sleeps(timeout=0.5, attempts=5)
+    started = time.monotonic()
+    assert asyncio.run(run()) is None
+    assert time.monotonic() - started < 1.5  # 5 attempts x 0.3 s would be 1.5 s; the shared 0.5 s deadline cut it short
+    assert skipped[0][1].startswith("download timed out") and len(httpx_mock.get_requests()) <= 2
+
+
+def test_default_retry_settings():
+    from bugsigdb_curation import supplements
+
+    assert supplements.ZIP_ATTEMPTS == 3 and len(supplements.ZIP_BACKOFF) == 2
+    assert supplements.ZIP_TRANSIENT_STATUSES == frozenset({429, 500, 502, 503, 504})

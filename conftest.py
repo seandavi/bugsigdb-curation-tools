@@ -126,3 +126,6 @@ def _isolated_pmc_html_cache(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: 
     from bugsigdb_curation import pmc_map
 
     monkeypatch.setattr(pmc_map, "IDCONV_BACKOFF", (0.0, 0.0, 0.0))  # no real sleeps when idconv is retried
+    from bugsigdb_curation import supplements
+
+    monkeypatch.setattr(supplements, "ZIP_BACKOFF", (0.0, 0.0))  # nor when the supplement ZIP is retried

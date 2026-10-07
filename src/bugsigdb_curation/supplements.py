@@ -39,6 +39,7 @@ import io
 import time
 import zipfile
 import zlib
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import SpooledTemporaryFile
@@ -165,6 +166,10 @@ MAX_ZIP_BYTES = 1024 * 1024 * 1024
 #: The real protection against a hung server. EuropePMC assembles the ZIP on request (~30 s to the first byte) and
 #: then serves it at roughly 400 KB/s, so 25 minutes covers the biggest ZIP seen so far with room to spare.
 ZIP_TIMEOUT_SECONDS = 1500.0
+#: Attempts (and waits between them, seconds) for a transient ZIP failure (429/5xx/transport); resolved at call time.
+ZIP_ATTEMPTS = 3
+ZIP_BACKOFF = (15.0, 45.0)
+ZIP_TRANSIENT_STATUSES = frozenset({429, 500, 502, 503, 504})
 #: Bodies up to this size stay in memory; a bigger one is rolled over to a temp file (removed when the handle closes).
 SPOOL_MAX_BYTES = 32 * 1024 * 1024
 #: A long download logs its progress at INFO every this many bytes.
@@ -260,6 +265,85 @@ def unpack_supplement_zip(
 # --- thin network I/O (not covered by pure-parser tests) --------------------------------
 
 
+async def _fetch_supplement_zip_once(
+    pmcid: str,
+    *,
+    client: httpx.AsyncClient,
+    max_bytes: int,
+    timeout: float,
+    overall_timeout: float,
+) -> tuple[BinaryIO | None, str | None, bool]:
+    """One download attempt: ``(handle, None, False)`` on success, else ``(None, reason, transient)``.
+
+    `transient` is True for a 429/5xx or a transport error (worth another attempt), False for everything that
+    another attempt cannot change: a 404, a non-zip body, a body over the size cap, or the deadline expiring.
+    The body is spooled to disk past `SPOOL_MAX_BYTES`; on every exit but success the temp file is already gone.
+    """
+    log = logger.bind(stage="supplements")
+    url = EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid=pmcid)
+
+    spool: BinaryIO | None = None
+    try:
+        async with asyncio.timeout(timeout):
+            # EuropePMC assembles the ZIP on request (first byte can take ~30 s), so the shared client's
+            # per-operation timeout must not preempt the overall deadline enforced above.
+            async with client.stream("GET", url, timeout=httpx.Timeout(timeout)) as response:
+                response.raise_for_status()
+                content_type = response.headers.get("content-type", "")
+                if "zip" not in content_type.lower():
+                    log.warning(
+                        "supplementary files response was not a zip",
+                        pmcid=pmcid,
+                        content_type=content_type,
+                    )
+                    return None, f"response was not a zip (content-type {content_type!r})", False
+                declared = response.headers.get("content-length", "")
+                if declared.isdigit() and int(declared) > max_bytes:
+                    log.warning(
+                        "supplementary files zip too large; skipping", pmcid=pmcid, content_length=int(declared), max_bytes=max_bytes
+                    )
+                    return None, f"zip too large ({declared} bytes declared; limit {max_bytes})", False
+                spool = SpooledTemporaryFile(max_size=SPOOL_MAX_BYTES)
+                received = 0
+                next_progress = ZIP_PROGRESS_LOG_BYTES
+                started = time.monotonic()
+                async for chunk in response.aiter_bytes():
+                    received += len(chunk)
+                    if received > max_bytes:
+                        log.warning(
+                            "supplementary files zip exceeded the size cap; aborting download", pmcid=pmcid, max_bytes=max_bytes
+                        )
+                        return None, f"zip too large (download passed the {max_bytes} byte limit)", False
+                    spool.write(chunk)
+                    if received >= next_progress:
+                        log.info(
+                            "downloading supplementary files zip",
+                            pmcid=pmcid,
+                            mb_received=round(received / 1e6),
+                            elapsed_s=round(time.monotonic() - started),
+                        )
+                        next_progress = (received // ZIP_PROGRESS_LOG_BYTES + 1) * ZIP_PROGRESS_LOG_BYTES
+                spool.seek(0)
+                handed_over, spool = spool, None
+                return handed_over, None, False
+    except TimeoutError:
+        log.warning("supplementary files download timed out; skipping", pmcid=pmcid, timeout=overall_timeout)
+        return None, f"download timed out after {overall_timeout:g} s", False
+    except httpx.HTTPStatusError as exc:
+        status = exc.response.status_code
+        if status == 404:
+            log.info("no supplementary files for pmcid", pmcid=pmcid)
+            return None, NO_SUPPLEMENTS_REASON, False
+        log.warning("supplementary files fetch failed", pmcid=pmcid, status_code=status)
+        return None, f"fetch failed: HTTP {status}", status in ZIP_TRANSIENT_STATUSES
+    except httpx.HTTPError as exc:
+        log.warning("supplementary files fetch failed", pmcid=pmcid, error=str(exc))
+        return None, f"fetch failed: {type(exc).__name__}: {exc}", isinstance(exc, httpx.TransportError)
+    finally:
+        if spool is not None:  # not handed to the caller: failed, over the cap, cancelled
+            spool.close()
+
+
 async def fetch_supplement_zip(
     pmcid: str,
     *,
@@ -267,6 +351,8 @@ async def fetch_supplement_zip(
     max_bytes: int = MAX_ZIP_BYTES,
     timeout: float = ZIP_TIMEOUT_SECONDS,
     skipped: list[tuple[str, str]] | None = None,
+    attempts: int | None = None,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
 ) -> BinaryIO | None:
     """GET the EuropePMC supplementary-files ZIP for `pmcid`, or None if unavailable.
 
@@ -286,77 +372,37 @@ async def fetch_supplement_zip(
     transport error) is appended to `skipped` (when given) as ``(ZIP_SKIP_NAME, reason)``, so
     "no supplements exist" is distinguishable from "lost to a guard".
 
+    A 429/5xx or a transport error is retried (`ZIP_ATTEMPTS` attempts in all, `ZIP_BACKOFF` waits between
+    them): Europe PMC assembles the ZIP on request and intermittently answers 500 after a long wait (it did for
+    37864204 hours after serving the same ZIP fine). Retries share ONE deadline of `timeout` seconds, so they
+    can never multiply the wait. A 404, a non-zip body, an over-cap body, or the deadline expiring is final.
+
     The body is streamed and abandoned as soon as it passes `max_bytes` (a
     declared `Content-Length` over the cap is refused before any body is read)
     or the whole download passes `timeout` seconds. Progress is logged every `ZIP_PROGRESS_LOG_BYTES`.
     """
+    attempts = ZIP_ATTEMPTS if attempts is None else attempts
     log = logger.bind(stage="supplements")
-    url = EUROPEPMC_SUPPLEMENTARY_FILES_URL.format(pmcid=pmcid)
-
-    def none(reason: str) -> None:
-        if skipped is not None:
-            skipped.append((ZIP_SKIP_NAME, reason))
-
-    spool: BinaryIO | None = None
-    try:
-        async with asyncio.timeout(timeout):
-            # EuropePMC assembles the ZIP on request (first byte can take ~30 s), so the shared client's
-            # per-operation timeout must not preempt the overall deadline enforced above.
-            async with client.stream("GET", url, timeout=httpx.Timeout(timeout)) as response:
-                response.raise_for_status()
-                content_type = response.headers.get("content-type", "")
-                if "zip" not in content_type.lower():
-                    log.warning(
-                        "supplementary files response was not a zip",
-                        pmcid=pmcid,
-                        content_type=content_type,
-                    )
-                    return none(f"response was not a zip (content-type {content_type!r})")
-                declared = response.headers.get("content-length", "")
-                if declared.isdigit() and int(declared) > max_bytes:
-                    log.warning(
-                        "supplementary files zip too large; skipping", pmcid=pmcid, content_length=int(declared), max_bytes=max_bytes
-                    )
-                    return none(f"zip too large ({declared} bytes declared; limit {max_bytes})")
-                spool = SpooledTemporaryFile(max_size=SPOOL_MAX_BYTES)
-                received = 0
-                next_progress = ZIP_PROGRESS_LOG_BYTES
-                started = time.monotonic()
-                async for chunk in response.aiter_bytes():
-                    received += len(chunk)
-                    if received > max_bytes:
-                        log.warning(
-                            "supplementary files zip exceeded the size cap; aborting download", pmcid=pmcid, max_bytes=max_bytes
-                        )
-                        return none(f"zip too large (download passed the {max_bytes} byte limit)")
-                    spool.write(chunk)
-                    if received >= next_progress:
-                        log.info(
-                            "downloading supplementary files zip",
-                            pmcid=pmcid,
-                            mb_received=round(received / 1e6),
-                            elapsed_s=round(time.monotonic() - started),
-                        )
-                        next_progress = (received // ZIP_PROGRESS_LOG_BYTES + 1) * ZIP_PROGRESS_LOG_BYTES
-                spool.seek(0)
-                handed_over, spool = spool, None
-                return handed_over
-    except TimeoutError:
-        log.warning("supplementary files download timed out; skipping", pmcid=pmcid, timeout=timeout)
-        return none(f"download timed out after {timeout:g} s")
-    except httpx.HTTPStatusError as exc:
-        status = exc.response.status_code
-        if status == 404:
-            log.info("no supplementary files for pmcid", pmcid=pmcid)
-            return none(NO_SUPPLEMENTS_REASON)
-        log.warning("supplementary files fetch failed", pmcid=pmcid, status_code=status)
-        return none(f"fetch failed: HTTP {status}")
-    except httpx.HTTPError as exc:
-        log.warning("supplementary files fetch failed", pmcid=pmcid, error=str(exc))
-        return none(f"fetch failed: {type(exc).__name__}: {exc}")
-    finally:
-        if spool is not None:  # not handed to the caller: failed, over the cap, cancelled
-            spool.close()
+    started = time.monotonic()
+    reason: str | None = None
+    for attempt in range(1, attempts + 1):
+        remaining = timeout - (time.monotonic() - started)
+        if remaining <= 0:
+            reason = f"download timed out after {timeout:g} s"
+            break
+        handle, reason, transient = await _fetch_supplement_zip_once(
+            pmcid, client=client, max_bytes=max_bytes, timeout=remaining, overall_timeout=timeout
+        )
+        if handle is not None:
+            return handle
+        if not transient or attempt == attempts:
+            break
+        wait = ZIP_BACKOFF[min(attempt - 1, len(ZIP_BACKOFF) - 1)]
+        log.info("supplementary files zip failed; retrying", pmcid=pmcid, reason=reason, attempt=attempt, wait_s=wait)
+        await sleep(wait)
+    if skipped is not None and reason is not None:
+        skipped.append((ZIP_SKIP_NAME, reason))
+    return None
 
 
 async def fetch_supplements(
