@@ -847,6 +847,25 @@ def test_dedupe_also_compares_supplement_experiments_against_each_other():
     ]
 
 
+def test_distinct_comparisons_within_one_file_are_never_duplicates_of_each_other():
+    # Regression (34620922): pages of ONE PDF whose comparisons share most taxa (SI vs colon, SI vs rectum;
+    # the same species pair in different gut regions) were dropped as "duplicates" at Jaccard 0.5-0.75.
+    p28 = _record("increased", *_taxa(1, 2, 3, 4, 5), source="S.pdf :: page 28")
+    p29 = _record("increased", *_taxa(1, 2, 3, 4, 6), source="S.pdf :: page 29")  # Jaccard 4/6
+    p45 = _record("increased", *_taxa(1, 2, 3, 4, 5), source="S.pdf :: page 45")  # identical taxa AND identical groups
+    kept, dropped = drop_duplicate_experiments([p28, p29, p45], [])
+    assert kept == [p28, p29, p45] and dropped == []
+
+
+def test_cross_file_dedupe_also_needs_the_same_two_groups():
+    pdf = (_fields(), _record("increased", *_taxa(1, 2, 3, 4))[1], "S2.pdf :: page 3")
+    other_groups = (_fields(group_0_name="Young", group_1_name="Old"), _record("increased", *_taxa(1, 2, 3, 4))[1], "S2.xlsx :: Table 9")
+    swapped = (_fields(group_0_name="case", group_1_name="CONTROL"), _record("increased", *_taxa(1, 2, 3, 4))[1], "S2.xlsx :: Table 3")
+    kept, dropped = drop_duplicate_experiments([pdf, other_groups, swapped], [])
+    assert kept == [pdf, other_groups]  # different groups survive; the same pair (any case/order) is the duplicate
+    assert [d["source"] for d in dropped] == ["S2.xlsx :: Table 3"]
+
+
 def test_a_signature_dropped_as_a_duplicate_does_not_join_the_comparison_pool():
     main = [_record("increased", *_taxa(1, 2, 3, 4))]
     first = _record("increased", *_taxa(1, 2, 3, 4), source="a")  # dropped against the main text
@@ -941,7 +960,7 @@ def _extract_answers(messages):
     return {
         "comparisons": [
             {"group_0_name": "Colon", "group_1_name": "Ileum", "taxa": [{"name": "Prevotella copri", "direction": "decreased"}]},
-            DA_TAXA[2] | {"group_0_name": "Ctl", "group_1_name": "Same table as DA"},  # the sheet's table again, as a PDF page
+            DA_TAXA[2],  # the sheet's third table again (same two groups), shipped as a PDF page: a cross-file duplicate
         ]
     }
 
@@ -1025,7 +1044,7 @@ def test_e2e_routes_extracts_expands_and_dedupes(httpx_mock, tmp_path):
     assert sum(1 for c in model.calls if c["stage"] == "supplement_extract") == 3
 
     # DA unit: 3 comparisons; OVR unit: 3 groups -> 3 experiments; PDF page 1: 2 comparisons, one of which repeats
-    # the DA sheet's third table and is dropped as a duplicate of that supplement experiment
+    # the DA sheet's third table (same groups, different file) and is dropped as a duplicate of that supplement experiment
     assert [e["group_1_name"] for e in supplement] == [
         "Crohn", "Treated", "Other", "Cluster1", "Cluster2", "Cluster3", "Ileum",
     ]
@@ -1047,11 +1066,11 @@ def test_e2e_routes_extracts_expands_and_dedupes(httpx_mock, tmp_path):
             ("S1.xlsx :: OVR", "Cluster1"), ("S1.xlsx :: OVR", "Cluster2"), ("S1.xlsx :: OVR", "Cluster3"),
             ("S2.pdf :: page 1", "Ileum"),
         ]
-    ]  # the dropped duplicate ("Same table as DA") is not listed
+    ]  # the dropped cross-file duplicate (the sheet's "Other" table, repeated on the PDF page) is not listed
 
     assert result.annotations["supplement_dropped_duplicates"] == [
         {
-            "source": "S2.pdf :: page 1", "group_0_name": "Ctl", "group_1_name": "Same table as DA", "direction": "increased",
+            "source": "S2.pdf :: page 1", "group_0_name": "Control", "group_1_name": "Other", "direction": "increased",
             "main_experiment_index": None, "jaccard": 1.0, "experiment_dropped": True,
             "matched_supplement": {"source": "S1.xlsx :: DA", "group_0_name": "Control", "group_1_name": "Other"},
         }
@@ -1127,7 +1146,7 @@ def test_a_failed_extraction_skips_only_that_unit(httpx_mock, tmp_path):
     (failure,) = result.annotations["supplement_extract_error"]
     assert failure["unit"] == "S1.xlsx::DA" and "malformed JSON" in failure["error"]
     groups = [e.get("group_1_name") for e in result.record["experiments"][1:]]
-    assert groups == ["Cluster1", "Cluster2", "Cluster3", "Ileum", "Same table as DA"]  # the other routed units landed
+    assert groups == ["Cluster1", "Cluster2", "Cluster3", "Ileum", "Other"]  # the other routed units landed
 
 
 def test_a_model_transport_error_in_extraction_skips_only_that_unit_and_keeps_the_main_text(httpx_mock, tmp_path):
@@ -1149,7 +1168,7 @@ def test_a_model_transport_error_in_extraction_skips_only_that_unit_and_keeps_th
     main_experiments = baseline.record["experiments"]
     assert experiments[: len(main_experiments)] == main_experiments  # the main-text record survives untouched
     assert [e.get("group_1_name") for e in experiments[len(main_experiments) :]] == [
-        "Cluster1", "Cluster2", "Cluster3", "Ileum", "Same table as DA",  # (its duplicate source, the DA unit, failed)
+        "Cluster1", "Cluster2", "Cluster3", "Ileum", "Other",  # (its duplicate source, the DA unit, failed)
     ]  # and so do the other routed units
 
 

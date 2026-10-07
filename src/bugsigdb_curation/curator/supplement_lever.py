@@ -812,6 +812,24 @@ def _overlap(a: frozenset[str], b: frozenset[str]) -> float:
     return len(a & b) / len(a | b)
 
 
+def _source_file(source: str) -> str:
+    """The file part of a unit provenance like ``S2.xlsx :: Table 3``."""
+    return source.split(" :: ", 1)[0]
+
+
+def _group_pair(fields: ExperimentFields) -> frozenset[str]:
+    """The two group names, normalized and order-insensitive (``Case vs Control`` == ``control vs case``)."""
+    return frozenset(" ".join((name or "").lower().split()) for name in (fields.group_0_name, fields.group_1_name))
+
+
+def _comparable(where: dict[str, Any], source: str, fields: ExperimentFields) -> bool:
+    """May a supplement signature be a duplicate of the pool entry `where`? Always for main-text entries; for an
+    earlier supplement entry only from a different file naming the same two groups."""
+    if "supplement" not in where:
+        return True
+    return where["_file"] != _source_file(source) and where["_groups"] == _group_pair(fields)
+
+
 def drop_duplicate_experiments(
     supplement: Sequence[ExperimentRecord], main: Sequence[ExperimentRecord]
 ) -> tuple[list[ExperimentRecord], list[dict[str, Any]]]:
@@ -819,7 +837,11 @@ def drop_duplicate_experiments(
 
     Decided per signature: one is a duplicate when it overlaps a signature *of the same direction* in the main text
     or in an earlier *kept* supplement experiment with Jaccard >= :data:`DUPLICATE_JACCARD` over resolved taxa, both
-    sets having at least :data:`DUPLICATE_MIN_TAXA` taxa. A duplicate signature is removed; the experiment is
+    sets having at least :data:`DUPLICATE_MIN_TAXA` taxa. A match against an earlier *supplement* experiment also
+    needs the two to come from DIFFERENT files and to name the same two groups (a table shipped both as a PDF and as
+    an xlsx): within one file, units are distinct comparisons by construction, and comparisons that share taxa
+    heavily (small intestine vs colon, small intestine vs rectum) are not duplicates -- measured on 34620922, where
+    pure Jaccard dropped five distinct comparisons. A duplicate signature is removed; the experiment is
     dropped only when every one of its signatures was. Returns ``(kept, dropped)``; each `dropped` entry (one per
     dropped signature) names the source, groups, direction, the matched main experiment index (None for a
     supplement match, which is then named in ``matched_supplement``), the overlap and whether the whole
@@ -841,7 +863,9 @@ def drop_duplicate_experiments(
                 (
                     (where, jaccard)
                     for where, direction, pooled in pool
-                    if direction == sig.direction and (jaccard := _overlap(keys, pooled)) >= DUPLICATE_JACCARD
+                    if direction == sig.direction
+                    and _comparable(where, source, fields)
+                    and (jaccard := _overlap(keys, pooled)) >= DUPLICATE_JACCARD
                 ),
                 None,
             )
@@ -864,7 +888,11 @@ def drop_duplicate_experiments(
         if not remaining:
             continue
         kept.append((fields, remaining, source) if entries else (fields, signatures, source))
-        origin = {"supplement": {"source": source, "group_0_name": fields.group_0_name, "group_1_name": fields.group_1_name}}
+        origin = {
+            "supplement": {"source": source, "group_0_name": fields.group_0_name, "group_1_name": fields.group_1_name},
+            "_file": _source_file(source),
+            "_groups": _group_pair(fields),
+        }
         pool += [(origin, sig.direction, _taxon_keys(sig)) for sig in remaining]
     return kept, dropped
 
