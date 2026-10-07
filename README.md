@@ -34,22 +34,40 @@ differentially abundant (DA) between two groups of samples in a published study.
 
 ## Workflow at a glance
 
-The system has three parts (Figure 1): **A** builds the curated corpus into a
-held-out gold set, **B** is the curator, which sees only a PMID, and **C** scores the
-curator's output against the gold and routes drafts to human reviewers. A *data firewall*
-separates B from the gold: prediction records flow from B to C, never the reverse.
+Two views of one system. Figure 1 is the *logical* view: what each part does and what it may
+read. There are four parts: **A** builds the curated corpus into a held-out gold set, **B** is
+the curator, which sees only a PMID, **C** scores the curator's output against the gold, and
+**D** routes drafts to human reviewers, who do not see gold either. A *data firewall*
+separates B from the gold: prediction records flow out of B, never the reverse. Figure 2 is the
+*command* view: the `bugsigdb` commands in the order you run them, and what each reads and
+writes.
 
-<a id="fig-workflow"></a>
+<a id="fig-logical"></a>
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/workflow-dark.svg">
-  <img src="docs/figures/workflow-light.svg" alt="End-to-end workflow: ingest builds the held-out gold; the curator runs stages S0 to S9 from a PMID; the scorer and review packets consume its prediction records." width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/logical-dark.svg">
+  <img src="docs/figures/logical-light.svg" alt="Logical view: a held-out gold is built from the public BugSigDB export; the curator takes a PMID and runs stages S0 to S10 (with optional supplement and verifier stages) to emit a prediction record and sidecar; the scorer is the only reader of gold; human review sees drafts only; a data firewall separates the curator from the gold." width="100%">
 </picture>
 
-**Figure 1. End-to-end workflow.** Lane A (ingest) builds the relational gold tables from
-the public BugSigDB export. Lane B (curate) runs the per-PMID pipeline; dashed boxes are
-optional stages (`--design split-*` adds S10, `--supplements` adds S1b); the decision model is optional
-(`--decision-model`) and feeds S5a, S1b and the S4 body-site sidecar. Lane C (evaluate)
-is the only code that reads gold. Source: [`docs/figures/make_figures.py`](docs/figures/make_figures.py).
+**Figure 1. Logical view.** Part A builds the relational gold tables from the public BugSigDB
+export. Part B runs the per-PMID pipeline (the stages of Table 2); dashed boxes are optional
+(`--design split-*` adds S10, `--supplements` adds S1b), and the decision model is optional
+(`--decision-model`) and feeds S5a, S1b and the S4 body-site sidecar. S5a ranks the paper's
+tables and figures once per study; with a decision model each experiment then tries up to
+three of them in rank order (without one, S5a returns a single regex pick). Part C is the
+only stage that consumes gold. Part D sees drafts and their sidecars, never gold. Source:
+[`docs/figures/make_figures.py`](docs/figures/make_figures.py).
+
+<a id="fig-commands"></a>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/commands-dark.svg">
+  <img src="docs/figures/commands-light.svg" alt="Command workflow: bugsigdb export, split, pmc-map and taxonomy build create the gold and the taxonomy database; curate writes prediction records and sidecars; eval score scores them against the gold; review packet, bundle, ingest and report take drafts to curators and back." width="100%">
+</picture>
+
+**Figure 2. Command workflow.** Steps 1–4 build the gold and the taxonomy database once;
+step 5 curates; step 6 scores; steps 7–11 take drafts to curators and back (step 9 is a
+person, not a command). Paths are the command defaults, and each row reads the artifact on
+its left and writes the one on its right. Coral artifacts are gold, which `curate` never
+takes. Utilities such as `load`, `validate` and `supplements` are listed at the bottom.
 
 ## Methods
 
@@ -93,8 +111,8 @@ identical for every design; designs differ only in S5b/S6 and S10 (next section)
 | S2 study | Title, authors, journal, year, study design | One LLM call |
 | S3 segment | Propose the list of 2-group comparisons ("stubs") the paper reports | One LLM call over the assembled text |
 | S4 experiment | Per stub: groups, sample sizes, host, body site, condition, sequencing, statistics | One LLM call per stub; with `--decision-model`, body site → UBERON term, recorded as a sidecar annotation (the schema slot is unchanged) |
-| S5a locate | Rank the tables and figures that may hold the stub's DA result | Keyword regex, or with `--decision-model` a ranking by p(DA artifact) |
-| S5b/S6 extract | Per stub: taxa, direction, NCBI taxon id | Depends on `--design`; ids are *verified* against the taxonomy authority, never trusted from the model; names with no verifiable id are then resolved by name (`--ground-unresolved`, default). Each experiment tries up to 3 ranked candidate artifacts, not one shared artifact |
+| S5a locate | Rank the paper's tables and figures by how likely each holds a DA result | Once per study. With `--decision-model`, a ranking by p(DA artifact) (up to 3 candidates with p ≥ 0.5, at least 1); without, a single keyword-regex pick |
+| S5b/S6 extract | Per stub: taxa, direction, NCBI taxon id | Depends on `--design`; ids are *verified* against the taxonomy authority, never trusted from the model; names with no verifiable id are then resolved by name (`--ground-unresolved`, default). With a decision model, each experiment tries up to 3 ranked candidate artifacts, not one shared artifact |
 | S1b supplements | Read the paper's supplementary files and append their experiments | Opt-in (`--supplements`, needs `--decision-model`); see [Optional levers](#5-optional-levers) |
 | S10 verify | Adversarial check of extracted taxa and directions | `split-verify` and `split-panel` only |
 | S8 assemble | Build the nested-dict record in the loader's shape | |
@@ -109,7 +127,7 @@ is "1" flips directions. By our estimate (from run notes, not re-derived for thi
 convention holds for about 95% of curated experiments in which a control is identifiable.
 
 **Per-experiment artifact search.** The first version copied one located artifact into
-every experiment of a study. Now each experiment tries up to 3 ranked candidates in turn; the
+every experiment of a study. Now, with a decision model, each experiment tries up to 3 ranked candidates in turn; the
 prompt carries an explicit escape hatch ("if this does not report that comparison, return no
 taxa") so that a non-matching artifact yields nothing rather than a guess, and a
 duplicate-signature guard drops a signature that merely repeats an earlier experiment's
@@ -232,8 +250,9 @@ aborts a study.
 written beside `--out` as `<out stem>.annotations.json` (for `--smoke`, under
 `<dir>/_annotations/`). Keys include `artifact_ranking`, `experiment_artifacts`,
 `body_site_terms`, `supplement_*`, `figure_image_unavailable`,
-`duplicate_signatures_dropped`, and `*_error` keys for each judgment that fell back. Review
-packets pick the sidecar up automatically.
+`duplicate_signatures_dropped`, and `*_error` keys for each judgment that fell back.
+`review packet` picks up the sidecar of a single-PMID run on its own (`<pred stem>.annotations.json`
+beside `--pred`); for `--smoke` output, pass `--annotations <dir>/_annotations/<pmid>.json`.
 
 ### 6. Evaluation
 
@@ -277,8 +296,8 @@ they are not results.
 ## Data model
 
 A three-level hierarchy, annotated with controlled vocabularies and ontology terms
-(Figure 2). The schema is [`schema/bugsigdb.yaml`](schema/bugsigdb.yaml): 6
-classes, 63 slots and 12 enums.
+(Figure 3). The schema is [`schema/bugsigdb.yaml`](schema/bugsigdb.yaml): 6
+classes, 64 slots and 12 enums.
 
 <a id="fig-datamodel"></a>
 <picture>
@@ -286,11 +305,12 @@ classes, 63 slots and 12 enums.
   <img src="docs/figures/data-model-light.svg" alt="Class diagram: Study contains Experiments, which contain Signatures, which list Taxa. A CurationProvenance mixin and Review records sit alongside." width="100%">
 </picture>
 
-**Figure 2. The LinkML data model.** `Study` (one publication, identified by `uid`, the
+**Figure 3. The LinkML data model.** `Study` (one publication, identified by `uid`, the
 wiki page name; usually a PMID) contains `Experiment`s (one two-group comparison, Group 0 =
 control, Group 1 = case), each containing `Signature`s (taxa that moved one way in Group 1),
 each listing `Taxon` nodes. `CurationProvenance` is a mixin carrying curation state and
-reviews. Only the slots curators and the agent fill in are shown; the schema has more.
+reviews. Every slot is shown, with a few related slots (the group fields, the alpha-diversity
+fields) collapsed onto one row.
 
 Ontology bindings: condition → EFO/MONDO, body site → UBERON, host species and signature
 taxa → NCBI Taxonomy. Ontology-bound slots are string-ranged in the schema, with the binding
@@ -401,7 +421,7 @@ many-experiment papers, a model sweep, and human review for papers with no gold.
 
 | Path | Contents |
 |------|----------|
-| `schema/bugsigdb.yaml` | The LinkML schema. 6 classes, 63 slots, 12 controlled-vocabulary enums. |
+| `schema/bugsigdb.yaml` | The LinkML schema. 6 classes, 64 slots, 12 controlled-vocabulary enums. |
 | `schema/review_verdict.schema.json` | JSON Schema for reviewer verdict files. |
 | `src/bugsigdb_curation/` | The `bugsigdb` CLI. `curator/` (pipeline stages), `eval/` (gold join and scorer), `taxonomy/` (DuckDB backend), `review/` (packets, bundles, verdicts), plus loader, split, export, validate. |
 | `src/bugsigdb_curation/decision.py` | The decision-model seam: question types, `ClefDecisionModel`, `MockDecisionModel`, JSONL call archive. |
