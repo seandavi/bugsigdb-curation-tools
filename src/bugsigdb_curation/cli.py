@@ -650,11 +650,12 @@ def curate_command(
         ),
     ),
     ground_unresolved: bool = typer.Option(
-        False,
+        True,
         "--ground-unresolved/--no-ground-unresolved",
         help=(
-            "fused-lean only: resolve taxa whose model-proposed NCBI id could not be verified by NAME against the "
-            "NCBI authority (local DB / live; LLM disambiguation only for homonyms), so fewer records fail S9."
+            "fused-lean only (on by default): resolve taxa whose model-proposed NCBI id could not be verified by "
+            "NAME against the NCBI authority (local DB / live; LLM disambiguation only for homonyms), so far "
+            "fewer records fail S9. --no-ground-unresolved keeps the old verification-only behaviour."
         ),
     ),
     log_format: LogFormat | None = _LOG_FORMAT_OPTION,
@@ -770,7 +771,7 @@ async def _run_curate_one(
     decision_archive: Path | None = None,
     ols_cache: Path = CURATE_DEFAULT_OLS_CACHE,
     supplements: bool = False,
-    ground_unresolved: bool = False,
+    ground_unresolved: bool = True,
 ) -> None:
     try:
         async with open_decision_model(decision_name, archive=decision_archive) as decision_model:
@@ -828,7 +829,7 @@ async def _run_curate_smoke(
     decision_archive: Path | None = None,
     ols_cache: Path = CURATE_DEFAULT_OLS_CACHE,
     supplements: bool = False,
-    ground_unresolved: bool = False,
+    ground_unresolved: bool = True,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     ids = smoke_study_ids()

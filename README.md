@@ -94,7 +94,7 @@ identical for every design; designs differ only in S5b/S6 and S10 (next section)
 | S3 segment | Propose the list of 2-group comparisons ("stubs") the paper reports | One LLM call over the assembled text |
 | S4 experiment | Per stub: groups, sample sizes, host, body site, condition, sequencing, statistics | One LLM call per stub; with `--decision-model`, body site → UBERON term, recorded as a sidecar annotation (the schema slot is unchanged) |
 | S5a locate | Rank the tables and figures that may hold the stub's DA result | Keyword regex, or with `--decision-model` a ranking by p(DA artifact) |
-| S5b/S6 extract | Per stub: taxa, direction, NCBI taxon id | Depends on `--design`; ids are *verified* against the taxonomy authority, never trusted from the model. Each experiment tries up to 3 ranked candidate artifacts, not one shared artifact |
+| S5b/S6 extract | Per stub: taxa, direction, NCBI taxon id | Depends on `--design`; ids are *verified* against the taxonomy authority, never trusted from the model; names with no verifiable id are then resolved by name (`--ground-unresolved`, default). Each experiment tries up to 3 ranked candidate artifacts, not one shared artifact |
 | S1b supplements | Read the paper's supplementary files and append their experiments | Opt-in (`--supplements`, needs `--decision-model`); see [Optional levers](#5-optional-levers) |
 | S10 verify | Adversarial check of extracted taxa and directions | `split-verify` and `split-panel` only |
 | S8 assemble | Build the nested-dict record in the loader's shape | |
@@ -170,9 +170,10 @@ smoke-set scale, which is why the local database exists.
 
 ### 5. Optional levers
 
-Everything here is opt-in and best-effort: with no decision model the pipeline is
-unchanged, and a failed decision call falls back to the default behaviour, is recorded in
-the sidecar, and never aborts a study.
+Everything here except name grounding (on by default) is opt-in and best-effort: with no
+decision model the routing is off and the pipeline otherwise behaves as before, and a failed
+decision call falls back to the default behaviour, is recorded in the sidecar, and never
+aborts a study.
 
 - **Decision models** (`--decision-model {none,clef,clef-flash}`). Some judgments are
   bounded: is this sheet a DA table, which UBERON term matches this body site. A Cloudflare
@@ -217,9 +218,15 @@ the sidecar, and never aborts a study.
   media is slow: 37864204 (about 260 MB of mp4) took about 11 minutes in an earlier
   measurement. Legacy `.xls` and `.doc` are skipped.
   Supplement experiments get no UBERON mapping yet.
-- **Ground unresolved** (`--ground-unresolved`, `fused-lean` only, off by default). Taxa whose
-  model-proposed id could not be verified are re-resolved by *name* against the NCBI authority
-  (local database or live; an LLM only for homonyms).
+- **Ground unresolved** (`--ground-unresolved`, `fused-lean` only, **on by default**;
+  `--no-ground-unresolved` restores the verification-only behaviour). Taxa whose model-proposed
+  id could not be verified are re-resolved by *name* against the NCBI authority (local database
+  or live; an LLM only for homonyms), so ids still come from the authority and never from the
+  model. Without it most records fail schema validation: in the final smoke pair 169 of 214
+  predicted taxa (79%) had no id with grounding off, against 438 of 1,554 (28%) with it on,
+  the remainder being labels such as SILVA-style names the authority cannot resolve (different
+  taxa in the two arms, so this is supporting evidence and not a controlled comparison;
+  name→ID accuracy was 100% in both).
 
 **The sidecar.** Decision calls and fallbacks are recorded in `CurationResult.annotations`,
 written beside `--out` as `<out stem>.annotations.json` (for `--smoke`, under
@@ -304,7 +311,7 @@ two runs; there are no confidence intervals. The ledger is the record of each ru
 | Per-experiment artifact search, no decision model | 1 | 0.166 | 0.829 | 96.0% | 0.612 |
 | Per-experiment artifact search + `clef` decision model | 1 | 0.209 | 0.636 | 90.3% | 0.736 |
 | **Final code**, no decision model (L033) | 1 | 0.181 | 0.778 | 95.7% | 0.675 |
-| **Final code, full pipeline**: `clef` + `--supplements` + `--ground-unresolved` (L033) | 1 | **0.530** | 0.593 | 70.2% | 0.634 |
+| **Final code, full pipeline**: `clef` + `--supplements`, name grounding on (L033) | 1 | **0.530** | 0.593 | 70.2% | 0.634 |
 
 *Table 4. Smoke-set taxa-set metrics (micro-averaged), by configuration. Row 1 is from L030;
 rows 2–6 are from local score reports under the git-ignored `data/runs/`, recorded in
@@ -541,7 +548,7 @@ Flags (`uv run bugsigdb curate --help` lists all of them):
 | `--decision-archive PATH` | JSONL record of every decision-model call (default: `<out>.decision.jsonl`, or `decision.jsonl` in the `--smoke` directory). |
 | `--ols-cache PATH` | EBI OLS4 term-search cache for the UBERON mapping (default `data/curator/ols_cache.json`; used only with `--decision-model`). |
 | `--supplements / --no-supplements` | Also read the supplementary files: the decision model screens each sheet or page and the routed ones are extracted and appended after the main-text experiments (needs `--decision-model`). |
-| `--ground-unresolved / --no-ground-unresolved` | `fused-lean` only: resolve taxa whose model-proposed NCBI id could not be verified by name against the NCBI authority. |
+| `--ground-unresolved / --no-ground-unresolved` | `fused-lean` only, **on by default**: resolve taxa whose model-proposed NCBI id could not be verified by name against the NCBI authority; `--no-ground-unresolved` keeps verification-only. |
 | `--taxonomy-db PATH`, `--taxonomy-release TEXT`, `--taxonomy-cache PATH` | Local taxonomy database (tried before live NCBI), its release label, and the curator's own resolver cache. |
 | `--out/-o PATH`, `--format [yaml\|json]`, `--email TEXT`, `--config TEXT` | Output path, serialisation (single `--pmid` only), NCBI contact email, and an informational source-config label. |
 | `--log-format [console\|json]`, `--log-level TEXT` | Structured-log sink and level. |
@@ -695,10 +702,14 @@ To regenerate the README figures: `python docs/figures/make_figures.py` (stdlib 
 Schema: released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
 consistent with BugSigDB.
 
-Code: this repository has **no `LICENSE` file yet**; no licence has been chosen for the code,
-and choosing one is an open decision.
+Code: [MIT](LICENSE) (declared in `pyproject.toml` as `license = "MIT"`).
+
+Data and third-party content: the BugSigDB export the gold is built from is CC BY 4.0 like the schema; the
+review packets embed figures only from articles whose own licence is CC BY or CC0 and credit their authors
+(see [Human review](#7-human-review)). Each dependency keeps its own licence.
 
 PDF reading (supplement pages: text, size, JPEG render) goes through `bugsigdb_curation.pdf`, built on
 [pypdfium2](https://github.com/pypdfium2-team/pypdfium2) (BSD-3-Clause / Apache-2.0) and Pillow (MIT-CMU). It
-replaced PyMuPDF, whose AGPL-3.0 licence (or commercial licence) would have made the whole project copyleft.
+replaced PyMuPDF, whose AGPL-3.0 licence (or commercial licence) would have made the whole project copyleft,
+which is what keeps the code MIT.
 PyMuPDF is no longer a dependency.

@@ -167,11 +167,14 @@ def _study(
     **curate_kwargs,
 ):
     """Run curate_async over the two-figure paper with `n_experiments` stubs; returns (result, model).
+    These tests are about artifact search, not name grounding, so grounding (now on by default) is pinned off
+    unless a test asks for it (which is also when the esearch mock below is registered).
 
     The split designs take their extractor responses from `stages` (`signature_ner`, `review_signature`, ...);
     taxon names resolve through a mocked esearch that returns `esearch_ids` (none by default, so they stay
     unresolved); it is only registered for the split designs and `ground_unresolved=True`.
     """
+    curate_kwargs.setdefault("ground_unresolved", False)
     e2e._mock_idconv(httpx_mock)
     httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid=e2e.PMCID), text=TWO_FIG_XML)
     httpx_mock.add_response(
