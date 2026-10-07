@@ -5,12 +5,13 @@
 Writes, next to this file, a light and a dark variant (transparent background)
 of each figure:
 
-    workflow-{light,dark}.svg     end-to-end workflow, ingest -> curate -> evaluate
-    data-model-{light,dark}.svg   the LinkML data model (schema/bugsigdb.yaml)
+    logical-{light,dark}.svg      Figure 1: the logical view (what each part does and may read)
+    commands-{light,dark}.svg     Figure 2: the command workflow (`bugsigdb ...`, in the order you run it)
+    data-model-{light,dark}.svg   Figure 3: the LinkML data model (schema/bugsigdb.yaml)
 
-Colour roles are shared by both figures: violet = data artifact, green = CLI
+Colour roles are shared by all figures: violet = data artifact, green = CLI
 command / pipeline stage, blue = shared service, amber = external source or
-ontology, coral = held-out gold. Every figure carries its own legend.
+people, coral = held-out gold. Every figure carries its own legend.
 """
 
 from __future__ import annotations
@@ -72,7 +73,10 @@ class Svg:
             f' fill="{fill or self.t["ink"]}" text-anchor="{anchor}"{style}>{escape(s)}</text>'
         )
 
-    def box(self, x, y, w, h, role, lines, *, dashed=False, rx=8, title_size=12.5, sub_size=11, round_=False):
+    def box(
+        self, x, y, w, h, role, lines, *, dashed=False, rx=8, title_size=12.5, sub_size=11, round_=False,
+        mono_first=False,
+    ):
         fill, stroke, ink = self.t[role]
         dash = ' stroke-dasharray="5 4"' if dashed else ""
         rx = h / 2 if round_ else rx
@@ -89,6 +93,7 @@ class Svg:
                 x + w / 2, top + i * line_h, ln,
                 size=title_size if first else sub_size, weight="600" if first else "normal",
                 fill=ink if first else self.t["muted"] if self.t is THEMES["light"] else ink, anchor="middle",
+                mono=mono_first and first,
             )
 
     def arrow(self, pts, *, dashed=False, color=None, label=None, label_at=None, head=True):
@@ -144,117 +149,297 @@ def legend(s: Svg, y: int, items: list[tuple[str, str]], extra: list[tuple[str, 
 
 
 # ---------------------------------------------------------------------------
-# Figure 1: workflow
+# Figure 1: logical view
 # ---------------------------------------------------------------------------
-def workflow(theme: str) -> str:
+def logical(theme: str) -> str:
     s = Svg(
-        1200, 930, theme,
-        "BugSigDB automated curation: end-to-end workflow",
-        "Gold-building commands feed only the scorer. The curator takes a PMID, runs stages S0 to S9 "
-        "(with optional supplement and verifier stages), and emits a prediction record that the scorer "
-        "and human review packets consume. A data firewall separates the curator from the gold.",
+        1200, 948, theme,
+        "BugSigDB automated curation: logical view",
+        "A held-out gold is built from the public BugSigDB export. The curator takes a PMID, resolves the paper, "
+        "reads its text, tables, figures and optionally supplements, segments it into experiments, finds the "
+        "evidence for each, extracts and resolves taxa, and emits a validated prediction record with a sidecar. "
+        "The scorer is the only reader of gold; human review sees drafts only. A data firewall separates the "
+        "curator from the gold.",
     )
     t = s.t
-    s.text(24, 32, "BugSigDB automated curation — end-to-end workflow", size=17, weight="700")
+    s.text(24, 32, "BugSigDB automated curation — logical view", size=17, weight="700")
+    s.text(
+        24, 52,
+        "What each part does and what it may read. Stage codes (S0–S10) are those of Table 2; Figure 2 maps the parts to commands.",
+        size=11.5, fill=t["muted"],
+    )
 
-    # Lane A: build the gold ------------------------------------------------
-    s.text(30, 68, "A · INGEST — build the held-out gold", size=11.5, weight="700", fill=t["muted"])
-    s.box(30, 80, 170, 56, "amber", ["waldronlab/", "bugsigdbexports"])
-    s.box(235, 80, 110, 56, "green", ["export"])
-    s.box(380, 80, 130, 56, "violet", ["full_dump.csv", "one row / signature"], sub_size=10.5)
-    s.box(545, 80, 100, 56, "green", ["split"])
-    s.box(680, 80, 230, 56, "coral", ["relational CSVs", "studies · experiments · signatures", ], sub_size=10.5)
-    s.arrow([(200, 108), (235, 108)])
-    s.arrow([(345, 108), (380, 108)])
-    s.arrow([(510, 108), (545, 108)])
-    s.arrow([(645, 108), (680, 108)])
-    s.box(380, 170, 130, 52, "green", ["load", "→ nested records"], sub_size=10)
-    s.box(545, 170, 100, 52, "green", ["validate", "vs schema"], sub_size=10)
-    s.arrow([(445, 136), (445, 170)])
-    s.arrow([(510, 196), (545, 196)])
-    s.box(690, 170, 100, 52, "green", ["pmc-map", "PMID → PMCID"], sub_size=10)
-    s.box(825, 170, 215, 52, "coral", ["pmid_pmcid_map.csv", "NCBI idconv; ~84% have a PMCID"], sub_size=10)
-    s.arrow([(795, 136), (795, 170)])
-    s.arrow([(790, 196), (825, 196)])
+    # A: corpus -> held-out gold --------------------------------------------
+    s.text(30, 86, "A · CORPUS — build the held-out gold", size=11.5, weight="700", fill=t["muted"])
+    s.box(30, 98, 200, 62, "amber", ["BugSigDB public export", "waldronlab/bugsigdbexports"], sub_size=10.5)
+    s.box(
+        270, 98, 520, 62, "coral",
+        ["Held-out gold", "studies · experiments · signatures · taxa", "+ PMID → PMCID map (84% of studies have PMC full text)"],
+        sub_size=10.5,
+    )
+    s.arrow([(230, 129), (270, 129)])
+    T = 236  # top of the curator and right-hand columns
+    s.arrow([(790, 129), (1140, 129), (1140, T)], color=t["coral"][1])
+    s.text(1150, 190, "gold", size=10.5, fill=t["coral"][1], italic=True)
 
-    # Firewall divider ------------------------------------------------------
-    s.add(f'<line x1="815" y1="262" x2="815" y2="808" stroke="{t["coral"][1]}" stroke-width="2.5" stroke-dasharray="7 5"/>')
-    fw_fill = t["panel"]
-    s.add(f'<rect x="745" y="250" width="140" height="24" rx="12" fill="{fw_fill}" stroke="{t["coral"][1]}" stroke-width="1.5"/>')
-    s.text(815, 266, "DATA FIREWALL", size=11, weight="700", fill=t["coral"][1], anchor="middle")
+    # B: curate ------------------------------------------------------------------
+    s.text(30, T - 16, "B · CURATE — input: a PMID, and nothing else", size=11.5, weight="700", fill=t["muted"])
+    cx, cw, h = [32, 297, 562], 235, 66
+    r1 = T
+    r2 = r1 + h + 30
+    s.box(cx[0], r1, cw, h, "violet", ["PMID"], round_=True)
+    s.box(cx[1], r1, cw, h, "green", ["S0 · resolve", "PMID → PMCID and DOI", "NCBI idconv; Europe PMC if throttled"], sub_size=10.5)
+    s.box(cx[2], r1, cw, h, "green", ["S1 · evidence", "text · tables · figure images", "Europe PMC + PMC page (cached)"], sub_size=10.5)
+    s.box(cx[0], r2, cw, h, "green", ["S2 · study metadata", "title · authors · journal · design"], sub_size=10.5)
+    s.box(cx[1], r2, cw, h, "green", ["S3 · segment", "one stub per two-group comparison"], sub_size=10.5)
+    s.box(
+        cx[2], r2, cw, h, "green",
+        ["S5a · rank evidence", "tables and figures by p(DA), once per", "study; one regex pick without Clef"],
+        sub_size=10.5,
+    )
+    for i in range(2):
+        s.arrow([(cx[i] + cw, r1 + h / 2), (cx[i + 1], r1 + h / 2)])
+        s.arrow([(cx[i] + cw, r2 + h / 2), (cx[i + 1], r2 + h / 2)])
+    s.arrow([(cx[2] + cw / 2, r1 + h), (cx[2] + cw / 2, r1 + h + 15), (cx[0] + cw / 2, r1 + h + 15), (cx[0] + cw / 2, r2)])
 
-    # Curator side ----------------------------------------------------------
-    s.text(30, 296, "B · CURATE — sees a PMID only (never any gold field)", size=11.5, weight="700", fill=t["muted"])
-    xs = [32, 233, 434, 635]
-    w, h = 165, 72
-    r1, r2, r3, r4 = 312, 430, 548, 690
-    s.box(xs[0], r1, w, h, "violet", ["PMID"], round_=True)
-    s.box(xs[1], r1, w, h, "green", ["S0 · resolve", "idconv → PMCID", "(EuropePMC if throttled)"], sub_size=10.5)
-    s.box(xs[2], r1, w, h, "green", ["S1 · evidence", "text · tables · figures", "EuropePMC + PMC (cached)"], sub_size=10.5)
-    s.box(xs[3], r1, w, h, "green", ["S2 · study metadata", "title · design · …"], sub_size=10.5)
-    s.box(xs[0], r2, w, h, "green", ["S3 · segment", "one stub per 2-group", "comparison"], sub_size=10.5)
-    s.box(xs[1], r2, w, h, "green", ["S4 · experiment", "groups · body site ·", "condition · methods"], sub_size=10.5)
-    s.box(xs[2], r2, w, h, "green", ["S5a · locate", "rank tables / figures: regex", "or decision model p(DA)"], sub_size=10)
-    s.box(xs[3], r2, w, h, "green", ["S5b/S6 · extract", "taxa · direction ·", "NCBI id (verified)"], sub_size=10.5)
-    s.box(xs[0], r3, w, h, "green", ["S10 · verify / panel", "split designs only"], dashed=True, sub_size=10.5)
-    s.box(xs[1], r3, w, h, "green", ["S1b · supplements", "screen → extract → expand", "one-vs-rest → append"], dashed=True, sub_size=10)
-    s.box(xs[2], r3, w, h, "green", ["S8 · assemble", "nested-dict record"], sub_size=10.5)
-    s.box(xs[3], r3, w, h, "green", ["S9 · validate", "LinkML schema + CURIEs"], sub_size=10.5)
-    s.box(xs[3], r4, w, 64, "violet", ["prediction record", "Study → Exp → Sig"], sub_size=10.5)
+    # per-experiment loop
+    py = r2 + h + 28  # panel top
+    by, bh = py + 28, 78
+    s.add(
+        f'<rect x="22" y="{py}" width="782" height="{bh + 40}" rx="10" fill="none" stroke="{t["line"]}"'
+        f' stroke-width="1.5" stroke-dasharray="6 4"/>'
+    )
+    s.text(792, py + 18, "↻ for each experiment stub (with Clef, up to 3 ranked artifacts are tried in turn)", size=10.5, fill=t["muted"], anchor="end", italic=True)
+    s.box(cx[0], by, cw, bh, "green", ["S4 · experiment", "groups · host · body site · condition", "sequencing · statistics"], sub_size=10.5)
+    s.box(
+        cx[1], by, cw, bh, "green",
+        ["S5b/S6 · extract + resolve", "taxa and direction from the first", "artifact that reports the comparison;", "ids verified, unresolved names grounded"],
+        sub_size=10,
+    )
+    s.box(cx[2], by, cw, bh, "green", ["S10 · verify / panel", "split designs only: check each taxon", "and direction; repair ≤ 2 rounds"], dashed=True, sub_size=10)
+    for i in range(2):
+        s.arrow([(cx[i] + cw, by + bh / 2), (cx[i + 1], by + bh / 2)])
+    # S5a (col 3, row 2) -> S4 (col 1, loop)
+    s.arrow([(cx[2] + cw / 2, r2 + h), (cx[2] + cw / 2, py - 13), (cx[0] + cw / 2, py - 13), (cx[0] + cw / 2, by)])
 
-    # row 1 flow
-    for a, b in zip(xs[:3], xs[1:]):
-        s.arrow([(a + w, r1 + h / 2), (b, r1 + h / 2)])
-    # row 1 -> row 2 (elbow)
-    s.arrow([(xs[3] + w / 2, r1 + h), (xs[3] + w / 2, r1 + h + 24), (xs[0] + w / 2, r1 + h + 24), (xs[0] + w / 2, r2)])
-    for a, b in zip(xs[:3], xs[1:]):
-        s.arrow([(a + w, r2 + h / 2), (b, r2 + h / 2)])
-    s.arrow([(xs[3] + w / 2, r2 + h), (xs[3] + w / 2, r2 + h + 24), (xs[0] + w / 2, r2 + h + 24), (xs[0] + w / 2, r3)])
-    # per-experiment bracket label
-    s.text(xs[1] + 4, r2 - 8, "↻ repeated for every experiment stub", size=10.5, fill=t["muted"], italic=True)
-    for a, b in zip(xs[:3], xs[1:]):
-        s.arrow([(a + w, r3 + h / 2), (b, r3 + h / 2)])
-    s.arrow([(xs[3] + w / 2, r3 + h), (xs[3] + w / 2, r4)])
+    r4 = py + bh + 40 + 28
+    s.box(cx[0], r4, cw, h, "green", ["S1b · supplements", "screen sheets and pages, extract,", "one-vs-rest expand, append"], dashed=True, sub_size=10.5)
+    s.box(cx[1], r4, cw, h, "green", ["S8 · assemble", "nested Study → Experiment → Signature"], sub_size=10.5)
+    s.box(cx[2], r4, cw, h, "green", ["S9 · validate", "LinkML schema: types, enums,", "required fields; failures recorded"], sub_size=10.5)
+    for i in range(2):
+        s.arrow([(cx[i] + cw, r4 + h / 2), (cx[i + 1], r4 + h / 2)])
+    s.arrow([(cx[2] + cw / 2, by + bh), (cx[2] + cw / 2, py + bh + 40 + 14), (cx[0] + cw / 2, py + bh + 40 + 14), (cx[0] + cw / 2, r4)])
+    r5 = r4 + h + 26
+    s.box(
+        cx[2], r5, cw, h, "violet",
+        ["prediction record + sidecar", "record: Study → Experiment → Signature", "sidecar: rankings, skips, fallbacks"], sub_size=10.5,
+    )
+    s.arrow([(cx[2] + cw / 2, r4 + h), (cx[2] + cw / 2, r5)])
 
-    # Shared services (row 4)
-    s.text(30, r4 - 10, "Shared services", size=11, weight="700", fill=t["muted"])
-    s.box(xs[0], r4, w, 64, "blue", ["LLM · LiteLLM", "Gemini", "used by S2–S5b, S10"], sub_size=10.5)
-    s.box(xs[1], r4, w, 64, "blue", ["TaxonomyDB", "DuckDB ← NCBI taxdump", "used by S6, S10, scorer"], sub_size=10)
-    s.box(xs[2], r4, w, 64, "blue", ["Decision model", "optional Clef; used by", "S5a, S1b, S4 body site"], dashed=True, sub_size=10)
+    # shared services and sources
+    sy = r5 + h + 22
+    s.text(30, sy, "Services and sources the stages draw on", size=11, weight="700", fill=t["muted"])
+    sx4, sw4 = [32, 226, 420, 614], 180
+    s.box(sx4[0], sy + 10, sw4, 66, "amber", ["Paper sources", "Europe PMC · PMC · suppl. ZIP", "used by S0, S1, S1b"], sub_size=10.5)
+    s.box(sx4[1], sy + 10, sw4, 66, "blue", ["TaxonomyDB (local)", "NCBI taxdump, live for gaps", "used by S5b/S6, S10, scorer"], sub_size=10.5)
+    s.box(sx4[2], sy + 10, sw4, 66, "blue", ["LLM · LiteLLM", "Gemini, generative calls", "used by S2–S5b, S1b, S10"], sub_size=10.5)
+    s.box(sx4[3], sy + 10, sw4, 66, "blue", ["Decision model", "Cloudflare Clef + OLS4 terms", "S5a · S1b screen · S4 body site"], dashed=True, sub_size=10)
 
-    # Scorer side -----------------------------------------------------------
-    s.text(850, 296, "C · EVALUATE (reads gold)", size=11.5, weight="700", fill=t["muted"])
-    sx, sw = 855, 315
-    s.box(sx, 312, sw, 92, "green", ["eval score", "Hungarian experiment match; taxa as NCBI", "taxid sets → P / R / F1 by gold source type"], sub_size=10.5)
-    s.box(sx, 436, sw, 60, "violet", ["scores.jsonl · report.md · report.html", "cross-tab by gold source type"], sub_size=10)
-    s.box(sx, 548, sw, 72, "green", ["review packet · bundle", "one HTML per draft, zipped for curators", "who judge it against the paper → verdict JSON"], sub_size=10.5)
-    s.box(sx, 652, sw, 60, "violet", ["review ingest / report", "verdicts filed under data/reviews/<pmid>/"], sub_size=10)
-    s.arrow([(sx + sw / 2, 404), (sx + sw / 2, 436)])
-    s.arrow([(sx + sw / 2, 620), (sx + sw / 2, 652)])
-    # gold -> scorer (above the divider, down the right edge)
-    s.arrow([(910, 108), (1130, 108), (1130, 312)], color=t["coral"][1])
-    s.arrow([(1035, 222), (1035, 312)], color=t["coral"][1])
-    s.text(1138, 250, "gold", size=10.5, fill=t["coral"][1], italic=True)
-    # prediction -> scorer / packet
-    s.arrow([(xs[3] + w, r4 + 32), (835, r4 + 32), (835, 358), (sx, 358)])
-    s.arrow([(835, 584), (sx, 584)])
-    s.text(sx, 772, "Prediction records cross the firewall one way:", size=10.5, fill=t["muted"], italic=True)
-    s.text(sx, 786, "curator → scorer. Gold never flows the other way.", size=10.5, fill=t["muted"], italic=True)
-    s.text(sx, 730, "Names → taxids via TaxonomyDB; retired ids", size=10.5, fill=t["muted"], italic=True)
-    s.text(sx, 744, "canonicalised through merged.dmp on both sides.", size=10.5, fill=t["muted"], italic=True)
+    # C: evaluate -----------------------------------------------------------------
+    ex, ew = 855, 315
+    s.text(ex, T - 16, "C · EVALUATE — the only reader of gold", size=11.5, weight="700", fill=t["muted"])
+    s.box(ex, T, ew, 84, "green", ["eval score", "match experiments (Hungarian), pair", "signatures by taxa overlap, compare", "taxa as NCBI id sets"], sub_size=10.5)
+    s.box(ex, T + 106, ew, 78, "violet", ["scores", "P / R / F1 · direction accuracy ·", "over- and under-segmentation,", "all cut by gold source type"], sub_size=10.5)
+    s.arrow([(ex + ew / 2, T + 84), (ex + ew / 2, T + 106)])
+
+    # D: human review ------------------------------------------------------------
+    s.text(ex, T + 220, "D · HUMAN REVIEW — a draft, never gold", size=11.5, weight="700", fill=t["muted"])
+    s.box(ex, T + 238, ew, 66, "green", ["review packet + bundle", "one HTML page per draft, with its sidecar,", "zipped for curators"], sub_size=10.5)
+    s.box(ex, T + 330, ew, 66, "amber", ["Curators (people, outside the repo)", "judge each taxon, direction, experiment", "against the paper → verdict JSON"], dashed=True, sub_size=10.5)
+    s.box(ex, T + 422, ew, 66, "violet", ["verdict report", "taxa precision · direction flips ·", "time saved · reviewer notes"], sub_size=10.5)
+    s.arrow([(ex + ew / 2, T + 304), (ex + ew / 2, T + 330)])
+    s.arrow([(ex + ew / 2, T + 396), (ex + ew / 2, T + 422)])
+
+    # prediction record crosses the firewall one way, to the scorer and to review
+    s.arrow([(cx[2] + cw, r5 + h / 2), (835, r5 + h / 2), (835, T + 42), (ex, T + 42)])
+    s.arrow([(835, T + 271), (ex, T + 271)])
+    s.text(ex, T + 514, "Names → taxids through the same TaxonomyDB;", size=10.5, fill=t["muted"], italic=True)
+    s.text(ex, T + 528, "retired ids are canonicalised on both sides.", size=10.5, fill=t["muted"], italic=True)
+    s.text(ex, T + 554, "Records cross the firewall one way: curator → scorer", size=10.5, fill=t["muted"], italic=True)
+    s.text(ex, T + 568, "and curator → reviewers. Gold never flows back.", size=10.5, fill=t["muted"], italic=True)
+
+    # Data firewall: between the curator and everything on the right ------------------
+    fy = sy + 10 + 66 + 8
+    s.add(f'<line x1="815" y1="{T - 36}" x2="815" y2="{fy}" stroke="{t["coral"][1]}" stroke-width="2.5" stroke-dasharray="7 5"/>')
+    s.add(f'<rect x="745" y="{T - 62}" width="140" height="24" rx="12" fill="{t["panel"]}" stroke="{t["coral"][1]}" stroke-width="1.5"/>')
+    s.text(815, T - 46, "DATA FIREWALL", size=11, weight="700", fill=t["coral"][1], anchor="middle")
 
     legend(
-        s, 828,
-        [("violet", "data artifact"), ("green", "CLI command / pipeline stage"), ("blue", "shared service"),
-         ("amber", "external source"), ("coral", "held-out gold (scorer only)")],
+        s, fy + 16,
+        [("violet", "data artifact"), ("green", "pipeline stage / command"), ("blue", "shared service"),
+         ("amber", "external source or people"), ("coral", "held-out gold (scorer only)")],
         [("dashed-box", "optional stage"), ("arrow", "data flow"),
-         ("fw", "data firewall: curator never reads gold")],
+         ("fw", "data firewall: the curator never reads gold")],
     )
+    s.h = fy + 16 + 78 + 14
     return s.render()
 
 
 # ---------------------------------------------------------------------------
-# Figure 2: data model
+# Figure 2: command workflow
+# ---------------------------------------------------------------------------
+RX, RW = 70, 240  # reads column
+CX, CW = 342, 448  # command column
+WX, WW = 822, 348  # writes column
+
+
+def _artifacts(s: Svg, x: int, w: int, y: int, h: int, items: list) -> None:
+    """One artifact box, or two stacked single-line ones, in a column."""
+    if len(items) == 1:
+        role, lines = items[0]
+        s.box(x, y, w, h, role, lines, sub_size=10.5)
+        return
+    each = (h - 8) / len(items)
+    for i, (role, lines) in enumerate(items):
+        s.box(x, y + i * (each + 8), w, each, role, lines[:1], sub_size=10.5, title_size=12)
+
+
+def cmd_row(s: Svg, y: int, n: int, reads: list, cmd: list, writes: list, *, h: int = 52, human: bool = False) -> None:
+    t = s.t
+    s.add(f'<circle cx="46" cy="{y + h / 2}" r="12" fill="{t["panel"]}" stroke="{t["ink"]}" stroke-width="1.5"/>')
+    s.text(46, y + h / 2 + 4, str(n), size=12, weight="700", anchor="middle")
+    _artifacts(s, RX, RW, y, h, reads)
+    if human:
+        s.box(CX, y, CW, h, "amber", cmd, dashed=True, sub_size=10.5)
+    else:
+        s.box(CX, y, CW, h, "green", cmd, sub_size=10.5, mono_first=True, title_size=11.5)
+    _artifacts(s, WX, WW, y, h, writes)
+    s.arrow([(RX + RW, y + h / 2), (CX, y + h / 2)])
+    s.arrow([(CX + CW, y + h / 2), (WX, y + h / 2)])
+
+
+def phase(s: Svg, y: int, h: int, title: str, note: str) -> None:
+    t = s.t
+    s.add(f'<rect x="20" y="{y}" width="1160" height="{h}" rx="10" fill="{t["panel"]}" stroke="{t["gray"][1]}"/>')
+    s.text(34, y + 20, title, size=12, weight="700", fill=t["muted"])
+    s.text(1166, y + 20, note, size=10.5, fill=t["muted"], italic=True, anchor="end")
+
+
+def commands(theme: str) -> str:
+    s = Svg(
+        1200, 1160, theme,
+        "BugSigDB automated curation: command workflow",
+        "The bugsigdb commands in the order they are run. Build the gold and the taxonomy database once "
+        "(export, split, pmc-map, taxonomy build); curate PMIDs into prediction records; score them against "
+        "the gold; and route drafts to curators with review packet, bundle, ingest and report.",
+    )
+    t = s.t
+    V, C, A = "violet", "coral", "amber"
+    s.text(24, 32, "BugSigDB automated curation — the command workflow", size=17, weight="700")
+    s.text(
+        24, 52,
+        "Commands in the order you run them. Each reads the artifact on its left and writes the one on its right; names match across rows.",
+        size=11.5, fill=t["muted"],
+    )
+
+    gap, hh, hd = 8, 52, 68
+    y = 68
+    # Phase 1 ---------------------------------------------------------------
+    ph = 30 + 4 * hh + 3 * gap + 12
+    phase(s, y, ph, "1 · BUILD THE GOLD AND THE TAXONOMY", "once; needs the network")
+    ry = y + 30
+    cmd_row(s, ry, 1, [(A, ["waldronlab/bugsigdbexports", "GitHub, public"])],
+            ["bugsigdb export", "download the merged CSV dump (--select gmt for GMT sets)"],
+            [(V, ["data/exports/full_dump.csv", "one row per signature"])])
+    ry += hh + gap
+    cmd_row(s, ry, 2, [(V, ["data/exports/full_dump.csv"])],
+            ["bugsigdb split", "flat dump → relational tables"],
+            [(C, ["data/exports/relational/*.csv", "studies, experiments, signatures, taxa"])])
+    ry += hh + gap
+    cmd_row(s, ry, 3, [(C, ["relational/studies.csv"])],
+            ["bugsigdb pmc-map", "PMID → PMCID by NCBI idconv (about 84% have one)"],
+            [(C, ["data/eval/pmid_pmcid_map.csv"])])
+    ry += hh + gap
+    cmd_row(s, ry, 4, [(A, ["NCBI taxdump", "pinned release"])],
+            ["bugsigdb taxonomy build --download --release 2026-07-01", "build the local, offline taxonomy database"],
+            [(V, ["ncbi-taxdump-<release>.duckdb", "XDG cache, or BUGSIGDB_TAXONOMY_DB"])])
+    y += ph + 14
+
+    # Phase 2 ---------------------------------------------------------------
+    ph = 30 + hd + 12
+    phase(s, y, ph, "2 · CURATE", "never takes a gold path")
+    cmd_row(s, y + 30, 5, [(V, ["a PMID, or the --smoke set"]), (V, ["taxonomy DB from step 4"])],
+            ["bugsigdb curate --smoke -o preds/",
+             "needs model keys in .env (Gemini; Cloudflare for Clef)",
+             "levers: --decision-model clef · --supplements · --design"],
+            [(V, ["preds/<pmid>.json · prediction record"]), (V, ["preds/_annotations/<pmid>.json · sidecar"])], h=hd)
+    y += ph + 14
+
+    # Phase 3 ---------------------------------------------------------------
+    ph = 30 + hd + 12
+    phase(s, y, ph, "3 · SCORE", "reads the gold to score the predictions")
+    cmd_row(s, y + 30, 6, [(V, ["preds/ (step 5)"]), (C, ["gold tables + PMC map (steps 2–3)"])],
+            ["bugsigdb eval score --pred preds/ --out report/ --smoke",
+             "match experiments, pair signatures, compare taxa as taxid sets",
+             "uses the taxonomy DB from step 4"],
+            [(V, ["report/", "scores.jsonl · report.md · report.html"])], h=hd)
+    y += ph + 14
+
+    # Phase 4 ---------------------------------------------------------------
+    ph = 30 + 5 * hh + 4 * gap + 12
+    phase(s, y, ph, "4 · REVIEW", "drafts only; no gold")
+    ry = y + 30
+    cmd_row(s, ry, 7, [(V, ["preds/<pmid>.json + sidecar"])],
+            ["bugsigdb review packet --pred preds/<pmid>.json --out packets/",
+             "one HTML page per draft; pass --annotations for --smoke sidecars"],
+            [(V, ["packets/<pmid>.html", "+ <pmid>.manifest.json, pinning the draft hash"])])
+    ry += hh + gap
+    cmd_row(s, ry, 8, [(V, ["packets/"])],
+            ["bugsigdb review bundle --packets packets/ --out share/",
+             "index + packets + README, zipped; --contact says where verdicts go"],
+            [(V, ["share/bugsigdb-review-<date>.zip"])])
+    ry += hh + gap
+    cmd_row(s, ry, 9, [(V, ["the zip, sent to curators"])],
+            ["Curators, in a browser (no command)", "open a packet, judge it against the paper,", "press “Export verdicts (JSON)”"],
+            [(V, ["verdicts_<pmid>_<time>.json"])], human=True)
+    ry += hh + gap
+    cmd_row(s, ry, 10, [(V, ["verdicts_*.json"])],
+            ["bugsigdb review ingest verdicts_*.json --manifests packets/",
+             "validate against the schema and the draft hash; file by study"],
+            [(V, ["data/reviews/<pmid>/", "<reviewer>_<time>.json"])])
+    ry += hh + gap
+    cmd_row(s, ry, 11, [(V, ["data/reviews/"])],
+            ["bugsigdb review report --reviews data/reviews --out report.md",
+             "pool verdicts per study and overall"],
+            [(V, ["report.md", "taxa precision · direction flips · time saved"])])
+    y += ph + 14
+
+    # Other commands -----------------------------------------------------------
+    ph = 30 + hh + 12
+    phase(s, y, ph, "OTHER COMMANDS", "inspection and utilities")
+    chips = [
+        ("bugsigdb load FILE.csv", "dump → nested Study records"),
+        ("bugsigdb validate FILE", "check records against the schema"),
+        ("bugsigdb eval gold --smoke", "dump gold in the prediction shape"),
+        ("bugsigdb supplements --pmid N", "list a paper's supplement files"),
+        ("bugsigdb taxonomy lookup NAME", "name ↔ NCBI taxid, offline"),
+    ]
+    for i, (c, d) in enumerate(chips):
+        s.box(32 + i * 226, y + 30, 212, hh, "green", [c, d], sub_size=10, mono_first=True, title_size=10.5)
+    y += ph + 14
+
+    legend(
+        s, y,
+        [("violet", "data artifact"), ("green", "bugsigdb command"), ("amber", "external source or people"),
+         ("coral", "gold artifact (never given to curate)")],
+        [("arrow", "reads → command → writes"), ("dashed-box", "manual step, no command")],
+    )
+    s.h = y + 78 + 14
+    return s.render()
+
+
+# ---------------------------------------------------------------------------
+# Figure 3: data model
 # ---------------------------------------------------------------------------
 ROW = 17
 
@@ -301,7 +486,7 @@ def datamodel(theme: str) -> str:
     )
     t = s.t
     s.text(24, 32, "BugSigDB data model — schema/bugsigdb.yaml", size=17, weight="700")
-    s.text(24, 52, "6 classes · 63 slots · 12 enums. Shown: the slots curators and the agent fill in; one card per class.", size=11.5, fill=t["muted"])
+    s.text(24, 52, "6 classes · 64 slots · 12 enums. Every slot is shown, one card per class; related slots (group fields, alpha diversity) share a row.", size=11.5, fill=t["muted"])
 
     study = [
         ("uid", "string", "◆", ""), ("pmid", "integer", "", ""), ("doi", "string", "", ""), ("uri", "string", "", ""),
@@ -394,7 +579,8 @@ def datamodel(theme: str) -> str:
 
 def main() -> None:
     for theme in THEMES:
-        (OUT / f"workflow-{theme}.svg").write_text(workflow(theme))
+        (OUT / f"logical-{theme}.svg").write_text(logical(theme))
+        (OUT / f"commands-{theme}.svg").write_text(commands(theme))
         (OUT / f"data-model-{theme}.svg").write_text(datamodel(theme))
         print(f"wrote {theme} variants")
 
