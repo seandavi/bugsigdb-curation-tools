@@ -28,6 +28,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 from loguru import logger
@@ -50,6 +51,8 @@ EUROPEPMC_CORE_SEARCH_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/se
 _PACKAGE_DIR = Path(__file__).parent
 _EMBEDDABLE_LICENSE_RE = re.compile(r"(cc[ -]by|cc0)([ -][0-9]\.[0-9])?")
 _TABLE_SOURCE_RE = re.compile(r"\s*table\s*#?\s*(\d+)", re.IGNORECASE)
+#: Only a well-formed DOI becomes a link: never a scheme, `..` segments, or a query/fragment smuggled in.
+_DOI_RE = re.compile(r"10\.[0-9]{4,9}/\S+")
 _HEADER_KEYS = ("uid", "pmid", "doi", "title", "authors", "journal", "year", "citation_mode", "experiments")
 _EXPERIMENT_FIELDS = (
     ("host_species", "Host species"),
@@ -174,6 +177,7 @@ def build_manifest(
         "model_label": meta.model_label,
         "design_label": meta.design_label,
         "license": evidence.license if evidence else None,
+        "evidence_problems": list(evidence.problems) if evidence else [],
         "n_experiments": len(experiments),
         "n_signatures": sum(len(e.get("signatures") or []) for e in experiments),
         "n_taxa": sum(len(s.get("taxa") or []) for e in experiments for s in e.get("signatures") or []),
@@ -432,7 +436,11 @@ class _PacketBuilder:
         if self.pmcid:
             links.append(f'<a href="{_e(_pmc_url(self.pmcid))}">{_e(self.pmcid)} (full text)</a>')
         if r.get("doi"):
-            links.append(f'<a href="https://doi.org/{_e(r["doi"])}">DOI {_e(r["doi"])}</a>')
+            doi = str(r["doi"])
+            if _DOI_RE.fullmatch(doi) and not {".", ".."} & set(doi.split("/")):
+                links.append(f'<a href="https://doi.org/{_e(quote(doi, safe="/()"))}">DOI {_e(doi)}</a>')
+            else:  # a malformed DOI (from a draft) is shown, never made into a link that could point elsewhere
+                links.append(f"<span>DOI {_e(doi)}</span>")
         journal_year = " · ".join(str(x) for x in (r.get("journal"), r.get("year")) if x)
         authors = self._authors()
         license_ = self.evidence.license if self.evidence else None
@@ -697,9 +705,18 @@ class _PacketBuilder:
             "page. Nothing is uploaded.</p></section>"
         )
 
+    def _authors_list(self) -> list[str]:
+        """The authors this packet credits: the draft's, else the article's own (from the evidence fetch), else []."""
+        drafted = self.record.get("authors")
+        if isinstance(drafted, (list, tuple)) and drafted:
+            return [str(a) for a in drafted]
+        if drafted and not isinstance(drafted, (list, tuple)):
+            return [str(drafted)]
+        return [str(a) for a in self.evidence.authors] if self.evidence else []
+
     def _authors(self) -> str:
-        """The draft's authors, else the article's own (from the evidence fetch), else ''."""
-        return _join(self.record.get("authors")) or (_join(list(self.evidence.authors)) if self.evidence else "")
+        """The credited authors as one display string, or ''."""
+        return "; ".join(self._authors_list())
 
     def attribution(self) -> str:
         if not self.embedded or self.evidence is None:
@@ -719,7 +736,10 @@ class _PacketBuilder:
         if not experiments:
             body_sections = ['<section class="card"><p class="na">The draft contains no experiments.</p></section>']
         study = self.study_section(self.attribution())
-        payload = {"meta": _meta_dict(self.meta), "record": self.record}
+        payload = {
+            "meta": {**_meta_dict(self.meta), "attribution_authors": self._authors_list()},
+            "record": self.record,
+        }
         css = (_PACKAGE_DIR / "packet.css").read_text(encoding="utf-8")
         js = (_PACKAGE_DIR / "packet.js").read_text(encoding="utf-8")
         title = f"Review packet — PMID {self.meta.pmid}"

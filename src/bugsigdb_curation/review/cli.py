@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from datetime import date as date_type
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,13 @@ from rich.console import Console
 from rich.markup import escape
 
 from bugsigdb_curation.pmc_map import PmcMapError
+from bugsigdb_curation.review.bundle import (
+    BundleError,
+    build_bundle,
+    refuse_existing_outputs,
+    write_bundle_tree,
+    write_bundle_zip,
+)
 from bugsigdb_curation.review.packet import (
     PacketEvidence,
     build_manifest,
@@ -153,6 +161,38 @@ def packet_command(
         json.dumps(build_manifest(record, notes, evidence, meta), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
     console.print(f"[green]Wrote[/green] {html_path} and {manifest_path} (packet {meta.packet_id})")
+
+
+@review_app.command("bundle")
+def bundle_command(
+    packets: Path = typer.Option(
+        ..., "--packets", help="Directory of packets: `<pmid>.html` + `<pmid>.manifest.json`."
+    ),
+    out: Path = typer.Option(..., "--out", help="Output directory; gets `<name>/` and, with --zip, `<name>.zip`."),
+    name: str | None = typer.Option(
+        None, "--name", help="Bundle (and top folder) name; default bugsigdb-review-<date>."
+    ),
+    contact: str | None = typer.Option(
+        None, "--contact", help='Who reviewers send their verdict files to, e.g. "Jane Doe <jane@example.org>".'
+    ),
+    zip_: bool = typer.Option(True, "--zip/--no-zip", help="Also write a reproducible `<name>.zip` of the bundle."),
+    date: str | None = typer.Option(None, "--date", help="Build date, YYYY-MM-DD (default: today)."),
+) -> None:
+    """Combine a directory of review packets into ONE shareable bundle: index.html, packets, README, attribution."""
+    built_on = date or date_type.today().isoformat()
+    try:
+        bundle = build_bundle(packets, name=name or f"bugsigdb-review-{built_on}", date=built_on, contact=contact)
+        refuse_existing_outputs(bundle, out, with_zip=zip_)
+        root = write_bundle_tree(bundle, out)
+        for warning in bundle.warnings:
+            error_console.print(f"[yellow]Warning:[/yellow] {escape(warning)}")
+        console.print(f"[green]Wrote[/green] {root} ({len(bundle.manifest['packets'])} packet(s))")
+        if zip_:
+            console.print(f"[green]Wrote[/green] {write_bundle_zip(bundle, out)}")
+    except BundleError as exc:
+        for problem in exc.problems:
+            error_console.print(f"[red]Error:[/red] {escape(problem)}")
+        raise typer.Exit(code=2) from None
 
 
 @review_app.command("ingest")
