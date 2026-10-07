@@ -20,13 +20,15 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from bugsigdb_curation.review.packet import cited_artifact, license_allows_embedding
+from bugsigdb_curation.review.packet import cited_artifact, license_allows_embedding, study_pmid
 from bugsigdb_curation.review.verdicts import canonical_sha256
 
 #: Authors shown on an index card before "et al." (ATTRIBUTION.txt always lists every author).
 MAX_CARD_AUTHORS = 6
 
 _NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+_CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+_PMID_RE = re.compile(r"[0-9]+")  # ASCII digits only: the file stem becomes zip member names and hrefs
 _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 _PACKET_DATA_RE = re.compile(r'<script type="application/json" id="packet-data">(.*?)</script>', re.DOTALL)
 _PACKET_IMAGES_RE = re.compile(r'<script type="application/json" id="packet-images">(.*?)</script>', re.DOTALL)
@@ -114,8 +116,17 @@ def _page_authors(page: str, record: dict[str, Any]) -> tuple[str, ...]:
     return tuple(part.strip() for part in text.split(";") if part.strip())
 
 
+def _line(value: object) -> str:
+    """`value` as one line of plain text: whitespace collapsed, C0/C1 control characters (newlines, ANSI escapes) removed."""
+    return _CONTROL_RE.sub("", " ".join(str(value).split()))
+
+
+def _is_pmid(text: str) -> bool:
+    return _PMID_RE.fullmatch(text) is not None
+
+
 def _pmid_key(study: _Study) -> tuple[bool, int, str]:
-    return not study.pmid.isdigit(), int(study.pmid) if study.pmid.isdigit() else 0, study.pmid
+    return not _is_pmid(study.pmid), int(study.pmid) if _is_pmid(study.pmid) else 0, study.pmid
 
 
 def _evidence_label(kind: str, number: str) -> str:
@@ -135,8 +146,11 @@ def _read_study(html_path: Path, problems: list[str]) -> _Study | None:
     start = len(problems)
 
     def refuse(message: str) -> None:
-        problems.append(f"{html_path.name}: {message}")
+        problems.append(f"{_line(html_path.name)}: {message}")
 
+    if not _is_pmid(stem):
+        refuse("the file name is not a numeric PMID (expected <digits>.html)")
+        return None
     if not manifest_path.is_file():
         refuse(f"no manifest ({manifest_path.name} not found beside it)")
         return None
@@ -156,20 +170,29 @@ def _read_study(html_path: Path, problems: list[str]) -> _Study | None:
     if not isinstance(record, dict):
         refuse('no embedded record (the <script id="packet-data"> block is missing or unreadable)')
         return None
+    try:
+        record_sha = canonical_sha256(record)
+    except ValueError:
+        refuse("the embedded record holds NaN or Infinity and cannot be hashed")
+        return None
 
     meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
     if manifest["packet_id"] != meta.get("packet_id"):
         refuse(
             f"packet_id in {manifest_path.name} ({manifest['packet_id']}) is not the packet's ({meta.get('packet_id')})"
         )
+    if manifest["packet_id"] != f"{stem}-{record_sha[:12]}":
+        refuse(f"packet_id in {manifest_path.name} ({manifest['packet_id']}) is not the file's pmid and draft hash")
     if manifest["pmid"] != stem:
         refuse(f"pmid in {manifest_path.name} ({manifest['pmid']}) does not match the file name")
-    try:
-        record_sha = canonical_sha256(record)
-    except ValueError:
-        record_sha = None
+    if meta.get("pmid") != stem:
+        refuse(f"embedded meta pmid ({meta.get('pmid')}) does not match the file name")
+    if study_pmid(record) != stem:
+        refuse(f"embedded record's pmid ({study_pmid(record)}) does not match the file name")
     if manifest.get("draft_sha256") != record_sha:
         refuse(f"draft_sha256 in {manifest_path.name} does not match the packet's embedded record")
+    if meta.get("draft_sha256") != record_sha:
+        refuse(f"embedded meta draft_sha256 ({meta.get('draft_sha256')}) does not match the packet's embedded record")
     if len(problems) > start:
         return None
 
@@ -210,17 +233,6 @@ def _read_studies(packets_dir: Path) -> tuple[list[_Study], list[str]]:
 
     problems: list[str] = []
     studies = [s for p in html_paths if (s := _read_study(p, problems)) is not None]
-    by_pmid: dict[str, list[str]] = {}
-    for path in html_paths:
-        manifest_path = path.with_name(path.name.removesuffix(".html") + ".manifest.json")
-        try:
-            pmid = json.loads(manifest_path.read_text(encoding="utf-8")).get("pmid")
-        except (OSError, ValueError, AttributeError):
-            continue
-        by_pmid.setdefault(str(pmid), []).append(path.name)
-    problems += [
-        f"duplicate PMID {pmid}: {', '.join(names)}" for pmid, names in sorted(by_pmid.items()) if len(names) > 1
-    ]
     if problems:
         raise BundleError(problems)
 
@@ -309,7 +321,7 @@ def _contact_html(contact: str | None) -> str:
 
 def _card(study: _Study) -> str:
     links = []
-    if study.pmid.isdigit():
+    if _is_pmid(study.pmid):
         links.append(f'<a href="https://pubmed.ncbi.nlm.nih.gov/{_e(study.pmid)}/">PMID {_e(study.pmid)}</a>')
     if study.pmcid:
         links.append(f'<a href="https://pmc.ncbi.nlm.nih.gov/articles/{_e(quote(study.pmcid))}/">{_e(study.pmcid)}</a>')

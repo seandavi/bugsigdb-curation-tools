@@ -362,10 +362,72 @@ def test_manifest_pmid_must_match_file_name(packets: Path) -> None:
         make_bundle(packets)
 
 
-def test_duplicate_pmids_are_refused(packets: Path) -> None:
-    (packets / "copy.html").write_bytes((packets / "99000001.html").read_bytes())
-    (packets / "copy.manifest.json").write_bytes((packets / "99000001.manifest.json").read_bytes())
-    with pytest.raises(BundleError, match=r"duplicate.*99000001"):
+def test_packet_copied_under_another_name_is_refused(packets: Path) -> None:
+    (packets / "99000009.html").write_bytes((packets / "99000001.html").read_bytes())
+    (packets / "99000009.manifest.json").write_bytes((packets / "99000001.manifest.json").read_bytes())
+    with pytest.raises(BundleError, match=r"99000009\.html.*pmid"):
+        make_bundle(packets)
+
+
+@pytest.mark.parametrize("stem", ["..\\x", "\u00b2", ".hidden", "a b", "unknown", "12a", "\u0663"])
+def test_file_names_that_are_not_numeric_pmids_are_refused(packets: Path, stem: str) -> None:
+    (packets / f"{stem}.html").write_bytes((packets / "99000001.html").read_bytes())
+    (packets / f"{stem}.manifest.json").write_bytes((packets / "99000001.manifest.json").read_bytes())
+    with pytest.raises(BundleError, match="not a numeric PMID") as excinfo:
+        make_bundle(packets)
+    assert any(stem in problem for problem in excinfo.value.problems)
+
+
+def _edit_html(packets: Path, stem: str, old: str, new: str) -> None:
+    path = packets / f"{stem}.html"
+    page = path.read_text(encoding="utf-8")
+    assert old in page, old
+    path.write_text(page.replace(old, new), encoding="utf-8")
+
+
+def test_manifest_packet_id_must_be_pmid_and_record_hash(packets: Path) -> None:
+    fake = "99000002-000000000000"
+    real = json.loads((packets / "99000002.manifest.json").read_text(encoding="utf-8"))["packet_id"]
+    _edit_manifest(packets, "99000002", packet_id=fake)
+    _edit_html(packets, "99000002", real, fake)  # manifest and page agree with each other, but not with the record
+    with pytest.raises(BundleError, match=r"99000002\.html.*packet_id.*pmid and draft hash"):
+        make_bundle(packets)
+
+
+def test_embedded_meta_pmid_must_match_the_file_name(packets: Path) -> None:
+    _edit_html(packets, "99000002", '"pmid": "99000002"', '"pmid": "99000007"')
+    with pytest.raises(BundleError, match=r"99000002\.html.*embedded meta pmid"):
+        make_bundle(packets)
+
+
+def test_embedded_record_pmid_must_match_the_file_name(packets: Path) -> None:
+    _edit_html(packets, "99000002", '"pmid": 99000002', '"pmid": 99000007')
+    with pytest.raises(BundleError, match=r"99000002\.html.*embedded record's pmid"):
+        make_bundle(packets)
+
+
+def test_embedded_meta_draft_sha256_must_match_the_record(packets: Path) -> None:
+    sha = json.loads((packets / "99000002.manifest.json").read_text(encoding="utf-8"))["draft_sha256"]
+    page = (packets / "99000002.html").read_text(encoding="utf-8")
+    meta_block = re.search(r'"meta": \{.*?\}', page, re.DOTALL).group(0)  # type: ignore[union-attr]
+    _edit_html(packets, "99000002", meta_block, meta_block.replace(sha, "0" * 64))
+    with pytest.raises(BundleError, match=r"99000002\.html.*embedded meta draft_sha256"):
+        make_bundle(packets)
+
+
+@pytest.mark.parametrize("manifest_sha", [None, "absent"])
+def test_record_that_cannot_be_hashed_is_refused_not_matched_against_none(packets: Path, manifest_sha: Any) -> None:
+    page = (packets / "99000002.html").read_text(encoding="utf-8")
+    assert '"year": 2024' in page
+    _edit_html(packets, "99000002", '"year": 2024', '"year": NaN')
+    path = packets / "99000002.manifest.json"
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    if manifest_sha == "absent":
+        del manifest["draft_sha256"]
+    else:
+        manifest["draft_sha256"] = manifest_sha
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(BundleError, match=r"99000002\.html.*(NaN|cannot be hashed)"):
         make_bundle(packets)
 
 
