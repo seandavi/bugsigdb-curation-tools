@@ -198,6 +198,11 @@ class LiteLLMModel(Model):
     model: str = DEFAULT_MODEL
     api_key: str | None = None
     temperature: float = 0.0
+    #: Per-request timeout (seconds) and litellm's own retry count for a timed-out / rate-limited call. Without a
+    #: timeout a hung provider call blocks a study for as long as the provider likes (one real call sat for ten
+    #: minutes before litellm.Timeout surfaced); a timeout turns that into a retry and, failing that, a ModelCallError.
+    timeout: float = 180.0
+    num_retries: int = 2
     #: Injectable for tests that want to construct with a fake completion fn
     #: directly; if left None, `_call` looks up `litellm.completion` fresh on
     #: every call, so a test can equally just `monkeypatch.setattr(litellm,
@@ -239,6 +244,8 @@ class LiteLLMModel(Model):
             "messages": messages,
             "temperature": self.temperature,
             "response_format": {"type": "json_object"},
+            "timeout": self.timeout,
+            "num_retries": self.num_retries,
         }
         if self.api_key:
             kwargs["api_key"] = self.api_key
