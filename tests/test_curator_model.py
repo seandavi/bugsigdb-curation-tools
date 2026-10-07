@@ -159,6 +159,32 @@ def test_litellm_model_calls_completion_with_model_string_and_json_mode(monkeypa
     assert captured["messages"][0]["content"] == "classify this"
 
 
+def test_litellm_model_bounds_every_call_with_a_timeout_and_retries(monkeypatch):
+    seen = []
+
+    def fake_completion(**kwargs):
+        seen.append(kwargs)
+        return _fake_response('{"ok": true}')
+
+    monkeypatch.setattr(litellm, "completion", fake_completion)
+    LiteLLMModel(model="m", api_key="k").complete(stage="s", messages=[{"role": "user", "content": "x"}])
+    assert seen[0]["timeout"] == 180.0 and seen[0]["num_retries"] == 2  # a hung provider call can no longer block forever
+
+    LiteLLMModel(model="m", api_key="k", timeout=30.0, num_retries=0).complete(
+        stage="s", messages=[{"role": "user", "content": "x"}]
+    )
+    assert seen[1]["timeout"] == 30.0 and seen[1]["num_retries"] == 0  # overridable
+
+
+def test_a_provider_timeout_surfaces_as_a_model_call_error(monkeypatch):
+    def fake_completion(**kwargs):
+        raise litellm.Timeout("slow", model="m", llm_provider="gemini")
+
+    monkeypatch.setattr(litellm, "completion", fake_completion)
+    with pytest.raises(ModelCallError, match="call failed"):
+        LiteLLMModel(model="m", api_key="k").complete(stage="s", messages=[{"role": "user", "content": "x"}])
+
+
 def test_litellm_model_sends_multimodal_message_shape_for_figure_vision(monkeypatch):
     captured = {}
 
