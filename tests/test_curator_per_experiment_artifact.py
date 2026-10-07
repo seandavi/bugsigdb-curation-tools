@@ -254,12 +254,22 @@ def test_an_experiment_no_candidate_reports_gets_no_signatures_but_is_kept(httpx
     result, _ = _study(httpx_mock, tmp_path, {"taxa": []})
     assert len(result.record["experiments"]) == 2
     assert all("signatures" not in e for e in result.record["experiments"])
+    assert result.valid, result.problems  # an experiment left without signatures is still a valid record
     assert [e["artifact_used"] for e in result.annotations["experiment_artifacts"]] == [None, None]
     assert all(e["artifact_tried"] == ["Figure 7", "Figure 3"] for e in result.annotations["experiment_artifacts"])
 
 
-def test_identical_signatures_from_one_artifact_are_deduplicated_but_the_experiment_is_kept(httpx_mock, tmp_path):
-    result, _ = _study(httpx_mock, tmp_path, TAXA_A)  # Figure 7 yields the same taxa for both experiments
+def _ranker_figure_7_only():
+    """Only Figure 7 is a candidate (Figure 3 scores below the cut-off), so there is nothing to fall back to."""
+
+    def answers(state, questions):
+        return {"is_da_artifact": NoulAnswer(0.98 if "diet comparison" in state["caption_or_legend"] else 0.1)}
+
+    return MockDecisionModel({"s5a_locate": answers})
+
+
+def test_a_duplicate_from_a_single_candidate_is_dropped_afterwards_and_not_reported_as_used(httpx_mock, tmp_path):
+    result, _ = _study(httpx_mock, tmp_path, TAXA_A, decision_model=_ranker_figure_7_only)  # same taxa for both
 
     assert _taxon_names(result, 0) == {t["name"] for t in TAXA_A["taxa"]}
     assert len(result.record["experiments"]) == 2
@@ -267,6 +277,51 @@ def test_identical_signatures_from_one_artifact_are_deduplicated_but_the_experim
     assert result.annotations["duplicate_signatures_dropped"] == [
         {"experiment_index": 1, "source": "Figure 7", "direction": "increased", "same_as_experiment_index": 0}
     ]
+    assert result.annotations["experiment_artifacts"] == [
+        {"experiment_index": 0, "artifact_tried": ["Figure 7"], "artifact_used": "Figure 7"},
+        {
+            "experiment_index": 1,
+            "artifact_tried": ["Figure 7"],
+            "artifact_used": None,
+            "artifact_duplicate": ["Figure 7"],
+        },
+    ]
+
+
+def test_a_candidate_that_copies_an_earlier_experiment_is_a_decline_and_the_next_candidate_is_tried(httpx_mock, tmp_path):
+    """The model ignores the escape hatch and returns experiment 0's Figure 7 taxa again for experiment 1."""
+
+    def signature_extract(messages):
+        return TAXA_A if _which_figure(messages) == "Figure 7" else TAXA_B
+
+    result, _ = _study(httpx_mock, tmp_path, signature_extract)
+
+    assert result.annotations["experiment_artifacts"] == [
+        {"experiment_index": 0, "artifact_tried": ["Figure 7"], "artifact_used": "Figure 7"},
+        {
+            "experiment_index": 1,
+            "artifact_tried": ["Figure 7", "Figure 3"],
+            "artifact_used": "Figure 3",
+            "artifact_duplicate": ["Figure 7"],
+        },
+    ]
+    assert _sources(result, 1) == {"Figure 3"} and _taxon_names(result, 1) == {t["name"] for t in TAXA_B["taxa"]}
+    assert "duplicate_signatures_dropped" not in result.annotations
+
+
+def test_a_candidate_with_a_new_signature_is_not_skipped_even_if_another_signature_is_a_copy(httpx_mock, tmp_path):
+    novel = {"taxa": TAXA_A["taxa"] + _taxa("Roseburia hominis", "Blautia obeum", "Ruminococcus bromii", direction="decreased")["taxa"]}
+    responses = iter([TAXA_A, novel])
+
+    result, _ = _study(httpx_mock, tmp_path, lambda messages: next(responses))
+
+    assert result.annotations["experiment_artifacts"][1] == {
+        "experiment_index": 1,
+        "artifact_tried": ["Figure 7"],
+        "artifact_used": "Figure 7",
+    }
+    assert [d["direction"] for d in result.annotations["duplicate_signatures_dropped"]] == ["increased"]
+    assert [s["abundance_in_group_1"] for s in result.record["experiments"][1]["signatures"]] == ["decreased"]
 
 
 def test_the_same_taxa_from_different_artifacts_are_not_deduplicated(httpx_mock, tmp_path):
@@ -422,6 +477,16 @@ def test_guard_drops_a_later_exact_copy_from_the_same_source_and_keeps_both_expe
     assert dropped == [
         {"experiment_index": 1, "source": "Figure 7", "direction": "increased", "same_as_experiment_index": 0}
     ]
+
+
+def test_guard_treats_a_near_copy_as_a_duplicate_at_the_supplement_jaccard():
+    five = tuple((f"Taxon {c}", None) for c in "ABCDE")
+    copy_plus_one = _sig("increased", *five, ("Taxon F", None))  # Jaccard 5/6 = 0.83 >= 0.8
+    _, dropped = _guard(([_sig("increased", *five)], "Figure 7"), ([copy_plus_one], "Figure 7"))
+    assert [d["same_as_experiment_index"] for d in dropped] == [0]
+
+    _, dropped = _guard(([_sig("increased", *_THREE)], "Figure 7"), ([_sig("increased", *_THREE, ("D d", None))], "Figure 7"))
+    assert dropped == []  # Jaccard 3/4 = 0.75 < 0.8
 
 
 def test_guard_matches_on_ncbi_id_when_resolved_else_normalised_name():

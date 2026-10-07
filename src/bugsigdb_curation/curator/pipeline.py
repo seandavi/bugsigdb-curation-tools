@@ -64,7 +64,12 @@ from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL, resolve
 from bugsigdb_curation.curator.routing import DECISION_CALL_ERRORS, map_body_sites, rank_artifacts
 from bugsigdb_curation.curator.segment import segment_experiments
 from bugsigdb_curation.curator.signature import ExtractedSignature, extract_signatures
-from bugsigdb_curation.curator.supplement_lever import DUPLICATE_MIN_TAXA, supplement_experiments, taxon_keys
+from bugsigdb_curation.curator.supplement_lever import (
+    SUPPLEMENT_DUPLICATE_JACCARD,
+    supplement_experiments,
+    taxon_keys,
+    taxon_overlap,
+)
 from bugsigdb_curation.curator.taxonomy import DEFAULT_CACHE_PATH, NcbiTaxonomyResolver
 from bugsigdb_curation.curator.verify import verify_signatures
 from bugsigdb_curation.decision import DecisionModel
@@ -309,32 +314,49 @@ async def _figure_image_once(
 _MainExperiment = tuple[ExperimentFields, list[ExtractedSignature], str | None]
 
 
+_SeenSignature = tuple[int, str, str, frozenset[str]]  # (experiment index, source, direction, taxon keys)
+
+
+def _earlier_duplicate(signature: ExtractedSignature, source: str | None, seen: list[_SeenSignature]) -> int | None:
+    """The index of the earlier experiment whose signature `signature` copies, or None.
+
+    A copy is the same source artifact, the same direction and a taxon-key set (`taxon_keys`) overlapping at
+    `SUPPLEMENT_DUPLICATE_JACCARD` or more, both sets having at least `DUPLICATE_MIN_TAXA` taxa (`taxon_overlap`).
+    """
+    if source is None:
+        return None
+    keys = taxon_keys(signature)
+    return next(
+        (
+            index
+            for index, seen_source, direction, seen_keys in seen
+            if seen_source == source
+            and direction == signature.direction
+            and taxon_overlap(keys, seen_keys) >= SUPPLEMENT_DUPLICATE_JACCARD
+        ),
+        None,
+    )
+
+
 def _drop_duplicate_signatures(
     experiments: list[_MainExperiment],
 ) -> tuple[list[_MainExperiment], list[dict[str, Any]]]:
     """Drop a later experiment's signature that copies an earlier one read from the SAME artifact.
 
-    Duplicate = same direction and an identical taxon-key set (`supplement_lever.taxon_keys`) of at least
-    `DUPLICATE_MIN_TAXA` taxa, from the same source artifact. The experiment itself is kept (it is a real
+    Duplicate = see `_earlier_duplicate` (near-copies count). The experiment itself is kept (it is a real
     comparison the paper may describe; one without signatures is honest). Returns the new experiment list
     and one `{"experiment_index", "source", "direction", "same_as_experiment_index"}` record per drop.
+    This is the backstop: the candidate loop already treats an all-duplicate candidate as a decline and tries
+    the next one, so a drop here means there was no later candidate left to try.
     """
-    seen: list[tuple[int, str, str, frozenset[str]]] = []  # (experiment index, source, direction, taxon keys)
+    seen: list[_SeenSignature] = []
     dropped: list[dict[str, Any]] = []
     kept_experiments: list[_MainExperiment] = []
     for index, (fields, signatures, source) in enumerate(experiments):
         kept: list[ExtractedSignature] = []
         for signature in signatures:
-            keys = taxon_keys(signature)
-            earlier = next(
-                (
-                    i
-                    for i, src, direction, earlier_keys in seen
-                    if source is not None and src == source and direction == signature.direction and earlier_keys == keys
-                ),
-                None,
-            )
-            if len(keys) >= DUPLICATE_MIN_TAXA and earlier is not None:
+            earlier = _earlier_duplicate(signature, source, seen)
+            if earlier is not None:
                 dropped.append(
                     {
                         "experiment_index": index,
@@ -346,7 +368,7 @@ def _drop_duplicate_signatures(
                 continue
             kept.append(signature)
             if source is not None:
-                seen.append((index, source, signature.direction, keys))
+                seen.append((index, source, signature.direction, taxon_keys(signature)))
         kept_experiments.append((fields, kept, source))
     return kept_experiments, dropped
 
@@ -484,6 +506,7 @@ async def curate_async(
                 may_decline = len(stubs) > 1 or len(candidates) > 1
 
                 experiments: list[_MainExperiment] = []
+                accepted: list[_SeenSignature] = []  # signatures already taken for earlier experiments
                 experiment_artifacts: list[dict[str, Any]] = []
                 flags: list[str] = []
                 body_site_terms: list[dict[str, Any]] = []
@@ -508,6 +531,7 @@ async def curate_async(
                     signatures: list[ExtractedSignature] = []
                     source: str | None = candidates[0].provenance if candidates else None
                     tried: list[str] = []
+                    duplicates: list[str] = []  # candidates that only repeated an earlier experiment's signatures
                     for position, artifact in enumerate(candidates):
                         tried.append(artifact.provenance)
                         image_bytes = await _figure_image_once(
@@ -526,15 +550,28 @@ async def curate_async(
                             more_candidates=position + 1 < len(candidates),
                         )
                         flags.extend(stage_flags)
-                        if found:
-                            signatures, source = found, artifact.provenance
-                            break
+                        if not found:
+                            continue
+                        repeats_earlier = all(
+                            _earlier_duplicate(sig, artifact.provenance, accepted) is not None for sig in found
+                        )
+                        if repeats_earlier and position + 1 < len(candidates):
+                            # A copy of what an earlier experiment took from this artifact: the model did not
+                            # decline, but this artifact is not where THIS comparison is reported -- try the next.
+                            duplicates.append(artifact.provenance)
+                            continue
+                        signatures, source = found, artifact.provenance
+                        break
+                    for sig in signatures:
+                        if source is not None and _earlier_duplicate(sig, source, accepted) is None:
+                            accepted.append((len(experiments), source, sig.direction, taxon_keys(sig)))
                     if ranked:
                         experiment_artifacts.append(
                             {
                                 "experiment_index": len(experiments),
                                 "artifact_tried": tried,
                                 "artifact_used": source if signatures else None,
+                                **({"artifact_duplicate": duplicates} if duplicates else {}),
                             }
                         )
 
@@ -542,12 +579,18 @@ async def curate_async(
 
                 if body_site_terms:
                     annotations["body_site_terms"] = body_site_terms
-                if experiment_artifacts:
-                    annotations["experiment_artifacts"] = experiment_artifacts
 
                 experiments, duplicates_dropped = _drop_duplicate_signatures(experiments)
                 if duplicates_dropped:
                     annotations["duplicate_signatures_dropped"] = duplicates_dropped
+                for entry in experiment_artifacts:
+                    # An artifact whose every signature the backstop dropped was tried, not used.
+                    used = entry["artifact_used"]
+                    if used is not None and not experiments[entry["experiment_index"]][1]:
+                        entry["artifact_used"] = None
+                        entry["artifact_duplicate"] = [*entry.get("artifact_duplicate", []), used]
+                if experiment_artifacts:
+                    annotations["experiment_artifacts"] = experiment_artifacts
 
                 if supplements:
                     assert decision_model is not None  # checked at entry
