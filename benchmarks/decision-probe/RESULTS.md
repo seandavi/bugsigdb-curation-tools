@@ -159,7 +159,9 @@ price ($0.24/M clef, $0.09/M clef-flash).
 
 * **Units and questions** follow the issue; each experiment is one module in `experiments/`. P1 files are judged
   from `{filename, media_type, label, caption}` only; sheets from the header + first 30 rows; pages from one
-  100-dpi JPEG (and, separately, the extracted page text).
+  100-dpi JPEG (and, separately, the extracted page text). Pages are read through `bugsigdb_curation.pdf`
+  (pypdfium2). The archived runs predate that switch (they used PyMuPDF): a re-run sees slightly different page text
+  and JPEG bytes, so expect small shifts in the page experiments.
 * **P3 on the L031 failure mode** (`direction_pages*`) is an addition: it asks the per-taxon question on the
   34620922 supplement table pages for the 71 gold signatures that cite a captioned supplementary table, with
   the gold experiment's groups. L031's generative extractor scored 11.5 % direction accuracy on these tables.

@@ -171,3 +171,7 @@ same reviewer and second, unless `--force`; re-ingesting an identical file is a 
 
 Schema released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
 consistent with BugSigDB.
+
+PDF reading (supplement pages: text, size, JPEG render) goes through `bugsigdb_curation.pdf`, built on
+[pypdfium2](https://github.com/pypdfium2-team/pypdfium2) (BSD-3-Clause / Apache-2.0) and Pillow (MIT-CMU). It
+replaced PyMuPDF, whose AGPL-3.0 licence (or commercial licence) would have made the whole project copyleft.
