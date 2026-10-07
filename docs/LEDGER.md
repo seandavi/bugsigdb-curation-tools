@@ -566,3 +566,41 @@ already curated" rests on the GitHub export. The repo still has no LICENSE file.
 **Next.** Send the bundle to named BugSigDB curators and run one full first review end to end; re-run the decision-probe benchmark
 on the new PDF seam; decide the code licence and whether `--ground-unresolved` becomes the default; a streaming member-skip (or
 `--supplement-dir`) so papers with big media in their supplement can be read.
+
+## L034 — Owner decisions applied; the large-supplement paper rescued; the full-pipeline smoke result — 2026-10-07
+**Decisions (PRs #44, #45, #47; issue #46).** Code licence MIT (`LICENSE`, `pyproject.toml`; copyright line 'Sean Davis' to be
+confirmed). `--ground-unresolved` is now the default: with it off, 169 of 214 predicted taxa (79%) carried no NCBI id in the final
+smoke pair, with it on 438 of 1,554 (28%; different taxa per arm, name->ID accuracy 100% in both, F1 unaffected because the scorer
+re-resolves names). The supplement ZIP size guard was raised (60 MB / 240 s -> 1 GiB / 25 min) and the download now spools to disk
+instead of a bytearray. Direction handling for pairwise supplement tables is filed as issue #46 with the measured breakdown.
+
+**Direction analysis behind #46 (34620922, one run).** Of 71 predicted signatures in matched experiments: one-vs-rest 10/10 correct
+by construction; pairwise 31 correct, 22 flipped, 8 without overlap. Whole-experiment flips: 11 of 32 pairwise experiments. Part of
+the 'flipped' count is a different but equivalent orientation (for region-vs-region neither group is a control): 5 flipped
+signatures had the group order swapped relative to gold, 4 had the same order (genuine errors), 13 could not be classified by crude
+name matching. The true error rate is therefore between ~4/53 and ~22/53 until the metric is made swap-aware.
+
+**Large-supplement paper (37864204; 64 gold experiments; ~100-160 MB ZIP dominated by video).** Before: refused by the 60 MB guard,
+F1 0.006, 4/64 experiments matched. After (guard raised, spooled): live ZIP ~6.3 min, 14 xlsx units screened, 5 routed, 61 supplement
+experiments; F1 0.625, 64/64 matched, direction 37/42 (one run; a second run's ZIP fetch got a Europe PMC HTTP 500 and the study
+again scored ~0, which led to a bounded retry: 3 attempts, one shared deadline). With the retry in place a re-run scored F1 0.613,
+64/64 matched, direction 37/41.
+
+**Smoke set, 19 studies, final code (single runs).** Full pipeline (`--decision-model clef --supplements`, grounding on by default):
+run A micro F1 0.531 (P 0.594 / R 0.479; 37864204's ZIP fetch had hit the HTTP 500). Substituting the 37864204 re-run for run A's
+prediction of that study (a disclosed single-study substitution, not a fresh full pass): **micro F1 0.609 (P 0.626 / R 0.593)**, macro
+0.314, direction 76.6%, figure F1 0.654, supplement-sourced gold F1 0.692 (R 0.638), main-table gold F1 0.038 (51 taxa), over/under-
+segmentation 21 / 4. Comparators on the same code earlier today: no decision model micro F1 0.181 (P 0.778 / R 0.102), direction
+95.7%, under-segmentation 105. L033's full run (before the guard change) scored 0.530 with under-segmentation 64.
+
+**Defects found along the way (fixed).** Europe PMC's supplement ZIP intermittently answers HTTP 500 after a long wait (no retry
+before); NCBI idconv rate-limits by IP and kept answering 429 for over an hour (S0 now falls back to Europe PMC; shipped in L033's
+PR chain); a hung Gemini call (now a 180 s timeout).
+
+**Caveats.** One run per configuration; the 0.609 involves one substituted study; the supplement and large-ZIP claims rest on two
+papers; direction for pairwise supplement tables is weak (issue #46); main-table gold is nearly unreached in the full pipeline (F1
+0.04) and has not been investigated; the five pilot drafts remain unreviewed by curators; Europe PMC availability is the dominant
+source of day-to-day variance for the supplement lever.
+
+**Next.** Issue #46 (swap-aware direction metric first); investigate why main-table gold is not reached under Clef routing; send the
+review bundle to named curators and run one full first review; re-run the decision-probe benchmark on the new PDF seam.
