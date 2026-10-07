@@ -302,7 +302,7 @@ dual-audience `comments`: `CURATOR:` for humans, `AGENT:` for the automated extr
 Smoke set: 19 studies, `gemini-3.1-flash-lite` (the cheapest multimodal tier), text +
 tables + figures, `fused-lean`, scored against the held-out gold. Every row below is one or
 two runs; there are no confidence intervals. The ledger is the record of each run
-([`docs/LEDGER.md`](docs/LEDGER.md): L027, L030, L031, L032, L033).
+([`docs/LEDGER.md`](docs/LEDGER.md): L027, L030, L031, L032, L033, L034).
 
 | Configuration | Runs | Micro F1 | Micro precision | Direction accuracy | Figure F1 |
 |---------------|-----:|---------:|----------------:|-------------------:|----------:|
@@ -311,13 +311,17 @@ two runs; there are no confidence intervals. The ledger is the record of each ru
 | Per-experiment artifact search, no decision model | 1 | 0.166 | 0.829 | 96.0% | 0.612 |
 | Per-experiment artifact search + `clef` decision model | 1 | 0.209 | 0.636 | 90.3% | 0.736 |
 | **Final code**, no decision model (L033) | 1 | 0.181 | 0.778 | 95.7% | 0.675 |
-| **Final code, full pipeline**: `clef` + `--supplements`, name grounding on (L033) | 1 | **0.530** | 0.593 | 70.2% | 0.634 |
+| **Final code, full pipeline**: `clef` + `--supplements`, name grounding on (L033) | 1 | 0.530 | 0.593 | 70.2% | 0.634 |
+| **Same, with the ZIP guard raised to 1 GiB and ZIP retries** (L034; one study re-run, see below) | 1 | **0.609** | 0.626 | 76.6% | 0.654 |
 
 *Table 4. Smoke-set taxa-set metrics (micro-averaged), by configuration. Row 1 is from L030;
 rows 2–6 are from local score reports under the git-ignored `data/runs/`, recorded in
-[L033](docs/LEDGER.md). The studies are the same, the code is not, so adjacent rows show a
-direction and are not a controlled ablation; the last two rows are the like-for-like pair
-(same final code, with and without the levers).*
+[L033](docs/LEDGER.md), and the last row in [L034](docs/LEDGER.md). The studies are the same,
+the code is not, so adjacent rows show a direction and are not a controlled ablation; rows 5
+and 6 are the like-for-like pair (same final code, with and without the levers). The last
+row is one full run (micro F1 0.531, in which 37864204's ZIP fetch hit a Europe PMC HTTP 500)
+with a single re-run of 37864204 after the retry went in substituted for it; it is not a
+fresh full pass.*
 
 What the numbers say, and what they do not:
 
@@ -328,13 +332,14 @@ What the numbers say, and what they do not:
 - **Recall was the bottleneck, and the supplement lever is what moves it.** About 77% of the
   smoke set's gold taxa are in supplements the main-text pipeline cannot reach (L027: 1,056
   supplement-sourced gold taxa, against 260 from figures and 51 from main tables). On the final
-  code, micro recall goes from 0.10 (no decision model) to 0.48 with the full pipeline, and
-  F1 on supplement-sourced gold from 0.002 to 0.590 (one run each). The cost is visible in the
-  same table: direction accuracy falls from 95.7% to 70.2% (supplement-derived signatures are
-  right about 60% of the time on 34620922), over-segmentation rises from 11 to 21, and
-  main-table gold (51 taxa) scored 0 in this run. 37864204 (64 gold experiments) still scored
-  about 0 in that run because its supplement ZIP, with roughly 250 MB of video, exceeded the
-  then 60 MB size guard (now 1 GiB; not re-scored yet).
+  code, micro recall goes from 0.10 (no decision model) to 0.59 with the full pipeline, F1 on
+  supplement-sourced gold from 0.002 to 0.692, and under-segmentation from 105 to 4: nearly
+  every gold experiment now has a matched predicted one, including the 64-experiment paper
+  37864204 (F1 0.61, 64 of 64 matched once its large ZIP became readable; it scored about 0
+  before). The costs are in the same table: direction accuracy falls from 95.7% to 76.6%
+  (pairwise supplement tables are the weak spot, 36 of 60 on 34620922;
+  [issue #46](https://github.com/seandavi/bugsigdb-curation-tools/issues/46)),
+  over-segmentation rises from 11 to 21, and main-table gold (51 taxa) scores 0.04.
 - **Direction orientation.** Stating the group convention and passing group names to the
   extractors raised direction accuracy from about 65% to about 81%, pooled over two runs each
   (per run: 68% and 60% before, 86% and 75% after). The later rows range from 90% to 96%.
@@ -364,13 +369,13 @@ What the numbers say, and what they do not:
   ontology (as configured) did not meet their gates.
 
 The reading so far is that the low headline F1 was mostly a *retrieval* problem, not a
-reasoning problem: reaching the evidence moved micro F1 from about 0.13 to 0.53 on one run of
-the smoke set with the same cheap model. What now limits the score is direction for
-supplement-derived signatures, over-segmentation, large-media supplements, and (for any claim
-about accuracy on new papers) the absence of human verdicts. Remaining levers, in rough order:
-direction handling for pairwise supplement tables, a streaming or manual path for supplements
-that exceed the ZIP guard, fan-out for many-experiment papers, a model sweep, and human review
-for papers with no gold.
+reasoning problem: reaching the evidence moved micro F1 from about 0.13 to 0.61 on the smoke
+set with the same cheap model (one run per configuration, with the 37864204 substitution noted
+under Table 4). What now limits the score is direction for pairwise supplement tables,
+over-segmentation, and (for any claim about accuracy on new papers) the absence of human
+verdicts. Remaining levers, in rough order: direction handling
+([issue #46](https://github.com/seandavi/bugsigdb-curation-tools/issues/46)), fan-out for
+many-experiment papers, a model sweep, and human review for papers with no gold.
 
 ### Known limitations
 
@@ -380,8 +385,11 @@ for papers with no gold.
   `--supplements` uses Europe PMC's ZIP instead.
 - **Large supplement ZIPs are slow.** Europe PMC builds the ZIP on request and serves it at
   about 400 KB/s, so a paper with big media, such as 37864204's roughly 260 MB of mp4, takes
-  about 11 minutes. The download is capped at 1 GiB and 25 minutes; past either, the ZIP is
-  skipped (visibly, as `supplement_skipped`).
+  about 7 to 11 minutes. The download is capped at 1 GiB and 25 minutes, spooled to disk, and a
+  429, 5xx or transport error is retried up to three times within that one deadline (Europe PMC
+  answered HTTP 500 for 37864204 once and fine on the retry); past the caps, or when every attempt
+  fails, the ZIP is skipped (visibly, as `supplement_skipped`) and the paper scores as if it had
+  no supplement.
   `.xls` and `.doc` files are not read, and supplement experiments get no UBERON term.
 - **Small samples.** The smoke set has 19 studies, one or two runs per configuration, and one
   model tier. The supplement result is one paper. The decision-model probe is two large papers
