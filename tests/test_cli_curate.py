@@ -8,6 +8,7 @@ API key required to run this file.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import httpx
@@ -15,7 +16,7 @@ from pytest_httpx import HTTPXMock
 from typer.testing import CliRunner
 
 from bugsigdb_curation.cli import app
-from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL
+from bugsigdb_curation.curator.resolve import DEFAULT_EMAIL, EUROPEPMC_SEARCH_URL
 from bugsigdb_curation.curator.taxonomy import NCBI_ESEARCH_URL
 from bugsigdb_curation.pmc_map import IDCONV_URL
 from bugsigdb_curation.retrieval import EUROPEPMC_FULLTEXT_URL, PMC_ARTICLE_URL
@@ -267,6 +268,8 @@ def test_curate_network_failure_exits_nonzero_with_clean_error(httpx_mock: HTTPX
         status_code=500,
         is_reusable=True,  # a persistent failure: idconv is retried a few times before the study gives up
     )
+    # ...and the Europe PMC fallback for S0 is down too, so the study fails with a clean error
+    httpx_mock.add_response(url=re.compile(re.escape(EUROPEPMC_SEARCH_URL) + ".*"), status_code=500, is_reusable=True)
     cache_path = tmp_path / "cache.json"
 
     result = runner.invoke(app, ["curate", "--pmid", PMID, "--mock", "--taxonomy-cache", str(cache_path)])
