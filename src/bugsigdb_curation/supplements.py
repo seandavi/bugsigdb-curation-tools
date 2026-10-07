@@ -49,8 +49,8 @@ import httpx
 from loguru import logger
 
 # `includeInlineImage=false` leaves out the figure images Europe PMC would otherwise bundle (we get figures
-# from PMC separately). The bundling is the slow part: with the default, 34620922's ZIP stalled past a 240 s
-# deadline; without, the same ZIP (just the supplementary PDF) arrives in ~3 s.
+# from PMC separately). The bundling is the slow part: with the default, 34620922's ZIP stalled past what was
+# then a 240 s deadline; without, the same ZIP (just the supplementary PDF) arrives in ~3 s.
 EUROPEPMC_SUPPLEMENTARY_FILES_URL = (
     "https://www.ebi.ac.uk/europepmc/webservices/rest/{pmcid}/supplementaryFiles?includeInlineImage=false"
 )
