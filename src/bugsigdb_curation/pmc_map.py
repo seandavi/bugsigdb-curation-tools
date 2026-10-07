@@ -41,6 +41,11 @@ class PmcMapError(RuntimeError):
     """Raised for user-facing PMC ID conversion failures."""
 
 
+class PmcMapTransientError(PmcMapError):
+    """idconv kept failing for a transient reason (429/5xx after every retry): a retry later -- or another source --
+    may succeed, unlike a real error (a malformed PMID), which is a plain :class:`PmcMapError`."""
+
+
 @dataclass(frozen=True, slots=True)
 class StudyPmid:
     """A curated study's id, joined to its (numeric, string-form) PMID."""
@@ -233,6 +238,11 @@ async def fetch_batch(client: httpx.AsyncClient, pmids: list[str], *, email: str
     try:
         response.raise_for_status()
     except httpx.HTTPStatusError as exc:
+        if response.status_code in _IDCONV_TRANSIENT:
+            raise PmcMapTransientError(
+                f"NCBI idconv reported an error: HTTP {response.status_code} {response.reason_phrase} "
+                f"(still failing after {IDCONV_ATTEMPTS} attempts)"
+            ) from exc
         try:
             error_body = response.json()
         except ValueError:
