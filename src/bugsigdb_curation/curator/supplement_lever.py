@@ -32,6 +32,7 @@ import re
 import zipfile
 from collections import Counter
 from collections.abc import Callable, Sequence
+from contextlib import ExitStack
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, TypeVar
@@ -48,6 +49,7 @@ from bugsigdb_curation.curator.signature import ExtractedSignature
 from bugsigdb_curation.curator.taxonomy import NcbiTaxonomyResolver
 from bugsigdb_curation.decision import Choice, ChoiceAnswer, DecisionModel, Noul, NoulAnswer
 from bugsigdb_curation.loader import SEQUENCING_TYPE_VALUES, STATISTICAL_TEST_VALUES, normalize_enum
+from bugsigdb_curation.pdf import PdfDoc, open_pdf
 from bugsigdb_curation.supplements import ZIP_SKIP_NAME, SupplementFile, fetch_supplements, supplement_to_text
 from bugsigdb_curation.taxonomy.normalize import normalize_taxon_name
 
@@ -150,7 +152,7 @@ class SupplementUnit:
 
 
 class _Unreadable(Exception):
-    """A third-party reader (openpyxl, csv, pymupdf) could not open or parse part of a supplement."""
+    """A third-party reader (openpyxl, csv, pdf) could not open or parse part of a supplement."""
 
 
 _T = TypeVar("_T")
@@ -247,38 +249,32 @@ def _delimited_unit(f: SupplementFile) -> list[SupplementUnit]:
     return [SupplementUnit(f.filename, f.filename, "", "delimited", text, None, truncated=truncated)] if text else []
 
 
-def _jpeg(page: Any, dpi: int, quality: int) -> bytes:
-    return page.get_pixmap(dpi=dpi).tobytes("jpeg", jpg_quality=quality)
-
-
-def _render_page(page: Any) -> bytes | None:
+def _render_page(doc: PdfDoc, index: int) -> bytes | None:
     """The page as a JPEG of at most :data:`MAX_IMAGE_BYTES`, or None when no attempt fits.
 
     The dpi is capped so the longest side stays within :data:`_MAX_IMAGE_SIDE_PX` pixels, whatever the page size.
     """
-    rect = _read(lambda: page.rect)
-    longest_points = max(rect.width, rect.height)
+    width, height = _read(doc.page_size, index)
+    longest_points = max(width, height)
     max_dpi = max(1, int(_MAX_IMAGE_SIDE_PX * 72 / longest_points)) if longest_points > 0 else 100
     for dpi, quality in dict.fromkeys((min(dpi, max_dpi), quality) for dpi, quality in _RENDER_ATTEMPTS):
-        data = _read(_jpeg, page, dpi, quality)
+        data = _read(doc.render_jpeg, index, dpi, quality)
         if len(data) <= MAX_IMAGE_BYTES:
             return data
     return None
 
 
 def _pdf_units(f: SupplementFile, skipped: list[tuple[str, str]]) -> list[SupplementUnit]:
-    import pymupdf
-
     units = []
-    doc = _read(pymupdf.open, stream=f.raw_bytes, filetype="pdf")
-    with doc:
-        if doc.page_count > _MAX_PDF_PAGES:
-            skipped.append((f.filename, f"pages beyond {_MAX_PDF_PAGES} not read ({doc.page_count} pages)"))
-        for number in range(1, min(doc.page_count, _MAX_PDF_PAGES) + 1):
+    with ExitStack() as stack:
+        doc = _read(stack.enter_context, open_pdf(f.raw_bytes))
+        n_pages = _read(lambda: doc.n_pages)
+        if n_pages > _MAX_PDF_PAGES:
+            skipped.append((f.filename, f"pages beyond {_MAX_PDF_PAGES} not read ({n_pages} pages)"))
+        for number in range(1, min(n_pages, _MAX_PDF_PAGES) + 1):
             label, unit_id = f"page {number}", f"{f.filename}::page {number}"
             try:
-                page = _read(doc.load_page, number - 1)
-                text = _read(page.get_text).strip()
+                text = _read(doc.page_text, number - 1)
                 if len(text) >= _PDF_TEXT_MIN_CHARS:
                     units.append(
                         SupplementUnit(
@@ -287,7 +283,7 @@ def _pdf_units(f: SupplementFile, skipped: list[tuple[str, str]]) -> list[Supple
                         )
                     )
                     continue
-                image = _render_page(page)
+                image = _render_page(doc, number - 1)
             except _Unreadable as exc:
                 skipped.append((f"{f.filename} :: {label}", f"unreadable: {exc}"))
                 continue

@@ -1,6 +1,6 @@
 """P1/P4 on the 47 pages of the 34620922 supplementary PDF (image variant).
 
-One page per call, rendered to JPEG at 100 dpi (pymupdf). Labels:
+One page per call, rendered to JPEG at 100 dpi (``bugsigdb_curation.pdf``). Labels:
 ``labels/p1_34620922_pages.yaml`` (agent-drafted; see its header).
 """
 
@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from typing import Any
 
-import pymupdf
 import yaml
 from probe_common import LABELS, REPO
 
 from bugsigdb_curation.decision import DecisionModel
+from bugsigdb_curation.pdf import PdfDoc, open_pdf
 from experiments import _screen
 
 PDF = REPO / "data" / "decision-probe" / "34620922" / "supplements" / "41598_2021_99379_MOESM1_ESM.pdf"
@@ -22,9 +22,10 @@ DPI = 100
 MAX_IMAGE_BYTES = 200_000
 
 
-def render_page(page: pymupdf.Page) -> bytes:
+def render_page(doc: PdfDoc, index: int) -> bytes:
+    """Page `index` (0-based) as a JPEG of at most :data:`MAX_IMAGE_BYTES` where quality 35 allows."""
     for quality in (80, 65, 50, 35):
-        data = page.get_pixmap(dpi=DPI).tobytes("jpeg", jpg_quality=quality)
+        data = doc.render_jpeg(index, DPI, quality)
         if len(data) <= MAX_IMAGE_BYTES:
             return data
     return data
@@ -44,21 +45,21 @@ def labels() -> dict[int, dict[str, Any]]:
 
 
 def units(*, with_image: bool = True, with_text: bool = False) -> list[dict[str, Any]]:
-    doc = pymupdf.open(PDF)
     labs = labels()
     result = []
-    for i, page in enumerate(doc, 1):
-        state: Any = {"file": PDF.name, "page": i}
-        if with_text:
-            state["page_text"] = page.get_text()[:12000]
-        result.append(
-            {
-                "id": f"p{i:02d}",
-                "state": state,
-                "images": [render_page(page)] if with_image else [],
-                "label": labs[i],
-            }
-        )
+    with open_pdf(PDF.read_bytes()) as doc:
+        for i in range(1, doc.n_pages + 1):
+            state: Any = {"file": PDF.name, "page": i}
+            if with_text:
+                state["page_text"] = doc.page_text(i - 1)[:12000]
+            result.append(
+                {
+                    "id": f"p{i:02d}",
+                    "state": state,
+                    "images": [render_page(doc, i - 1)] if with_image else [],
+                    "label": labs[i],
+                }
+            )
     return result
 
 

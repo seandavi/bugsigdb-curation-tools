@@ -7,16 +7,16 @@ import asyncio
 import contextlib
 import io
 import json
-import random
 import re
 import zipfile
+from pathlib import Path
 
 import docx
 import httpx
 import openpyxl
-import pymupdf
 import pytest
 import test_curator_pipeline_e2e as e2e
+from PIL import Image
 from typer.testing import CliRunner
 
 import bugsigdb_curation.cli as cli_module
@@ -56,6 +56,7 @@ from bugsigdb_curation.decision import (
     Noul,
     NoulAnswer,
 )
+from bugsigdb_curation.pdf import PdfDoc, PdfError
 from bugsigdb_curation.supplements import EUROPEPMC_SUPPLEMENTARY_FILES_URL, SupplementFile
 
 # --- fixtures: tiny in-memory supplement files --------------------------------------------------------
@@ -82,23 +83,17 @@ def _docx(*paragraphs: str) -> bytes:
     return buf.getvalue()
 
 
-def _pdf(pages: list[str | None]) -> bytes:
-    """A PDF with one page per entry: text pages carry that text, `None` makes a text-free page with a drawing."""
-    doc = pymupdf.open()
-    for text in pages:
-        page = doc.new_page()
-        if text is None:
-            page.draw_rect(pymupdf.Rect(50, 50, 300, 300), color=(0, 0, 1), fill=(1, 0, 0))
-        else:
-            page.insert_textbox(pymupdf.Rect(40, 40, 550, 800), text, fontsize=9)
-    return doc.tobytes()
+def _pdf(name: str) -> bytes:
+    """A committed fixture from ``tests/data/pdf`` (see ``make_fixtures.py`` there)."""
+    return (Path(__file__).parent / "data" / "pdf" / f"{name}.pdf").read_bytes()
+
+
+def _image_size(data: bytes) -> tuple[int, int]:
+    return Image.open(io.BytesIO(data)).size
 
 
 def _file(name: str, media_type: str, data: bytes) -> SupplementFile:
     return SupplementFile(filename=name, media_type=media_type, raw_bytes=data)
-
-
-LONG_TEXT = "Differentially abundant taxa between cases and controls. " * 12  # > 200 chars
 
 
 # --- units --------------------------------------------------------------------------------------------
@@ -140,7 +135,7 @@ def test_docx_is_one_unit_truncated_to_about_12k_chars():
 
 
 def test_pdf_pages_with_text_are_text_units_and_text_free_pages_are_size_capped_jpegs():
-    pdf = _pdf([LONG_TEXT, None, "tiny"])
+    pdf = _pdf("text_pages")
     units = supplement_units([_file("S1.pdf", "pdf", pdf)])
     assert [(u.id, u.kind, u.page) for u in units] == [
         ("S1.pdf::page 1", "pdf_text", 1),
@@ -154,66 +149,43 @@ def test_pdf_pages_with_text_are_text_units_and_text_free_pages_are_size_capped_
     assert units[2].text.strip() == "tiny"  # the sparse text stays available to the prompt
 
 
-def _noisy_pdf(*, side: int = 400, points: int = 60000, page_size: tuple[float, float] | None = None) -> bytes:
-    doc = pymupdf.open()
-    page = doc.new_page(width=page_size[0], height=page_size[1]) if page_size else doc.new_page()
-    rng = random.Random(0)
-    pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, side, side), False)
-    pix.set_rect(pix.irect, (255, 255, 255))
-    for _ in range(points):
-        x, y = rng.randrange(side), rng.randrange(side)
-        pix.set_pixel(x, y, tuple(rng.randrange(256) for _ in range(3)))
-    page.insert_image(page.rect, pixmap=pix)
-    return doc.tobytes()
-
-
 def _spy_on_rendering(monkeypatch) -> list[int]:
-    """Encoded size of every JPEG a page render produces, in order (one entry per `get_pixmap` call)."""
+    """Encoded size of every JPEG a page render produces, in order (one entry per `render_jpeg` call)."""
     sizes: list[int] = []
-    real_get_pixmap = pymupdf.Page.get_pixmap
+    real_render_jpeg = PdfDoc.render_jpeg
 
-    def get_pixmap(self, *args, **kwargs):
-        pixmap = real_get_pixmap(self, *args, **kwargs)
-        real_tobytes = pixmap.tobytes
+    def render_jpeg(self, index, dpi, quality):
+        data = real_render_jpeg(self, index, dpi, quality)
+        sizes.append(len(data))
+        return data
 
-        def tobytes(*a, **kw):
-            data = real_tobytes(*a, **kw)
-            sizes.append(len(data))
-            return data
-
-        return type("Spy", (), {"tobytes": staticmethod(tobytes), "__getattr__": lambda _, n: getattr(pixmap, n)})()
-
-    monkeypatch.setattr(pymupdf.Page, "get_pixmap", get_pixmap)
+    monkeypatch.setattr(PdfDoc, "render_jpeg", render_jpeg)
     return sizes
 
 
 def test_pdf_page_image_is_re_encoded_at_lower_quality_until_it_fits(monkeypatch):
     # a noisy page that does not fit 200 KB at the first JPEG quality
     sizes = _spy_on_rendering(monkeypatch)
-    (unit,) = supplement_units([_file("noise.pdf", "pdf", _noisy_pdf())])
+    (unit,) = supplement_units([_file("noise.pdf", "pdf", _pdf("noisy"))])
     assert unit.image is not None and len(unit.image) <= MAX_IMAGE_BYTES
     assert len(sizes) >= 2 and sizes[0] > MAX_IMAGE_BYTES  # the first attempt was too big, so it was re-encoded
     assert sizes[-1] == len(unit.image) <= MAX_IMAGE_BYTES and all(size > MAX_IMAGE_BYTES for size in sizes[:-1])
 
 
 def test_a_huge_pdf_page_is_rendered_with_its_longest_side_within_about_2000_px():
-    doc = pymupdf.open()
-    doc.new_page(width=6000, height=3000).draw_rect(pymupdf.Rect(50, 50, 500, 500), fill=(1, 0, 0))
-    (unit,) = supplement_units([_file("poster.pdf", "pdf", doc.tobytes())])
+    (unit,) = supplement_units([_file("poster.pdf", "pdf", _pdf("poster"))])
     assert unit.image is not None
-    rendered = pymupdf.Pixmap(unit.image)
-    assert max(rendered.width, rendered.height) <= 2000 + 1 and rendered.width > rendered.height
-    letter = pymupdf.open()
-    letter.new_page().draw_rect(pymupdf.Rect(50, 50, 300, 300), fill=(1, 0, 0))
-    (small,) = supplement_units([_file("a.pdf", "pdf", letter.tobytes())])
-    assert small.image is not None and abs(pymupdf.Pixmap(small.image).height - 842 * 100 / 72) <= 2  # 100 dpi unchanged
+    width, height = _image_size(unit.image)
+    assert max(width, height) <= 2000 + 1 and width > height
+    (small,) = supplement_units([_file("a.pdf", "pdf", _pdf("text_and_drawing"))])[1:]
+    assert small.image is not None and abs(_image_size(small.image)[1] - 842 * 100 / 72) <= 2  # 100 dpi unchanged
 
 
 def test_a_page_image_that_never_fits_is_skipped_with_a_reason_not_sent(monkeypatch):
     monkeypatch.setattr("bugsigdb_curation.curator.supplement_lever.MAX_IMAGE_BYTES", 500)
     skipped: list[tuple[str, str]] = []
     units = supplement_units(
-        [_file("noise.pdf", "pdf", _noisy_pdf()), _file("ok.csv", "csv", b"a,b\n1,2\n")], skipped=skipped
+        [_file("noise.pdf", "pdf", _pdf("noisy")), _file("ok.csv", "csv", b"a,b\n1,2\n")], skipped=skipped
     )
     assert [u.id for u in units] == ["ok.csv"]  # nothing oversized goes on to the screen
     ((name, reason),) = skipped
@@ -243,6 +215,13 @@ def test_images_other_legacy_and_unreadable_files_are_skipped_with_a_reason():
     assert reasons["broken.xlsx"].startswith("unreadable:") and reasons["broken.pdf"].startswith("unreadable:")
 
 
+def test_a_password_protected_pdf_is_skipped_with_a_reason():
+    skipped: list[tuple[str, str]] = []
+    units = supplement_units([_file("locked.pdf", "pdf", _pdf("encrypted"))], skipped=skipped)
+    assert units == [] and [name for name, _ in skipped] == ["locked.pdf"]
+    assert skipped[0][1].startswith("unreadable: PdfError")
+
+
 def test_a_bug_in_our_own_unit_code_surfaces_instead_of_being_recorded_as_unreadable(monkeypatch):
     def buggy(rows):
         raise ZeroDivisionError("our bug")
@@ -255,16 +234,16 @@ def test_a_bug_in_our_own_unit_code_surfaces_instead_of_being_recorded_as_unread
 
 
 def test_an_unreadable_sheet_or_page_costs_only_that_part(monkeypatch):
-    real_get_text = pymupdf.Page.get_text
+    real_page_text = PdfDoc.page_text
 
-    def get_text(self, *args, **kwargs):
-        if self.number == 1:
-            raise RuntimeError("bad page")
-        return real_get_text(self, *args, **kwargs)
+    def page_text(self, index):
+        if index == 1:
+            raise PdfError("bad page")
+        return real_page_text(self, index)
 
-    monkeypatch.setattr(pymupdf.Page, "get_text", get_text)
+    monkeypatch.setattr(PdfDoc, "page_text", page_text)
     skipped: list[tuple[str, str]] = []
-    units = supplement_units([_file("S.pdf", "pdf", _pdf([LONG_TEXT, LONG_TEXT, LONG_TEXT]))], skipped=skipped)
+    units = supplement_units([_file("S.pdf", "pdf", _pdf("three_text_pages"))], skipped=skipped)
     assert [u.id for u in units] == ["S.pdf::page 1", "S.pdf::page 3"]
     assert [name for name, _ in skipped] == ["S.pdf :: page 2"] and "bad page" in skipped[0][1]
 
@@ -292,9 +271,7 @@ def test_truncated_marks_rows_columns_cells_and_document_characters_that_were_cu
     assert not supplement_units([_file("small.csv", "csv", b"a,b\n1,2\n")])[0].truncated
     assert supplement_units([_file("m.docx", "docx", _docx("x" * 20_000))])[0].truncated
     assert not supplement_units([_file("m.docx", "docx", _docx("short"))])[0].truncated
-    dense = pymupdf.open()
-    dense.new_page().insert_textbox(pymupdf.Rect(20, 20, 580, 820), "word " * 4000, fontsize=3)  # ~20k characters
-    long_page, short_page = dense.tobytes(), _pdf([LONG_TEXT])
+    long_page, short_page = _pdf("dense_text"), _pdf("text_and_drawing")
     assert supplement_units([_file("l.pdf", "pdf", long_page)])[0].truncated
     assert not supplement_units([_file("s.pdf", "pdf", short_page)])[0].truncated
 
@@ -914,7 +891,6 @@ SUPPLEMENT_TAXA_IDS = {
     "bacteroides fragilis": 817, "prevotella copri": 165179, "klebsiella pneumoniae": 573, "proteus mirabilis": 584,
     "roseburia hominis": 301301, "blautia obeum": 40520, "akkermansia muciniphila": 239935, "dorea longicatena": 88431,
 }
-PAGE_TEXT = "Differentially abundant taxa between ileal and colonic samples, LEfSe. " * 5
 
 
 def _supplement_zip() -> bytes:
@@ -928,7 +904,7 @@ def _supplement_zip() -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
         zf.writestr("S1.xlsx", xlsx)
-        zf.writestr("S2.pdf", _pdf([PAGE_TEXT, None]))
+        zf.writestr("S2.pdf", _pdf("text_and_drawing"))
         zf.writestr("tiny.csv", "a,b\n1,2\n")
         zf.writestr("fig.png", b"png")
         zf.writestr("movie.mp4", b"video")

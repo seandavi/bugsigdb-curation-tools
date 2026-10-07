@@ -13,7 +13,6 @@ import csv
 import re
 from typing import Any
 
-import pymupdf
 from probe_common import (
     PMC_MAP,
     RELATIONAL,
@@ -24,6 +23,7 @@ from probe_common import (
 
 from bugsigdb_curation.decision import DecisionModel, Noul
 from bugsigdb_curation.eval.gold import load_gold
+from bugsigdb_curation.pdf import open_pdf
 from experiments import supp_pages
 from experiments.figbench import clean_taxon
 
@@ -34,15 +34,15 @@ CHUNK = 60
 def load_units(*, with_image: bool = False) -> list[dict[str, Any]]:
     names = {int(r["ncbi_id"]): r["taxon_name"] for r in csv.DictReader((RELATIONAL / "taxa.csv").open())}
     study = load_gold(RELATIONAL, PMC_MAP)["34620922"]
-    doc = pymupdf.open(supp_pages.PDF)
     pages_for: dict[str, list[str]] = {}
     first_image: dict[str, bytes] = {}
-    for i, page in enumerate(doc, 1):
-        text = page.get_text()
-        for n in set(re.findall(r"Table S(\d+)", text)):
-            pages_for.setdefault(n, []).append(text)
-            if with_image and n not in first_image:
-                first_image[n] = supp_pages.render_page(page)
+    with open_pdf(supp_pages.PDF.read_bytes()) as doc:
+        for i in range(doc.n_pages):
+            text = doc.page_text(i)
+            for n in set(re.findall(r"Table S(\d+)", text)):
+                pages_for.setdefault(n, []).append(text)
+                if with_image and n not in first_image:
+                    first_image[n] = supp_pages.render_page(doc, i)
     units = []
     for exp in study.experiments:
         for sig in exp.signatures:
