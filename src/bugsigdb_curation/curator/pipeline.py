@@ -202,6 +202,7 @@ async def _extract_experiment_signatures(
     experiment_fields: ExperimentFields,
     ground_unresolved: bool = False,
     may_decline: bool = False,
+    more_candidates: bool = False,
 ) -> tuple[list[ExtractedSignature], tuple[str, ...]]:
     """S5b/S6 + S10, dispatched by `design` -- the only per-design branch in
     the whole pipeline (see module docstring). Returns `(signatures, flags)`;
@@ -211,6 +212,9 @@ async def _extract_experiment_signatures(
 
     `may_decline` puts the "return no taxa if this artifact does not report the comparison" escape hatch
     into the extractor (and reviewer) prompts -- set only when something else can be tried instead.
+    `more_candidates` says a later candidate artifact exists: a split design whose extractor found nothing
+    here then returns `([], ())` without calling the reviewer/verifier, so the decline really falls through
+    (a reviewer re-reading the artifact on its own would find taxa and end the candidate search).
 
     `design` is coerced to a real `Design` member up front: `Design` is a
     `str` subclass so a plain string (e.g. a caller passing
@@ -250,6 +254,8 @@ async def _extract_experiment_signatures(
     signatures = await reconcile_names(
         names, model=model, resolver=resolver, client=client, source_context=source_context
     )
+    if not signatures and more_candidates:
+        return [], ()
 
     if design is Design.split_verify:
         return verify_signatures(signatures, artifact=bundle_artifact, model=model, image_bytes=image_bytes)
@@ -502,7 +508,7 @@ async def curate_async(
                     signatures: list[ExtractedSignature] = []
                     source: str | None = candidates[0].provenance if candidates else None
                     tried: list[str] = []
-                    for artifact in candidates:
+                    for position, artifact in enumerate(candidates):
                         tried.append(artifact.provenance)
                         image_bytes = await _figure_image_once(
                             artifact, client=client, cache=figure_images, annotations=annotations
@@ -517,6 +523,7 @@ async def curate_async(
                             experiment_fields=experiment_fields,
                             ground_unresolved=ground_unresolved,
                             may_decline=may_decline,
+                            more_candidates=position + 1 < len(candidates),
                         )
                         flags.extend(stage_flags)
                         if found:

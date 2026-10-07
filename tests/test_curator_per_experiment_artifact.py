@@ -15,6 +15,7 @@ import test_curator_routing as routing_helpers
 from pytest_httpx import HTTPXMock
 
 from bugsigdb_curation.curator.artifact_text import group_orientation_text
+from bugsigdb_curation.curator.design import Design
 from bugsigdb_curation.curator.experiment import ExperimentFields
 from bugsigdb_curation.curator.locate import LocatedArtifact, locate_artifact, locate_artifacts
 from bugsigdb_curation.curator.model import DEFAULT_MOCK_RESPONSES, MockModel
@@ -151,8 +152,22 @@ def _which_figure(messages) -> str:
     return "Figure 7" if "Figure legend (Figure 7)" in text else "Figure 3" if "Figure legend (Figure 3)" in text else "other"
 
 
-def _study(httpx_mock: HTTPXMock, tmp_path, signature_extract, *, n_experiments=2, decision_model=_ranker):
-    """Run curate_async over the two-figure paper with `n_experiments` stubs; returns (result, model)."""
+def _study(
+    httpx_mock: HTTPXMock,
+    tmp_path,
+    signature_extract,
+    *,
+    n_experiments=2,
+    decision_model=_ranker,
+    design=Design.fused_lean,
+    stages: dict | None = None,
+    **curate_kwargs,
+):
+    """Run curate_async over the two-figure paper with `n_experiments` stubs; returns (result, model).
+
+    The split designs take their extractor responses from `stages` (`signature_ner`, `review_signature`, ...);
+    unknown taxon names stay unresolved (every esearch comes back empty).
+    """
     e2e._mock_idconv(httpx_mock)
     httpx_mock.add_response(url=EUROPEPMC_FULLTEXT_URL.format(pmcid=e2e.PMCID), text=TWO_FIG_XML)
     httpx_mock.add_response(
@@ -166,19 +181,28 @@ def _study(httpx_mock: HTTPXMock, tmp_path, signature_extract, *, n_experiments=
         is_optional=True,
         is_reusable=True,
     )
+    if design is not Design.fused_lean:
+        httpx_mock.add_response(
+            url=re.compile(r"https://eutils\.ncbi\.nlm\.nih\.gov/entrez/eutils/esearch.*"),
+            json={"esearchresult": {"idlist": []}},
+            is_optional=True,
+            is_reusable=True,
+        )
     segment = {"experiments": [{"index": i, "description": f"comparison {i}"} for i in range(n_experiments)]}
-    model = MockModel(responses={"segment": segment, "signature_extract": signature_extract})
+    model = MockModel(responses={"segment": segment, "signature_extract": signature_extract, **(stages or {})})
 
     async def run():
         async with httpx.AsyncClient() as client:
             return await curate_async(
                 e2e.PMID,
                 model=model,
+                design=design,
                 client=client,
                 decision_model=decision_model() if decision_model else None,
                 taxonomy_cache_path=tmp_path / "t.json",
                 ols_cache_path=tmp_path / "o.json",
                 html_cache_dir=tmp_path / "h",
+                **curate_kwargs,
             )
 
     return asyncio.run(run()), model
@@ -302,6 +326,74 @@ def test_the_escape_hatch_is_withheld_for_one_experiment_and_one_candidate(httpx
     )
     prompts = _extract_prompts(model)
     assert len(prompts) == 1 and _ESCAPE_HATCH not in prompts[0] and "Group 0" in prompts[0]
+
+
+def _split_decline_stages(*, ner_calls_f7: list[int]):
+    """Split-design stages for the 'Figure 7 declines experiment 0' scenario; the reviewer/verifier never declines.
+
+    The reviewer (and verifier) answer from the figure they are shown regardless of the prompt, as a model that
+    ignores the escape hatch would -- so the only thing that can make experiment 0 fall through to Figure 3 is the
+    pipeline not calling them for the declined candidate.
+    """
+    names = [t["name"] for t in TAXA_A["taxa"] + TAXA_B["taxa"]]
+
+    def ner(messages):
+        if _which_figure(messages) == "Figure 3":
+            return TAXA_A
+        ner_calls_f7.append(1)
+        return {"taxa": []} if len(ner_calls_f7) == 1 else TAXA_B
+
+    def reviewer(messages):
+        return TAXA_B if _which_figure(messages) == "Figure 7" else TAXA_A
+
+    in_source = {"results": [{"name": n, "in_source": True} for n in names]}
+    return {
+        "signature_ner": ner,
+        "review_signature": reviewer,
+        "review_ground_check": in_source,
+        "verify_taxon_in_source": in_source,
+        "verify_direction": {"direction": "increased"},
+    }
+
+
+def _calls(model, stage: str) -> list[str]:
+    return [_which_figure(c["messages"]) for c in model.calls if c["stage"] == stage]
+
+
+def test_split_panel_a_declined_artifact_falls_through_even_if_the_reviewer_ignores_the_escape_hatch(
+    httpx_mock, tmp_path
+):
+    result, model = _study(
+        httpx_mock, tmp_path, None, design=Design.split_panel, stages=_split_decline_stages(ner_calls_f7=[])
+    )
+
+    assert [e["artifact_used"] for e in result.annotations["experiment_artifacts"]] == ["Figure 3", "Figure 7"]
+    assert _sources(result, 0) == {"Figure 3"} and _taxon_names(result, 0) == {t["name"] for t in TAXA_A["taxa"]}
+    assert _sources(result, 1) == {"Figure 7"} and _taxon_names(result, 1) == {t["name"] for t in TAXA_B["taxa"]}
+    # The reviewer was not asked about the declined candidate, and saw the groups where it was asked.
+    assert _calls(model, "review_signature") == ["Figure 3", "Figure 7"]
+    reviewer_prompts = [c["messages"][0]["content"][0]["text"] for c in model.calls if c["stage"] == "review_signature"]
+    assert all("Group 0" in p and _ESCAPE_HATCH in p for p in reviewer_prompts)
+
+
+def test_split_verify_a_declined_artifact_falls_through_to_the_next_candidate(httpx_mock, tmp_path):
+    result, model = _study(
+        httpx_mock, tmp_path, None, design=Design.split_verify, stages=_split_decline_stages(ner_calls_f7=[])
+    )
+
+    assert [e["artifact_used"] for e in result.annotations["experiment_artifacts"]] == ["Figure 3", "Figure 7"]
+    assert _sources(result, 0) == {"Figure 3"} and _sources(result, 1) == {"Figure 7"}
+    assert _calls(model, "verify_taxon_in_source") == ["Figure 3", "Figure 7"]
+
+
+def test_split_panel_the_last_candidate_is_still_reviewed_when_the_extractor_found_nothing(httpx_mock, tmp_path):
+    """Nothing to fall back to: the reviewer's recall path stays available on the final candidate."""
+    stages = _split_decline_stages(ner_calls_f7=[])
+    stages["signature_ner"] = {"taxa": []}
+    result, model = _study(httpx_mock, tmp_path, None, design=Design.split_panel, stages=stages, n_experiments=1)
+
+    assert _calls(model, "review_signature") == ["Figure 3"]  # Figure 7 skipped, last candidate Figure 3 reviewed
+    assert _sources(result, 0) == {"Figure 3"}
 
 
 # --- the duplicate guard on its own ------------------------------------------------------------
