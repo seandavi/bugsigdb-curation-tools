@@ -155,9 +155,12 @@ uv run bugsigdb review packet --pred preds/21850056.json --out packets/ \
 #    picks up preds/21850056.annotations.json automatically; --offline skips fetching evidence,
 #    --evidence-dir DIR caches it (complete fetches only; --refresh-evidence refetches),
 #    --pmcid overrides the PMID->PMCID lookup
-# 2. file returned verdicts (validated against schema/review_verdict.schema.json)
+# 2. combine a directory of packets into ONE shareable bundle (index.html + packets + docs) and zip it
+uv run bugsigdb review bundle --packets packets/ --out share/ --contact "Jane Doe <jane@example.org>"
+#    -> share/bugsigdb-review-<date>/ and share/bugsigdb-review-<date>.zip; send the zip to named reviewers
+# 3. file returned verdicts (validated against schema/review_verdict.schema.json)
 uv run bugsigdb review ingest ~/Downloads/verdicts_21850056_*.json --manifests packets/   # -> data/reviews/<pmid>/
-# 3. aggregate
+# 4. aggregate
 uv run bugsigdb review report --reviews data/reviews --out report.md
 ```
 
@@ -166,6 +169,41 @@ CC0 (each image under ~1.5 MB, all images together under ~6 MB); otherwise the p
 shows the legend and a link. `ingest` refuses verdicts whose `draft_sha256` differs
 from the manifest, and refuses to overwrite a different file already filed for the
 same reviewer and second, unless `--force`; re-ingesting an identical file is a no-op. Verdicts contain reviewer names/emails: `data/` is git-ignored.
+
+#### Sharing packets: `bugsigdb review bundle`
+
+Reviewers (BugSigDB curators) have no accounts, so the recommended way to share is
+one zip sent to named reviewers. `review bundle --packets DIR --out DIR2` turns a
+directory of packets into a folder `DIR2/<name>/` (and, by default, `DIR2/<name>.zip`)
+holding:
+
+- `index.html` — a self-contained landing page (inline CSS, no JavaScript, no external requests): a
+  "machine-generated, unreviewed" notice, how to review, and one card per study (title, authors,
+  journal/year, PMID/PMCID/DOI links, licence, experiment/signature/taxon counts, the figures and
+  tables the draft cites, an *Open packet →* link, file size, packet id);
+- `packets/<pmid>.html` and `packets/<pmid>.manifest.json` — the packets, copied byte for byte;
+- `README.txt` (the how-to and the verdict legend, for people who read the zip listing first),
+  `ATTRIBUTION.txt` (authors, journal, DOI and licence per study; flags packets whose licence is not
+  CC BY/CC0 or whose images were not embedded) and `manifest.json` (every file's sha256 and size, the
+  packets' ids and draft hashes, the build date, the builder commit when the packets agree on it, and `content_sha256` — a hash of
+  the packets that the index footer also shows, so two people can confirm they hold the same bundle).
+
+Options: `--name` (default `bugsigdb-review-<date>`), `--contact "name <email>"` (where reviewers send
+their verdict files; shown in the index and README), `--zip/--no-zip` (default `--zip`), `--date YYYY-MM-DD`
+(default today; recorded in the manifest — the only clock reading). The build is offline and
+deterministic: the same packets, name, date and contact give a byte-identical zip (sorted members,
+fixed 2000-01-01 timestamps and permissions). It refuses (exit 2) a packet without a manifest, with a
+`packet_id` or `draft_sha256` that does not match its embedded record, a duplicate PMID, an empty
+directory, or an existing `<name>/` folder; non-CC-BY or image-less packets only warn. It never
+modifies the packets.
+
+Caveats: some institutional mail gateways strip or quarantine zips that contain `.html`/`.js` — if a
+reviewer does not receive it, fall back to a shared drive / Box link or a private GitHub release
+asset. Reviewers must **extract the zip before opening** a packet (not from a zip preview or an
+attachment viewer), or the page's script will not run.
+
+The loop: build packets → `review bundle` → send the zip → reviewers export verdict JSON and send it
+back → `review ingest` → `review report`.
 
 ## License
 
