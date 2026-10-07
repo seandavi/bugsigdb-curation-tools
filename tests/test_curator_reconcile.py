@@ -351,7 +351,7 @@ def test_curate_async_grounds_unresolved_taxa_only_when_asked(httpx_mock: HTTPXM
                     resolver=NcbiTaxonomyResolver(cache={"faecalibacterium prausnitzii": 853}, cache_path=None, db=None),
                     taxonomy_cache_path=tmp_path / f"t-{tag}.json",
                     html_cache_dir=tmp_path / f"h-{tag}",
-                    ground_unresolved=ground,
+                    **({} if ground is None else {"ground_unresolved": ground}),
                 )
 
         return _run(go())
@@ -359,6 +359,22 @@ def test_curate_async_grounds_unresolved_taxa_only_when_asked(httpx_mock: HTTPXM
     def ids(result):
         return [t.get("ncbi_id") for e in result.record["experiments"] for s in e["signatures"] for t in s["taxa"]]
 
-    assert ids(run(False, "off")) == [None]  # default: an unverifiable (here: absent) proposal stays unresolved
+    assert ids(run(False, "off")) == [None]  # explicitly off: an unverifiable (here: absent) proposal stays unresolved
     on = run(True, "on")
     assert ids(on) == [853] and on.valid, on.problems  # grounded by name, and the record now passes S9
+    default = run(None, "default")  # no argument at all: grounding is ON by default
+    assert ids(default) == [853] and default.valid, default.problems
+
+
+def test_grounding_is_on_by_default_in_the_signature_and_the_cli():
+    import inspect
+
+    import typer.main
+
+    from bugsigdb_curation.cli import app
+    from bugsigdb_curation.curator.pipeline import curate_async
+
+    assert inspect.signature(curate_async).parameters["ground_unresolved"].default is True
+    param = {p.name: p for p in typer.main.get_command(app).commands["curate"].params}["ground_unresolved"]
+    assert param.default is True
+    assert "--ground-unresolved" in param.opts and "--no-ground-unresolved" in param.secondary_opts
