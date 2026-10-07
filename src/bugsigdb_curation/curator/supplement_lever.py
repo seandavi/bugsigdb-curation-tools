@@ -111,6 +111,10 @@ _EXPECTED_ERRORS = (*DECISION_CALL_ERRORS, ModelError)
 #: Jaccard overlap (of resolved taxon sets, same direction) at or above which a supplement signature is
 #: considered already reported (by the main text or an earlier supplement experiment) ...
 DUPLICATE_JACCARD = 0.5
+#: Against an earlier SUPPLEMENT experiment only a near-identical set is a duplicate: different tables of one paper
+#: legitimately report the same comparison at another taxonomic level or by another method with overlapping taxa
+#: (42729499: Table 2 vs Table 1 at 0.6 were different tables, not copies).
+SUPPLEMENT_DUPLICATE_JACCARD = 0.8
 #: ... provided both sets have at least this many taxa (a 1-2 taxon set trivially matches).
 DUPLICATE_MIN_TAXA = 3
 
@@ -575,6 +579,16 @@ def _name(value: Any, cuts: Counter[str]) -> str:
     return text
 
 
+_RANK_LABEL = re.compile(r"^(?:domain|kingdom|phylum|class|order|family|genus|species)\s*[:\-]\s*", re.IGNORECASE)
+
+
+def _taxon_name(value: Any, cuts: Counter[str]) -> str:
+    """A taxon name as :func:`_name` gives it, minus a leading table rank label (``Genus: Streptococcus`` ->
+    ``Streptococcus``): supplement tables often label the rank in the cell, and the label defeats name resolution
+    (all ten taxa of one real sheet came back unresolved)."""
+    return _RANK_LABEL.sub("", _name(value, cuts)).strip()
+
+
 def _cut_notes(cuts: Counter[str]) -> list[str]:
     notes = {
         "comparisons": f"{cuts['comparisons']} comparison(s) beyond the first {_MAX_COMPARISONS_PER_UNIT} dropped",
@@ -604,7 +618,7 @@ def _two_group_comparisons(response: dict[str, Any], cuts: Counter[str]) -> list
         for t in raw_taxa if isinstance(raw_taxa, list) else []:
             if not isinstance(t, dict):
                 continue
-            name = _name(t.get("name"), cuts)
+            name = _taxon_name(t.get("name"), cuts)
             direction = str(t.get("direction", "")).strip().lower()
             if not name or direction not in ("increased", "decreased"):
                 continue
@@ -666,7 +680,7 @@ def _one_vs_rest_groups(response: dict[str, Any], cuts: Counter[str]) -> list[tu
         names = groups.setdefault(name, [])
         raw_taxa = item.get("taxa")
         for t in raw_taxa if isinstance(raw_taxa, list) else []:
-            taxon = _name(t.get("name") if isinstance(t, dict) else t, cuts)
+            taxon = _taxon_name(t.get("name") if isinstance(t, dict) else t, cuts)
             if not taxon or taxon in names:
                 continue
             if len(names) >= _MAX_TAXA_PER_COMPARISON:
@@ -741,21 +755,38 @@ def _source_context(fields: ExperimentFields, provenance: str) -> str:
 #: The experiment fields a supplement comparison may state itself; the rest of S4's fields come from the supplement
 #: only when stated (body_site / condition, groups) or not at all.
 _INHERITABLE_FIELDS = ("host_species", "sequencing_type", "statistical_test", "mht_correction")
+#: Also inherited -- but only when EVERY main-text experiment names the same body site(s) (a cohort-level fact, e.g.
+#: one lavage-fluid study); see :func:`shared_body_site`.
+_BODY_SITE = "body_site"
 
 
 def _stated(value: Any) -> bool:
     return value is not None and value != ()
 
 
-def inherited_field_names(comparison: SupplementComparison, defaults: ExperimentFields | None) -> list[str]:
-    """The :data:`_INHERITABLE_FIELDS` the comparison did not state and that `defaults` (main experiment 0) supplies."""
-    if defaults is None:
-        return []
-    return [
-        name
-        for name in _INHERITABLE_FIELDS
-        if not _stated(getattr(comparison, name)) and _stated(getattr(defaults, name))
-    ]
+def shared_body_site(main_experiments: Sequence[ExperimentRecord]) -> tuple[str, ...]:
+    """The body site(s) every main-text experiment agrees on, or ``()`` -- supplement experiments only inherit a
+    site when the whole paper studies one (a multi-site paper's supplement tables each name their own region)."""
+    sites = {tuple(fields.body_site) for fields, _, _ in main_experiments}
+    return next(iter(sites)) if len(sites) == 1 and next(iter(sites)) else ()
+
+
+def inherited_field_names(
+    comparison: SupplementComparison, defaults: ExperimentFields | None, site: tuple[str, ...] = ()
+) -> list[str]:
+    """The fields the comparison did not state and that were filled from the main text: the
+    :data:`_INHERITABLE_FIELDS` from `defaults` (main experiment 0), plus ``body_site`` when `site` (the sites
+    every main-text experiment shares) supplies one."""
+    names = []
+    if defaults is not None:
+        names = [
+            name
+            for name in _INHERITABLE_FIELDS
+            if not _stated(getattr(comparison, name)) and _stated(getattr(defaults, name))
+        ]
+    if site and not comparison.body_site:
+        names.append(_BODY_SITE)
+    return names
 
 
 async def resolve_comparison(
@@ -766,6 +797,7 @@ async def resolve_comparison(
     model: Model,
     resolver: NcbiTaxonomyResolver,
     client: httpx.AsyncClient,
+    site: tuple[str, ...] = (),
 ) -> ExperimentRecord:
     """S6 on one comparison's names via `reconcile_names`, as an experiment record sourced from the unit.
 
@@ -780,7 +812,7 @@ async def resolve_comparison(
 
     fields = ExperimentFields(
         host_species=pick("host_species"),
-        body_site=comparison.body_site,
+        body_site=comparison.body_site or site,
         condition=comparison.condition,
         group_0_name=comparison.group_0_name,
         group_1_name=comparison.group_1_name,
@@ -865,7 +897,8 @@ def drop_duplicate_experiments(
                     for where, direction, pooled in pool
                     if direction == sig.direction
                     and _comparable(where, source, fields)
-                    and (jaccard := _overlap(keys, pooled)) >= DUPLICATE_JACCARD
+                    and (jaccard := _overlap(keys, pooled))
+                    >= (SUPPLEMENT_DUPLICATE_JACCARD if "supplement" in where else DUPLICATE_JACCARD)
                 ),
                 None,
             )
@@ -996,6 +1029,7 @@ async def supplement_experiments(
         annotations["supplement_one_vs_rest_rejected"] = rejected
 
     defaults = main_experiments[0][0] if main_experiments else None
+    site = shared_body_site(main_experiments)
     extracted: list[ExperimentRecord] = []
     inherited: dict[int, dict[str, Any]] = {}  # by id() of the record's fields (kept by dedupe), so only kept experiments report
     for s, task in zip(routed, tasks):
@@ -1003,10 +1037,10 @@ async def supplement_experiments(
             unit_records = []
             for c in task.result():
                 record = await resolve_comparison(
-                    c, s.unit, defaults=defaults, model=model, resolver=resolver, client=client
+                    c, s.unit, defaults=defaults, model=model, resolver=resolver, client=client, site=site
                 )
                 unit_records.append(record)
-                if names := inherited_field_names(c, defaults):
+                if names := inherited_field_names(c, defaults, site):
                     inherited[id(record[0])] = {
                         "source": s.unit.provenance,
                         "group_1_name": c.group_1_name,
