@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import re
 from pathlib import Path
 
 import httpx
@@ -447,3 +448,76 @@ def test_convert_pmids_real_network():
     assert any(r.pmcid is not None for r in records)
     for r in records:
         assert r.pmid in {"19849869", "23209786"}
+
+
+# --- transient idconv failures are retried (a 429 once failed 18 of 19 studies in an overlapping batch run) -----
+
+OK_BODY = {"status": "ok", "records": [{"pmid": "19849869", "pmcid": "PMC2705330", "doi": "10.1/x"}]}
+
+
+def _fetch_one():
+    async def run() -> list[ConversionRecord]:
+        async with httpx.AsyncClient() as client:
+            return await fetch_batch(client, ["19849869"], email="me@example.com")
+
+    return asyncio.run(run())
+
+
+def test_fetch_batch_retries_429_and_5xx_then_succeeds(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(url=re.compile(re.escape(IDCONV_URL) + ".*"), status_code=429)
+    httpx_mock.add_response(url=re.compile(re.escape(IDCONV_URL) + ".*"), status_code=503)
+    httpx_mock.add_response(url=re.compile(re.escape(IDCONV_URL) + ".*"), json=OK_BODY)
+    (record,) = _fetch_one()
+    assert record.pmcid == "PMC2705330" and len(httpx_mock.get_requests()) == 3
+
+
+def test_fetch_batch_retries_a_transport_error(httpx_mock: HTTPXMock):
+    httpx_mock.add_exception(httpx.ReadTimeout("slow"), url=re.compile(re.escape(IDCONV_URL) + ".*"))
+    httpx_mock.add_response(url=re.compile(re.escape(IDCONV_URL) + ".*"), json=OK_BODY)
+    assert _fetch_one()[0].pmid == "19849869"
+
+
+def test_fetch_batch_still_reports_a_persistent_429_after_the_attempts(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(url=re.compile(re.escape(IDCONV_URL) + ".*"), status_code=429, is_reusable=True)
+    with pytest.raises(PmcMapError, match="429"):
+        _fetch_one()
+    assert len(httpx_mock.get_requests()) == 4  # IDCONV_ATTEMPTS
+
+
+def test_a_400_is_not_retried(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url=re.compile(re.escape(IDCONV_URL) + ".*"),
+        status_code=400,
+        json={"status": "error", "errors": [{"message": "Identifiers must be numeric", "code": "bad-id"}]},
+    )
+    with pytest.raises(PmcMapError, match="Identifiers must be numeric"):
+        _fetch_one()
+    assert len(httpx_mock.get_requests()) == 1
+
+
+def test_retry_after_header_wins_and_is_capped():
+    from bugsigdb_curation.pmc_map import _get_with_retry
+
+    sleeps: list[float] = []
+
+    async def sleep(s: float) -> None:
+        sleeps.append(s)
+
+    class Responder(httpx.AsyncBaseTransport):
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+            self.calls += 1
+            if self.calls == 1:
+                return httpx.Response(429, headers={"Retry-After": "7"})
+            if self.calls == 2:
+                return httpx.Response(429, headers={"Retry-After": "9999"})
+            return httpx.Response(200, json=OK_BODY)
+
+    async def run():
+        async with httpx.AsyncClient(transport=Responder()) as client:
+            return await _get_with_retry(client, {"ids": "1"}, sleep=sleep)
+
+    assert asyncio.run(run()).status_code == 200
+    assert 5.6 <= sleeps[0] <= 8.4 and 24.0 <= sleeps[1] <= 36.0  # 7 s and the 30 s cap, each +-20% jitter

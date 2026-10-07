@@ -265,6 +265,7 @@ def test_curate_network_failure_exits_nonzero_with_clean_error(httpx_mock: HTTPX
             {"ids": PMID, "idtype": "pmid", "format": "json", "tool": "bugsigdb-curation", "email": DEFAULT_EMAIL}
         ),
         status_code=500,
+        is_reusable=True,  # a persistent failure: idconv is retried a few times before the study gives up
     )
     cache_path = tmp_path / "cache.json"
 
