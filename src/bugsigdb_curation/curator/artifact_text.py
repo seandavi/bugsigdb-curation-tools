@@ -51,5 +51,7 @@ def group_orientation_text(group_0: str | None, group_1: str | None) -> str:
         "Report each taxon's direction relative to these groups: INCREASED means more abundant in "
         "Group 1 than in Group 0; DECREASED means less abundant in Group 1 than in Group 0. In a "
         "figure, use the legend to decide which colour or side belongs to which group -- never "
-        "assume the left/top/first-listed group is Group 1.\n\n"
+        "assume the left/top/first-listed group is Group 1.\n"
+        "If this table or figure does NOT report a comparison between these two groups, return "
+        '{"taxa": []} -- do not fill in taxa from a different comparison.\n\n'
     )

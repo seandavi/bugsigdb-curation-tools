@@ -8,13 +8,10 @@ differential-abundance signal (LEfSe, LDA, "differential", "significant(ly)
 abundant"), falling back to the first available table, then the first
 available figure.
 
-**Thin/stub note for the reviewer:** this heuristic picks ONE shared
-candidate artifact per bundle, not a distinct artifact per experiment --
-correct for the common single-experiment/single-DA-artifact paper (the
-smoke set's `21850056` anchor), but not yet differentiated for a
-many-experiment paper with several DA artifacts (that per-experiment
-disambiguation is exactly the kind of per-comparison specialization
-Architecture B's Experiment Workers are meant to add later; see the plan §2).
+`locate_artifact` picks ONE shared best artifact per bundle -- correct for the common
+single-experiment/single-DA-artifact paper (the smoke set's `21850056` anchor).
+`locate_artifacts` returns the several top-ranked candidates, so the pipeline can try them in rank
+order per experiment (a many-comparison paper reports its comparisons in different artifacts).
 """
 
 from __future__ import annotations
@@ -72,3 +69,28 @@ def locate_artifact(bundle: EvidenceBundle, ranked: Sequence[LocatedArtifact] | 
     if bundle.figures:
         return LocatedArtifact(kind="figure", figure=bundle.figures[0])
     return None
+
+
+#: Candidates handed to the per-experiment search, and the p(DA) a ranked artifact needs to be one.
+DEFAULT_MAX_CANDIDATES = 3
+DEFAULT_MIN_P_DA = 0.5
+
+
+def locate_artifacts(
+    bundle: EvidenceBundle,
+    ranked: Sequence[LocatedArtifact] | None = None,
+    *,
+    max_n: int = DEFAULT_MAX_CANDIDATES,
+    min_p: float = DEFAULT_MIN_P_DA,
+) -> list[LocatedArtifact]:
+    """S5a candidates for the per-experiment search, best first.
+
+    With a non-empty decision-model `ranked`: its artifacts with `p_da >= min_p`, at most `max_n`, and
+    ALWAYS at least the top one (even below `min_p`, as `locate_artifact` picks it today). Without one,
+    just the regex choice (`[]` when the bundle has no artifact at all).
+    """
+    if ranked:
+        confident = [a for a in ranked if (a.p_da or 0.0) >= min_p]
+        return (confident or list(ranked[:1]))[:max_n]
+    artifact = locate_artifact(bundle)
+    return [artifact] if artifact is not None else []
