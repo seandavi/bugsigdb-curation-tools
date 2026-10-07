@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 746" width="1200" height="746" role="img" aria-labelledby="t d">
+<title id="t">BugSigDB LinkML data model</title><desc id="d">Study contains Experiments, each Experiment contains Signatures, each Signature lists Taxa. Study, Experiment and Signature mix in CurationProvenance, which links to Review records. Condition, body site, host species and taxa are bound to EFO, UBERON and NCBI Taxonomy.</desc>
+<defs><marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9ca3af"/></marker></defs>
+<text x="24" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#e5e7eb" text-anchor="start">BugSigDB data model — schema/bugsigdb.yaml</text>
+<text x="24" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#9ca3af" text-anchor="start">6 classes · 63 slots · 12 enums. Shown: the slots curators and the agent fill in; one card per class.</text>
+<rect x="30" y="76" width="300" height="293" rx="8" fill="#1f2937" stroke="#a78bfa" stroke-width="1.5"/>
+<path d="M30,106 L30,84 Q30,76 38,76 L322,76 Q330,76 330,84 L330,106 Z" fill="#2e1f5e" stroke="#a78bfa" stroke-width="1.5"/>
+<text x="42" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#ddd6fe" text-anchor="start">Study</text>
+<text x="318" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#ddd6fe" text-anchor="end" font-style="italic">one publication  ·  + provenance</text>
+<text x="42" y="122" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">uid</text>
+<text x="65.85" y="122" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#fb7a63" text-anchor="start">◆</text>
+<text x="318" y="122" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="42" y="139" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">pmid</text>
+<text x="318" y="139" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">integer</text>
+<text x="42" y="156" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">doi</text>
+<text x="318" y="156" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="42" y="173" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">uri</text>
+<text x="318" y="173" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="42" y="190" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">citation_mode</text>
+<text x="135.35000000000002" y="190" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#fb7a63" text-anchor="start">*</text>
+<text x="318" y="190" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#a78bfa" text-anchor="end">CitationMode</text>
+<text x="42" y="207" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">title</text>
+<text x="318" y="207" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="42" y="224" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">authors</text>
+<text x="318" y="224" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string[]</text>
+<text x="42" y="241" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">journal</text>
+<text x="318" y="241" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="42" y="258" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">year</text>
+<text x="318" y="258" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">integer</text>
+<text x="42" y="275" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">pages</text>
+<text x="318" y="275" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="42" y="292" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">first_page</text>
+<text x="318" y="292" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">integer</text>
+<text x="42" y="309" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">keywords</text>
+<text x="318" y="309" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string[]</text>
+<text x="42" y="326" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">abstract</text>
+<text x="318" y="326" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="42" y="343" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">study_design</text>
+<text x="318" y="343" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#a78bfa" text-anchor="end">StudyDesign[]</text>
+<text x="42" y="360" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">experiments</text>
+<text x="318" y="360" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#4ade80" text-anchor="end">Experiment[]</text>
+<rect x="405" y="76" width="390" height="512" rx="8" fill="#1f2937" stroke="#a78bfa" stroke-width="1.5"/>
+<path d="M405,106 L405,84 Q405,76 413,76 L787,76 Q795,76 795,84 L795,106 Z" fill="#2e1f5e" stroke="#a78bfa" stroke-width="1.5"/>
+<text x="417" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#ddd6fe" text-anchor="start">Experiment</text>
+<text x="783" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#ddd6fe" text-anchor="end" font-style="italic">one two-group comparison  ·  + provenance</text>
+<text x="417" y="125" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#9ca3af" text-anchor="start">SUBJECTS AND GROUPS</text>
+<text x="417" y="142" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">location_of_subjects</text>
+<text x="783" y="142" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string[]</text>
+<text x="417" y="159" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">host_species</text>
+<text x="503.4" y="159" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#fb7a63" text-anchor="start">*</text>
+<text x="783" y="159" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#fbbf24" text-anchor="end">NCBITaxon</text>
+<text x="417" y="176" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">body_site</text>
+<text x="783" y="176" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#fbbf24" text-anchor="end">UBERON[]</text>
+<text x="417" y="193" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">condition</text>
+<text x="783" y="193" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#fbbf24" text-anchor="end">EFO / MONDO[]</text>
+<text x="417" y="210" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">group_{0,1}_name</text>
+<text x="783" y="210" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="417" y="227" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">group_{0,1}_definition</text>
+<text x="783" y="227" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="417" y="244" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">group_{0,1}_sample_size</text>
+<text x="783" y="244" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">integer</text>
+<text x="417" y="261" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">antibiotics_exclusion</text>
+<text x="783" y="261" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="417" y="278" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">matched_on</text>
+<text x="783" y="278" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string[]</text>
+<text x="417" y="295" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">confounders_controlled_for</text>
+<text x="783" y="295" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string[]</text>
+<text x="417" y="315" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#9ca3af" text-anchor="start">SEQUENCING</text>
+<text x="417" y="332" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">sequencing_type</text>
+<text x="783" y="332" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#a78bfa" text-anchor="end">SequencingType</text>
+<text x="417" y="349" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">variable_region_{lower,upper}_bound</text>
+<text x="783" y="349" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#a78bfa" text-anchor="end">SixteenSRegion</text>
+<text x="417" y="366" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">sequencing_platform</text>
+<text x="783" y="366" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#a78bfa" text-anchor="end">SequencingPlatform[]</text>
+<text x="417" y="386" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#9ca3af" text-anchor="start">STATISTICS</text>
+<text x="417" y="403" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">data_transformation</text>
+<text x="783" y="403" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#a78bfa" text-anchor="end">DataTransformation</text>
+<text x="417" y="420" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">statistical_test</text>
+<text x="783" y="420" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#a78bfa" text-anchor="end">StatisticalTest[]</text>
+<text x="417" y="437" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">significance_threshold</text>
+<text x="783" y="437" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">float</text>
+<text x="417" y="454" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">mht_correction</text>
+<text x="783" y="454" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">boolean</text>
+<text x="417" y="471" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">lda_score_above</text>
+<text x="783" y="471" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">float</text>
+<text x="417" y="491" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#9ca3af" text-anchor="start">ALPHA DIVERSITY (ALPHADIVCHANGE ENUM)</text>
+<text x="417" y="508" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">pielou · shannon · chao1 · simpson</text>
+<text x="783" y="508" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#a78bfa" text-anchor="end">AlphaDivChange</text>
+<text x="417" y="525" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">inverse_simpson · richness · faith</text>
+<text x="783" y="525" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#a78bfa" text-anchor="end">AlphaDivChange</text>
+<text x="417" y="545" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#9ca3af" text-anchor="start">RELATIONSHIPS</text>
+<text x="417" y="562" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">study</text>
+<text x="783" y="562" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#4ade80" text-anchor="end">Study</text>
+<text x="417" y="579" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">signatures</text>
+<text x="783" y="579" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#4ade80" text-anchor="end">Signature[]</text>
+<rect x="870" y="76" width="300" height="106" rx="8" fill="#1f2937" stroke="#a78bfa" stroke-width="1.5"/>
+<path d="M870,106 L870,84 Q870,76 878,76 L1162,76 Q1170,76 1170,84 L1170,106 Z" fill="#2e1f5e" stroke="#a78bfa" stroke-width="1.5"/>
+<text x="882" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#ddd6fe" text-anchor="start">Signature</text>
+<text x="1158" y="96" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#ddd6fe" text-anchor="end" font-style="italic">taxa moving one way  ·  + provenance</text>
+<text x="882" y="122" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">source</text>
+<text x="1158" y="122" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="882" y="139" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">description</text>
+<text x="1158" y="139" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="882" y="156" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">abundance_in_group_1</text>
+<text x="1158" y="156" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#a78bfa" text-anchor="end">AbundanceDirection</text>
+<text x="882" y="173" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">taxa</text>
+<text x="1158" y="173" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#4ade80" text-anchor="end">Taxon[]</text>
+<rect x="870" y="234" width="300" height="106" rx="8" fill="#1f2937" stroke="#fbbf24" stroke-width="1.5"/>
+<path d="M870,264 L870,242 Q870,234 878,234 L1162,234 Q1170,234 1170,242 L1170,264 Z" fill="#3d2c0a" stroke="#fbbf24" stroke-width="1.5"/>
+<text x="882" y="254" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#fde68a" text-anchor="start">Taxon</text>
+<text x="1158" y="254" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#fde68a" text-anchor="end" font-style="italic">NCBI Taxonomy node</text>
+<text x="882" y="280" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">ncbi_id</text>
+<text x="933.65" y="280" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#fb7a63" text-anchor="start">◆</text>
+<text x="1158" y="280" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#fbbf24" text-anchor="end">NCBITaxon</text>
+<text x="882" y="297" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">taxon_name</text>
+<text x="1158" y="297" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="882" y="314" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">taxonomic_rank</text>
+<text x="1158" y="314" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="882" y="331" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">lineage</text>
+<text x="1158" y="331" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string[]</text>
+<rect x="30" y="419" width="300" height="123" rx="8" fill="#1f2937" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="6 4"/>
+<path d="M30,449 L30,427 Q30,419 38,419 L322,419 Q330,419 330,427 L330,449 Z" fill="#2b3341" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="42" y="439" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#d1d5db" text-anchor="start">CurationProvenance</text>
+<text x="318" y="439" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#d1d5db" text-anchor="end" font-style="italic">mixin</text>
+<text x="42" y="465" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">curation_state</text>
+<text x="318" y="465" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#a78bfa" text-anchor="end">CurationState</text>
+<text x="42" y="482" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">curator</text>
+<text x="318" y="482" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string[]</text>
+<text x="42" y="499" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">curated_date</text>
+<text x="318" y="499" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">date</text>
+<text x="42" y="516" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">revision_editor</text>
+<text x="318" y="516" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string[]</text>
+<text x="42" y="533" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">reviews</text>
+<text x="318" y="533" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#4ade80" text-anchor="end">Review[]</text>
+<rect x="870" y="390" width="300" height="123" rx="8" fill="#1f2937" stroke="#4ade80" stroke-width="1.5"/>
+<path d="M870,420 L870,398 Q870,390 878,390 L1162,390 Q1170,390 1170,398 L1170,420 Z" fill="#12351f" stroke="#4ade80" stroke-width="1.5"/>
+<text x="882" y="410" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#bbf7d0" text-anchor="start">Review</text>
+<text x="1158" y="410" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" fill="#bbf7d0" text-anchor="end" font-style="italic">review workflow</text>
+<text x="882" y="436" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">reviewer</text>
+<text x="1158" y="436" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<text x="882" y="453" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">review_date</text>
+<text x="1158" y="453" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">date</text>
+<text x="882" y="470" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">review_state</text>
+<text x="968.4" y="470" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" font-weight="700" fill="#fb7a63" text-anchor="start">*</text>
+<text x="1158" y="470" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#a78bfa" text-anchor="end">ReviewState</text>
+<text x="882" y="487" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">quality_control_tags</text>
+<text x="1158" y="487" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#a78bfa" text-anchor="end">QualityControlTag[]</text>
+<text x="882" y="504" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" font-weight="normal" fill="#e5e7eb" text-anchor="start">review_subject</text>
+<text x="1158" y="504" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="end">string</text>
+<polygon points="330,356 337,351 344,356 337,361" fill="#9ca3af"/>
+<path d="M344,356 L405,356" fill="none" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+<text x="375" y="350" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#9ca3af" text-anchor="middle" font-style="italic">0..*</text>
+<polygon points="795,571.5 802,566.5 809,571.5 802,576.5" fill="#9ca3af"/>
+<path d="M809,571.5 L835,571.5 L835,91 L870,91" fill="none" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+<text x="822" y="565.5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#9ca3af" text-anchor="middle" font-style="italic">0..*</text>
+<polygon points="1020,182 1025,189 1020,196 1015,189" fill="#9ca3af"/>
+<path d="M1020,196 L1020,234" fill="none" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+<text x="1052" y="214" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#9ca3af" text-anchor="middle" font-style="italic">taxa 0..*</text>
+<path d="M330,525.5 L360,525.5 L360,610 L1020,610 L1020,513" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#arrowhead)"/>
+<text x="690" y="604" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#9ca3af" text-anchor="middle" font-style="italic">reviews 0..*</text>
+<text x="30" y="560" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#9ca3af" text-anchor="start" font-style="italic">Mixed into Study, Experiment and Signature.</text>
+<text x="30" y="574" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#9ca3af" text-anchor="start" font-style="italic">Slot names with {…} or · stand for several slots.</text>
+<rect x="20" y="634" width="1160" height="98" rx="8" fill="#1f2937" stroke="#6b7280"/>
+<text x="34" y="654" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="600" fill="#e5e7eb" text-anchor="start">Legend</text>
+<rect x="34" y="664" width="22" height="14" rx="4" fill="#2e1f5e" stroke="#a78bfa" stroke-width="1.5"/>
+<text x="64" y="676" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#e5e7eb" text-anchor="start">class card</text>
+<rect x="149" y="664" width="22" height="14" rx="4" fill="#3d2c0a" stroke="#fbbf24" stroke-width="1.5"/>
+<text x="179" y="676" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#e5e7eb" text-anchor="start">NCBI Taxonomy class</text>
+<rect x="318" y="664" width="22" height="14" rx="4" fill="#12351f" stroke="#4ade80" stroke-width="1.5"/>
+<text x="348" y="676" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#e5e7eb" text-anchor="start">review workflow</text>
+<rect x="463" y="664" width="22" height="14" rx="4" fill="#2b3341" stroke="#6b7280" stroke-width="1.5"/>
+<text x="493" y="676" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#e5e7eb" text-anchor="start">mixin</text>
+<path d="M34,693 L58,693" fill="none" stroke="#9ca3af" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+<text x="66" y="697" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#e5e7eb" text-anchor="start">contains (◆ at the container)</text>
+<path d="M266,693 L290,693" fill="none" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#arrowhead)"/>
+<text x="298" y="697" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#e5e7eb" text-anchor="start">mixin slot → Review</text>
+<text x="34" y="722" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" fill="#9ca3af" text-anchor="start">Slot notation:  * required  ·  [] multivalued  ·  ◆ identifier.   Type colour: violet = enum, amber = ontology / NCBI-bound, green = class reference.</text>
+</svg>
