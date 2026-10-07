@@ -10,11 +10,11 @@ from __future__ import annotations
 import re
 from typing import Any
 
-import pymupdf
 from probe_common import PMC_MAP, RELATIONAL, bounded_gather, coverage_at_confidence
 
 from bugsigdb_curation.decision import Choice, DecisionModel
 from bugsigdb_curation.eval.gold import load_gold
+from bugsigdb_curation.pdf import open_pdf
 from experiments import supp_pages
 
 NONE_OPTION = "none"
@@ -31,15 +31,15 @@ def load_units() -> list[dict[str, Any]]:
             for n in _SUPP.findall(sig.source or ""):
                 by_table.setdefault(n, set()).add(exp.experiment_id)
     labels = supp_pages.labels()
-    doc = pymupdf.open(supp_pages.PDF)
     units = []
-    for i, page in enumerate(doc, 1):
-        if not labels[i]["has_da_results"]:
-            continue
-        text = page.get_text()
-        tables = sorted(set(re.findall(r"Table S(\d+)", text)))
-        gold = sorted(set().union(*(by_table.get(n, set()) for n in tables)))
-        units.append({"id": f"p{i:02d}", "text": text[:12000], "tables": tables, "gold": gold, "options": desc})
+    with open_pdf(supp_pages.PDF.read_bytes()) as doc:
+        for i in range(1, doc.n_pages + 1):
+            if not labels[i]["has_da_results"]:
+                continue
+            text = doc.page_text(i - 1)
+            tables = sorted(set(re.findall(r"Table S(\d+)", text)))
+            gold = sorted(set().union(*(by_table.get(n, set()) for n in tables)))
+            units.append({"id": f"p{i:02d}", "text": text[:12000], "tables": tables, "gold": gold, "options": desc})
     return units
 
 
