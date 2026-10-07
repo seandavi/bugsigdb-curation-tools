@@ -13,8 +13,9 @@ BugSigDB captures **microbial signatures**: sets of microbial taxa reported as
 differentially abundant (DA) between two groups of samples in a published study.
 
 > **Status: research prototype.** The numbers in [Results so far](#results-so-far) come
-> from a 19-study smoke set and mostly single runs. Treat them as a floor and a
-> direction, not a benchmark. The append-only lab notebook is
+> from a 19-study smoke set and mostly one or two runs per configuration. Treat them as a
+> floor and a direction, not a benchmark. Drafts produced for human review are machine
+> output that nobody has yet reviewed; none is presented here as a result. The append-only lab notebook is
 > [`docs/LEDGER.md`](docs/LEDGER.md); the draft paper is
 > [`paper/bugsigdb-autocuration.qmd`](paper/bugsigdb-autocuration.qmd).
 
@@ -24,10 +25,12 @@ differentially abundant (DA) between two groups of samples in a published study.
 - [Methods](#methods)
 - [Data model](#data-model)
 - [Results so far](#results-so-far)
+- [Known limitations](#known-limitations)
 - [Layout](#layout)
 - [Validate / generate](#validate--generate)
 - [CLI reference](#cli)
 - [Reproducing the pipeline](#reproducing-the-pipeline)
+- [Licensing](#licensing)
 
 ## Workflow at a glance
 
@@ -44,7 +47,8 @@ separates B from the gold: prediction records flow from B to C, never the revers
 
 **Figure 1. End-to-end workflow.** Lane A (ingest) builds the relational gold tables from
 the public BugSigDB export. Lane B (curate) runs the per-PMID pipeline; dashed boxes are
-optional stages (`--design split-*` adds S10, `--supplements` adds S1b). Lane C (evaluate)
+optional stages (`--design split-*` adds S10, `--supplements` adds S1b); the decision model is optional
+(`--decision-model`) and feeds S5a, S1b and the S4 body-site sidecar. Lane C (evaluate)
 is the only code that reads gold. Source: [`docs/figures/make_figures.py`](docs/figures/make_figures.py).
 
 ## Methods
@@ -245,10 +249,20 @@ packets pick the sidecar up automatically.
 ### 7. Human review
 
 Gold is imperfect, and a draft with no gold has no automatic score. `bugsigdb review`
-builds one self-contained HTML packet per draft; a BugSigDB curator judges it against the
-paper and returns a verdict JSON, which is validated against
-[`schema/review_verdict.schema.json`](schema/review_verdict.schema.json) and pinned to the
-draft's SHA-256. Details are in [Human review packets](#human-review-packets-bugsigdb-review).
+builds one self-contained HTML packet per draft (a machine-draft banner, a verdict control
+for each taxon, signature and experiment, and the evidence beside each claim, with autosave
+and JSON/CSV export). A BugSigDB curator judges it against the paper and returns a verdict
+JSON, which `review ingest` validates against
+[`schema/review_verdict.schema.json`](schema/review_verdict.schema.json) and pins to the
+draft's SHA-256; `review report` aggregates verdicts (taxa precision, direction-flip rate and
+so on); `review bundle` packages several packets for sharing. Reviewer verdicts never mix
+with the held-out gold. Details are in
+[Human review packets](#human-review-packets-bugsigdb-review).
+
+A pilot set of five open-access (CC BY) papers was selected for this, none of them in the
+BugSigDB export dated 2026-10-06 (selection notes: PMIDs 42654743, 42404767, 42729499,
+42328067, 42465072). Their drafts are **unreviewed**: no verdicts have been collected, and
+they are not results.
 
 ## Data model
 
@@ -276,35 +290,78 @@ dual-audience `comments`: `CURATOR:` for humans, `AGENT:` for the automated extr
 ## Results so far
 
 Smoke set: 19 studies, `gemini-3.1-flash-lite` (the cheapest multimodal tier), text +
-tables + figures, no supplements, single run (ledger L027, L030, L031).
+tables + figures, `fused-lean`, scored against the held-out gold. Every row below is one or
+two runs; there are no confidence intervals. The ledger is the record of each run
+([`docs/LEDGER.md`](docs/LEDGER.md): L027, L030, L031, L032, L033).
 
-| Source type of gold taxa | Gold taxa | Precision | Recall | F1 |
-|--------------------------|----------:|----------:|-------:|---:|
-| figure | 260 | 0.78 | 0.30 | 0.43 |
-| main table | 51 | 0.71 | 0.10 | 0.17 |
-| supplement (unreachable without S1b) | 1,056 | 0.40 | 0.01 | 0.01 |
+| Configuration | Runs | Micro F1 | Micro precision | Direction accuracy | Figure F1 |
+|---------------|-----:|---------:|----------------:|-------------------:|----------:|
+| Before the retrieval and prompt fixes (L030) | 1 | 0.134 | 0.457 | 63.6% | 0.520 |
+| After them: webp figures, captcha handling, group convention | 2 | 0.158, 0.185 | 0.447, 0.474 | 89.7%, 90.0% | 0.586, 0.671 |
+| Per-experiment artifact search, no decision model | 1 | 0.166 | 0.829 | 96.0% | 0.612 |
+| Per-experiment artifact search + `clef` decision model | 1 | 0.209 | 0.636 | 90.3% | 0.736 |
 
-*Table 4. `fused-lean` taxa-set metrics by gold source type, micro-averaged (L027). Direction accuracy 80.8%; name → id accuracy 100%.*
+*Table 4. Smoke-set taxa-set metrics (micro-averaged), by configuration. Row 1 is from L030;
+rows 2–4 are from local score reports under the git-ignored `data/runs/`, for which L033 is
+the ledger entry. The studies are the same, the code is not, so adjacent rows show a
+direction and are not a controlled ablation.*
 
-- **Precision is good, recall is the bottleneck.** About 77% of the smoke set's gold taxa
-  live in supplements, and papers with 21 or more experiments are under-segmented by the
-  linear single-worker topology (recall about 0.01 there).
-- **Design comparison (L030).** Micro F1: `fused-lean` 0.134, `split-panel` 0.031,
-  `split-verify` 0.018. The split designs' verifier grounded figure-derived taxa against
-  legend text only, which structurally drops correct figure taxa; that was fixed afterwards
-  (figure images now reach the verifier) but the comparison was not re-run.
-- **A strong model with the evidence in hand does well (L031, n = 1).** Given one
-  paper's supplementary PDF directly, `gemini-3.1-pro-preview` scored taxa-set F1 0.83 on a
-  48-experiment paper the main-text pipeline scored 0.00 on. Direction accuracy was 11.5%
-  (a global orientation mismatch), and 18 multi-group experiments were missed. The PDF was
-  hand-fed, so this is a ceiling test, not a pipeline result.
-- **Decision-model probe (L032).** Supplement-page screening reached recall 1.0 at
-  precision ≥ 0.77, and artifact ranking AUROC 0.96. Per-taxon direction did not work.
-  Labels are agent-drafted and unreviewed; n is small.
+What the numbers say, and what they do not:
 
-The first reading is that the low headline F1 is mostly a *retrieval* problem, not a
-reasoning problem. Next levers, in expected order of impact: supplement retrieval,
-fan-out for many-experiment papers, a model sweep, and a direction-orientation fix.
+- **Earlier smoke numbers are superseded.** L027 and L030 were taken while figure images were
+  silently missing for recent PMC articles (the `.webp` and captcha problems under
+  [Retrieval](#retrieval-and-its-failure-modes)), which probably depressed them. Treat
+  the first row as a "before" reference and not as a measure of the design.
+- **Recall is still the bottleneck.** About 77% of the smoke set's gold taxa are in
+  supplements the main-text pipeline cannot reach (L027: 1,056 supplement-sourced gold taxa,
+  against 260 from figures and 51 from main tables), and micro recall in Table 4 stays between
+  0.08 and 0.13.
+- **Direction orientation.** Stating the group convention and passing group names to the
+  extractors raised direction accuracy from about 65% to about 81%, pooled over two runs each
+  (per run: 68% and 60% before, 86% and 75% after). The later rows range from 90% to 96%.
+- **Run-to-run variance fell.** The per-study F1 difference between two runs averaged 0.05
+  after the fixes; before them, single studies swung between 0.96 and 0.0 across runs.
+- **The decision-model row is one run per arm.** The `clef` arm has higher F1 and lower
+  precision than the arm without; with one run each, that gap is not shown to be real.
+- **Supplement lever, one paper (34620922, 48 experiments, supplement-heavy).** The baseline
+  scored F1 0.000 with 7 of 48 experiments matched. With `--supplements`, three runs scored
+  F1 0.46 to 0.66 with 47 to 48 of 48 experiments matched. This is n = 1 paper and was chosen
+  because it is the hardest supplement case.
+- **Design comparison (L030, before the retrieval fixes).** Micro F1: `fused-lean` 0.134,
+  `split-panel` 0.031, `split-verify` 0.018. The split designs' verifier grounded
+  figure-derived taxa against legend text only, which structurally drops correct figure taxa;
+  that was fixed afterwards (figure images now reach the verifier) but the comparison was not
+  re-run.
+- **A strong model with the evidence in hand (L031, n = 1).** Given one paper's supplementary
+  PDF directly, `gemini-3.1-pro-preview` scored taxa-set F1 0.83 on a 48-experiment paper
+  the main-text pipeline scored 0.00 on. The PDF was hand-fed: a ceiling test, not a pipeline
+  result. Its direction accuracy of 11.5% was diagnosed in L031 as a global group-orientation
+  mismatch.
+- **Decision-model probe (L032, [details](benchmarks/decision-probe/RESULTS.md)).** Offline,
+  against gold, on small n with agent-drafted, unreviewed labels: supplement page/sheet
+  screening reached recall 1.0 at precision 0.77 or better; DA-artifact ranking had AUROC 0.96
+  (`clef`) against the regex's single operating point of precision 0.39, recall 0.65. Per-taxon
+  direction, figure type, many-option artifact → experiment assignment and condition
+  ontology (as configured) did not meet their gates.
+
+The reading so far is that the low headline F1 is mostly a *retrieval* problem, not a
+reasoning problem. Remaining levers, in rough order: reliable figure and supplement retrieval,
+fan-out for many-experiment papers, a model sweep, and human review for papers with no gold.
+
+### Known limitations
+
+- **Retrieval is fragile.** Figure retrieval depends on PMC pages that are served
+  intermittently; in production it needs the on-disk cache or a sanctioned bulk route. PMC's
+  supplement downloads (JavaScript proof-of-work) are not reachable by this client at all, so
+  `--supplements` uses Europe PMC's ZIP instead.
+- **The supplement ZIP guard skips large archives.** A ZIP with big media, such as 37864204's
+  roughly 250 MB of mp4, exceeds the guard and is skipped (visibly, as `supplement_skipped`).
+  `.xls` and `.doc` files are not read, and supplement experiments get no UBERON term.
+- **Small samples.** The smoke set has 19 studies, one or two runs per configuration, and one
+  model tier. The supplement result is one paper. The decision-model probe is two large papers
+  and 15 figures, with unreviewed labels.
+- **Unreviewed drafts.** The five pilot review packets contain machine drafts that no curator
+  has judged. There is no human-verified accuracy figure yet.
 
 ## Layout
 
