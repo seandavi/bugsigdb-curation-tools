@@ -253,7 +253,9 @@ def _size(n_bytes: int) -> str:
 
 
 def _count(n: int, noun: str) -> str:
-    return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
+    if n == 1:
+        return f"{n} {noun}"
+    return f"{n} {noun.removesuffix('y')}ies" if noun.endswith("y") else f"{n} {noun}s"
 
 
 def _card_authors(authors: tuple[str, ...]) -> str:
@@ -269,7 +271,7 @@ def _licence_text(study: _Study) -> str:
 
 _INDEX_CSS = """
 *{box-sizing:border-box}
-body{margin:0;font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1c2330;background:#f4f6f9}
+body{margin:0;overflow-wrap:break-word;font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1c2330;background:#f4f6f9}
 main,header.top,footer{max-width:60rem;margin:0 auto;padding:0 1rem}
 header.top{padding-top:1.5rem}
 h1{margin:0 0 .25rem;font-size:1.6rem}

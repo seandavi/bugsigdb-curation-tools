@@ -133,6 +133,10 @@ def test_index_carries_the_required_notices_and_instructions(packets: Path) -> N
     assert NAME in text and DATE in text and "abc1234" in text and bundle.manifest["content_sha256"] in text
 
 
+def test_index_pluralises_counts(packets: Path) -> None:
+    assert "3 studies to review" in index_text(make_bundle(packets))
+
+
 def test_index_without_contact_says_who_sent_it(packets: Path) -> None:
     bundle = build_bundle(packets, name=NAME, date=DATE, contact=None)
     assert "whoever sent you this bundle" in bundle.files["index.html"].decode("utf-8")
