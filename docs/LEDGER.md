@@ -604,3 +604,28 @@ source of day-to-day variance for the supplement lever.
 
 **Next.** Issue #46 (swap-aware direction metric first); investigate why main-table gold is not reached under Clef routing; send the
 review bundle to named curators and run one full first review; re-run the decision-probe benchmark on the new PDF seam.
+
+## L035 — README figure audit; review bundle sent; findings filed — 2026-10-08
+**README figures (PRs #50, #51).** The single workflow figure mixed logical stages with CLI commands and had drifted from the code, so
+it was replaced by a logical view (Figure 1) and a command view (Figure 2); the data model is Figure 3. Checked against `pipeline.py`,
+each command's `--help` and the schema, the old figure had: S5a drawn inside the per-experiment loop (it ranks once per study), S10
+drawn after the loop (it runs per experiment, inside the extractor), ids described as only 'verified' (unresolved names are now
+grounded by name by default), and the supplement ZIP, OLS4 and the sidecar missing. Corrections made to the README text at the same
+time: the slot count is 64, not 63 (`uid` was added after the count was written); the up-to-3 candidate artifacts per experiment need
+`--decision-model` (without one S5a returns a single regex pick); S9 checks LinkML types, enums and required fields only (the old figure
+said 'ontology CURIEs'; no such check exists); the data-model caption said only some slots were shown (all are); and `review packet`
+finds a sidecar by itself only for a single-PMID run (`--smoke` writes `_annotations/<pmid>.json`; issue #52). `docs/workflow.md`, an
+older Mermaid view that listed S1b as deferred, was deleted. Both figure variants were rendered in Chromium and read; they were not
+reviewed by anyone else.
+
+**Correction to L034.** Its 'Next' line says main-table gold is 'not reached under Clef routing'. The reports show it is weak in every
+arm: 3 of 51 taxa without the levers (F1 0.111), 0 of 51 and 1 of 51 in the two full-pipeline runs (F1 0.000, 0.038). With counts that
+small and one run each, this neither implicates nor clears the levers. Issue #53 has the table and the open questions.
+
+**Review loop.** The bundle (five unreviewed pilot drafts) was sent to two named reviewers on 2026-10-07; no verdicts have come back,
+so there is still no human-verified accuracy figure. The packet-to-`review ingest` path has been tested against a Node stand-in for the
+browser, not a real one. A first rehearsal in headless Chromium filled the form and then did not get a download from the JSON export
+button within 30 s; whether that is a packet defect or a limit of headless `file://` downloads is not determined (issue #54), and no
+claim is made that export works in a real browser.
+
+**Filed.** #52 (sidecar discovery for `--smoke` output), #53 (main-table gold), #54 (export rehearsal); #46 (direction) was filed in L034.

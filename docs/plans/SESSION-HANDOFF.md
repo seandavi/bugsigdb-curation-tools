@@ -4,9 +4,29 @@
 **Ledger:** [`docs/LEDGER.md`](../LEDGER.md) is the append-only methods/process log (for the paper's
 Methods section). Keep it current by **appending** new entries (never editing past ones) at milestone
 boundaries — anchor each to its commit hash.
-**As of:** 2026-07-14. `main` @ `65550ea`. See the ledger (L001–L028) for the full trail; the notes
-below are the early-session context.
+**As of:** 2026-10-08. `main` @ `60f30e9`. Read UPDATE 4 first, then the README and the ledger
+(L001–L035). Everything below UPDATE 4 is earlier context and is partly out of date.
 
+> **UPDATE 4 (2026-10-08) — current state.** PRs through #51 are merged (ledger L001–L035; 1,306 offline
+> tests). The README is the best map: it has the logical and command workflow figures, the stage table and
+> the results table. What exists beyond UPDATE 3: the **decision-model seam** (Clef) behind S5a artifact
+> ranking and the body-site → UBERON sidecar; **per-experiment artifact search** (up to 3 ranked candidates
+> with a decision model); the **supplement lever S1b** (Europe PMC ZIP, 1 GiB / 25 min guard, spooled to disk,
+> retried on 429/5xx; screen → extract → one-vs-rest); **`--ground-unresolved` on by default**; PDF pages via
+> pypdfium2; the **review loop** (`review packet / bundle / ingest / report`). Licence: **MIT** for code,
+> CC BY 4.0 for schema and data.
+> **Numbers** (smoke set, 19 studies, `gemini-3.1-flash-lite`, one run each, L033–L034): micro F1 0.181
+> without the levers, 0.609 with them (one study re-run and substituted, disclosed in L034); direction
+> accuracy falls from 95.7% to 76.6%. The 3-design comparison is done (L030; fused-lean is the default) and
+> supplement retrieval is done; **fan-out for many-experiment papers and the model sweep are still open.**
+> **Review state:** five pilot drafts, all unreviewed; the bundle went to two named reviewers on 2026-10-07 and
+> nothing has come back. When verdict files arrive: `bugsigdb review ingest <files> --manifests <packets dir>`,
+> then `review report`. The packet-to-ingest path has not been exercised in a real browser (issue #54).
+> **Open issues:** #46 direction for pairwise supplement tables; #52 `review packet` does not find `--smoke`
+> sidecars; #53 main-table gold barely reached (3 of 51 taxa without the levers, 0–1 with them); #54 export
+> button not confirmed in a real browser.
+> UPDATE 3's authorized program below is superseded by the above; its data-firewall rule is not.
+>
 > **UPDATE 3 (2026-07-14) — current state + authorized program.** Everything through the first real
 > numbers is merged (13 PRs; ledger L001–L028). Shipped: schema + CLIs, the **eval harness**, the
 > **Design-1 (Fused-Lean) curator**, CI + PR/Copilot workflow, an **offline DuckDB NCBI taxonomy
