@@ -9,7 +9,11 @@ from typer.testing import CliRunner
 
 from bugsigdb_curation.cli import app
 
-runner = CliRunner()
+# Rich falls back to 80 columns when not attached to a terminal and folds long
+# (space-free) tmp_path file paths mid-word, so substring checks like
+# `"good.yaml" in result.output` would depend on the pytest temp dir's length.
+# Pin a wide console so output assertions are independent of that.
+runner = CliRunner(env={"COLUMNS": "1000"})
 
 VALID_STUDY = {
     "uid": "27409883",
